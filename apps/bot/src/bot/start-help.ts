@@ -4,6 +4,7 @@ import { Composer, type Context, InlineKeyboard } from "grammy";
 import type { App } from "./app.ts";
 import { setChatCommands } from "./commands.ts";
 import { localeOf, messages } from "./i18n/index.ts";
+import { miniAppUrl, setChatMenuButton } from "./menu-button.ts";
 import { relayEnabled } from "./support.ts";
 
 export function startHelp(app: App) {
@@ -17,13 +18,28 @@ export function startHelp(app: App) {
     const locale = await app.locale(ctx);
     const m = messages(locale);
     const custom = (await app.settings()).bot.welcome[locale];
-    await ctx.reply(custom || m.welcome, {
-      reply_markup: new InlineKeyboard()
-        .text(m.submitButton, "submit")
-        .text(m.promoteButton, "promote")
-        .row()
-        .text(m.langButton, "lang"),
-    });
+    const appUrl = miniAppUrl(app.env.SITE_URL, locale);
+    const keyboard = new InlineKeyboard()
+      .text(m.submitButton, "submit")
+      .text(m.promoteButton, "promote")
+      .row();
+    if (appUrl) keyboard.webApp(m.openApp, appUrl).row();
+    keyboard.text(m.langButton, "lang");
+    await ctx.reply(custom || m.welcome, { reply_markup: keyboard });
+    // The menu button is a single per-bot slot, overridable per chat: the app for everyone, the
+    // admin panel for admins. Pushed here rather than per update, since each call is an API request.
+    if (appUrl) {
+      const adminUrl = app.env.ADMIN_URL;
+      const admin = Boolean(adminUrl) && (await app.isAdmin(ctx));
+      await app.background(() =>
+        setChatMenuButton(app.api, {
+          chatId: ctx.chat.id,
+          url: admin && adminUrl ? adminUrl : appUrl,
+          locale,
+          admin,
+        }),
+      );
+    }
   });
 
   composer.command("help", async (ctx) => ctx.reply((await app.m(ctx)).help));

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ActivityTier, EntryKind } from "./domain.ts";
+import { ProductKind } from "./settings.ts";
 
 /**
  * Snapshot contract: produced by @tgbox/snapshot at build time, consumed by apps/web.
@@ -80,6 +81,8 @@ export const SiteStats = z.object({
 export type SiteStats = z.infer<typeof SiteStats>;
 
 export const CategoryView = z.object({
+  /** Database id. The Mini App's submit form posts it, so the static taxonomy has to carry it. */
+  id: z.number().int().default(0),
   slug: z.string(),
   kind: EntryKind,
   nameZh: z.string(),
@@ -92,6 +95,8 @@ export const CategoryView = z.object({
 export type CategoryView = z.infer<typeof CategoryView>;
 
 export const TagView = z.object({
+  /** Database id, for the same reason `CategoryView.id` exists. */
+  id: z.number().int().default(0),
   slug: z.string(),
   nameZh: z.string(),
   nameEn: z.string(),
@@ -123,6 +128,19 @@ export const PromoView = z.object({
 });
 export type PromoView = z.infer<typeof PromoView>;
 
+/** A promotion product on sale. Public information: the bot quotes the same list in chat. */
+export const ProductView = z.object({
+  id: z.number().int(),
+  kind: ProductKind,
+  nameZh: z.string(),
+  nameEn: z.string(),
+  days: z.number().int(),
+  priceStars: z.number().int(),
+  /** Decimal string, e.g. "10" or "9.5". */
+  priceUsdt: z.string(),
+});
+export type ProductView = z.infer<typeof ProductView>;
+
 export const SiteData = z.object({
   /** ISO 8601 */
   generatedAt: z.string(),
@@ -137,5 +155,7 @@ export const SiteData = z.object({
   promos: z.array(PromoView),
   /** Admin setting: pad the unsold sponsor slots with "for rent" cards instead of hiding them. */
   showAdSlots: z.boolean(),
+  /** Products currently on sale, ordered as the admin sorted them. */
+  products: z.array(ProductView).default([]),
 });
 export type SiteData = z.infer<typeof SiteData>;

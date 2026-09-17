@@ -13,7 +13,14 @@ import type {
   SubmissionStatus,
 } from "@tgbox/shared";
 import { sql } from "drizzle-orm";
-import { integer, primaryKey, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import {
+  index,
+  integer,
+  primaryKey,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from "drizzle-orm/sqlite-core";
 
 // Timestamps are unix epoch milliseconds (integer columns).
 
@@ -111,6 +118,8 @@ export const submissions = sqliteTable(
     uniqueIndex("submissions_pending_username_unique")
       .on(t.username)
       .where(sql`status = 'pending'`),
+    // The Mini App lists a user's own submissions on every app open (see .agents/database.md).
+    index("submissions_user").on(t.tgUserId, t.id),
   ],
 );
 
@@ -213,11 +222,13 @@ export const orders = sqliteTable(
     /** Set once the renewal reminder was sent. */
     remindedAt: integer("reminded_at"),
   },
-  // Idempotency for payment callbacks; partial so unpaid orders don't pay the index row.
   (t) => [
+    // Idempotency for payment callbacks; partial so unpaid orders don't pay the index row.
     uniqueIndex("orders_provider_charge_unique")
       .on(t.provider, t.chargeId)
       .where(sql`charge_id IS NOT NULL`),
+    // The Mini App lists a buyer's own orders on every app open (see .agents/database.md).
+    index("orders_user").on(t.tgUserId, t.id),
   ],
 );
 

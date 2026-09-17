@@ -1,0 +1,33 @@
+---
+import type { Locale } from "@tgbox/shared";
+import AppRoot from "@/components/app/root.tsx";
+import type { AppScreen } from "@/components/app/shell.tsx";
+import { appUi } from "@/i18n/ui-app.ts";
+import AppLayout from "@/layouts/AppLayout.astro";
+import { botUrl, siteUrl } from "@/lib/site.ts";
+
+interface Props {
+  locale: Locale;
+  screen: AppScreen;
+}
+const { locale, screen } = Astro.props;
+const strings = appUi(locale);
+const pages: Record<AppScreen, { title: string; description: string }> = {
+  browse: { title: strings.browse.title, description: strings.outside.lead },
+  submit: { title: strings.submit.title, description: strings.submit.lead },
+  me: { title: strings.me.title, description: strings.outside.lead },
+  promote: { title: strings.promote.title, description: strings.promote.lead },
+};
+const pagefindUrl = (import.meta.env.PUBLIC_PAGEFIND_URL ?? "/pagefind").replace(/\/$/, "");
+---
+
+<AppLayout locale={locale} title={pages[screen].title} description={pages[screen].description}>
+  <AppRoot
+    client:load
+    locale={locale}
+    screen={screen}
+    pagefindUrl={pagefindUrl}
+    siteUrl={siteUrl}
+    botUrl={botUrl}
+  />
+</AppLayout>

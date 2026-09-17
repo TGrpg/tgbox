@@ -21,6 +21,7 @@
     "@tgbox/core": "workspace:*",
     "@tgbox/db": "workspace:*",
     "@tgbox/shared": "workspace:*",
+    "@tgbox/telegram": "workspace:*",
     "class-variance-authority": "catalog:",
     "clsx": "catalog:",
     "jose": "catalog:",

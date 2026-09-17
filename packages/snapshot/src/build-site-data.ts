@@ -183,14 +183,14 @@ export async function buildSiteData(options: BuildSiteDataOptions): Promise<Site
 
     const categoryRows = db
       .prepare(
-        `SELECT c.slug, c.kind, c.name_zh, c.name_en, c.sort, c.icon,
+        `SELECT c.id, c.slug, c.kind, c.name_zh, c.name_en, c.sort, c.icon,
            (SELECT COUNT(*) FROM entries e WHERE e.category_id = c.id AND e.status = 'approved') AS count
          FROM categories c ORDER BY c.kind, c.sort, c.slug`,
       )
       .all();
     const tagRows = db
       .prepare(
-        `SELECT t.slug, t.name_zh, t.name_en,
+        `SELECT t.id, t.slug, t.name_zh, t.name_en,
            (SELECT COUNT(*) FROM entry_tags et JOIN entries e ON e.id = et.entry_id
              WHERE et.tag_id = t.id AND e.status = 'approved') AS count
          FROM tags t ORDER BY t.slug`,
@@ -217,6 +217,16 @@ export async function buildSiteData(options: BuildSiteDataOptions): Promise<Site
                 ]
               : [];
           })
+      : [];
+
+    // The Mini App's purchase screen reads the price list as a static file, so it never
+    // costs a Worker request; the build is dispatched whenever the admin edits a product.
+    const productRows = hasTable("products")
+      ? db
+          .prepare(
+            "SELECT id, kind, name_zh, name_en, days, price_stars, price_usdt FROM products WHERE active = 1 ORDER BY sort, id",
+          )
+          .all()
       : [];
 
     const siteRow = hasTable("settings")
@@ -246,6 +256,7 @@ export async function buildSiteData(options: BuildSiteDataOptions): Promise<Site
         bots: usernamesOf("bot").length,
       },
       categories: categoryRows.map((row) => ({
+        id: int(row.id),
         slug: text(row.slug),
         kind: EntryKind.parse(row.kind),
         nameZh: text(row.name_zh),
@@ -255,6 +266,7 @@ export async function buildSiteData(options: BuildSiteDataOptions): Promise<Site
         count: int(row.count),
       })),
       tags: tagRows.map((row) => ({
+        id: int(row.id),
         slug: text(row.slug),
         nameZh: text(row.name_zh),
         nameEn: text(row.name_en),
@@ -279,6 +291,15 @@ export async function buildSiteData(options: BuildSiteDataOptions): Promise<Site
       announcement,
       promos,
       showAdSlots: site.showAdSlots,
+      products: productRows.map((row) => ({
+        id: int(row.id),
+        kind: text(row.kind),
+        nameZh: text(row.name_zh),
+        nameEn: text(row.name_en),
+        days: int(row.days),
+        priceStars: int(row.price_stars),
+        priceUsdt: text(row.price_usdt),
+      })),
     });
 
     /** Applies the operator's post filters: whole entry, single posts, keywords, media. */

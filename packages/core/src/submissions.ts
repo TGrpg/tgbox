@@ -1,16 +1,117 @@
 import {
   approveSubmission as approveSubmissionRow,
+  countSubmissionsSince,
+  createSubmission,
+  findPendingSubmission,
+  getBlacklistEntry,
   getEntryByUsername,
   getSubmission,
   insertApprovedEntry,
+  listCategories,
+  listTags,
   rejectSubmission as rejectSubmissionRow,
   type Submission,
 } from "@tgbox/db";
+import { entryKinds, MAX_TAGS, parseTelegramRef, type SubmitError } from "@tgbox/shared";
 import { fetchEntrySnapshot } from "@tgbox/telegram";
 import { audit } from "./audit.ts";
 import { markDirtyAndDispatch } from "./build.ts";
 import { type Actor, background, type CoreContext } from "./context.ts";
 import { publishEntryToChannel } from "./publish.ts";
+import { notifyNewSubmission } from "./review-notify.ts";
+import { getSettings } from "./settings.ts";
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Whether this user may submit this username right now, in the order a person experiences it:
+ * a closed queue first, then the username itself, then their own daily budget. The bot and the
+ * Mini App both go through here so the two entry points cannot drift apart; the bot turns the
+ * error into its own copy, the Mini App returns it verbatim (`SubmitError` in the API contract).
+ *
+ * Read-only: nothing is written and no t.me request is made.
+ */
+export async function checkSubmission(
+  ctx: CoreContext,
+  input: { tgUserId: number; username: string },
+): Promise<{ ok: true; username: string } | { ok: false; error: SubmitError }> {
+  const username = parseTelegramRef(input.username);
+  if (!username) return { ok: false, error: "invalid" };
+
+  const { bot } = await getSettings(ctx);
+  if (!bot.submissionsOpen) return { ok: false, error: "closed" };
+  // A blacklisted username is refused for everyone, however it is spelled.
+  if (await getBlacklistEntry(ctx.db, "username", username)) return { ok: false, error: "banned" };
+  if (await getEntryByUsername(ctx.db, username)) return { ok: false, error: "already_listed" };
+  if (await findPendingSubmission(ctx.db, username)) return { ok: false, error: "already_pending" };
+  const since = ctx.now() - DAY_MS;
+  if ((await countSubmissionsSince(ctx.db, input.tgUserId, since)) >= bot.submitDailyLimit) {
+    return { ok: false, error: "daily_limit" };
+  }
+  return { ok: true, username };
+}
+
+/**
+ * One-shot submission for the Mini App: the checks above, then t.me for what is being submitted,
+ * then the row. The bot does the same thing across several messages, so it drives the steps itself
+ * and only shares `checkSubmission`.
+ */
+export async function submitEntry(
+  ctx: CoreContext,
+  input: { tgUserId: number; username: string; categoryId: number; tagIds: number[] },
+): Promise<{ ok: true; submissionId: number } | { ok: false; error: SubmitError }> {
+  const allowed = await checkSubmission(ctx, input);
+  if (!allowed.ok) return allowed;
+  const { username } = allowed;
+
+  const snap = await fetchEntrySnapshot(username, {
+    fetch: ctx.fetch,
+    now: new Date(ctx.now()),
+    knownKind: null,
+    needCreatedAt: false,
+  });
+  const kind = entryKinds.find((entryKind) => entryKind === snap.kind);
+  // A user account, a dead link or a page t.me wouldn't show us is not something to review.
+  if (snap.liveness !== "active" || !kind || !snap.profile) return { ok: false, error: "invalid" };
+
+  const category = (await listCategories(ctx.db)).find((row) => row.id === input.categoryId);
+  if (!category || category.kind !== kind) return { ok: false, error: "invalid" };
+  const known = new Set((await listTags(ctx.db)).map((tag) => tag.id));
+  const tagIds = [...new Set(input.tagIds)];
+  if (tagIds.length > MAX_TAGS || tagIds.some((id) => !known.has(id))) {
+    return { ok: false, error: "invalid" };
+  }
+
+  const submissionId = await createSubmission(ctx.db, {
+    tgUserId: input.tgUserId,
+    username,
+    kind,
+    categoryId: category.id,
+    tagIds,
+    fetchedTitle: snap.profile.title ?? username,
+    fetchedDescription: snap.profile.description ?? "",
+    fetchedMembers: snap.profile.members ?? snap.profile.monthlyUsers,
+    createdAt: ctx.now(),
+  });
+  // Null means another submission for the same username landed first (unique partial index).
+  if (submissionId === null) return { ok: false, error: "already_pending" };
+
+  // This path writes straight to D1, so unlike the bot's chat flow nothing has told the reviewers
+  // yet. Backgrounded and never awaited for correctness: a saved submission must not be lost
+  // because a notification failed.
+  await background(ctx, () =>
+    notifyNewSubmission(ctx, {
+      submissionId,
+      username,
+      kind,
+      title: snap.profile?.title ?? username,
+      categoryId: category.id,
+      tagIds,
+      submitterId: input.tgUserId,
+    }),
+  );
+  return { ok: true, submissionId };
+}
 
 export const rejectReasons = [
   "content",

@@ -26,6 +26,10 @@ export type CoreContext = {
     SITE_URL?: string;
     /** Encrypts credentials entered in the admin; empty/absent makes them unavailable. */
     SETTINGS_KEY?: string;
+    /** Who receives review messages sent by core (comma-separated Telegram user ids). */
+    ADMIN_IDS?: string;
+    /** Fallback review chat for the same. */
+    ADMIN_CHAT_ID?: string;
   };
   /** `ctx.waitUntil` of the current request; without it background work is awaited inline. */
   waitUntil?: (promise: Promise<unknown>) => void;

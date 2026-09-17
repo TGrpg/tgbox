@@ -10,6 +10,7 @@ import {
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, test } from "vitest";
 import {
+  ADMIN,
   ADMIN_CHAT_ID,
   buttons,
   db,
@@ -273,9 +274,28 @@ describe("submission flow", () => {
     expect(h.calls("answerCallbackQuery")[0]?.payload.text).toContain("已过期");
   });
 
-  test("/start shows the welcome with a submit button", async () => {
+  test("/start shows the welcome with a submit button and a way into the app", async () => {
     await h.message(owner, "/start");
     expect(h.lastText()).toContain("欢迎");
-    expect(h.lastButtons().map((b) => b.callback_data)).toEqual(["submit", "promote", "lang"]);
+    const buttons = h.lastButtons();
+    expect(buttons.map((b) => b.callback_data)).toEqual(["submit", "promote", undefined, "lang"]);
+    expect(buttons.map((b) => b.web_app?.url)).toContain("https://tgbox.test/app/");
+  });
+
+  test("/start points the chat menu button at the app for a regular user", async () => {
+    await h.message(owner, "/start");
+    const call = h.calls("setChatMenuButton").at(-1);
+    expect(call?.payload.menu_button).toMatchObject({
+      type: "web_app",
+      web_app: { url: "https://tgbox.test/app/" },
+    });
+  });
+
+  test("an admin gets the menu button pointed at the admin panel instead", async () => {
+    await h.message({ ...owner, id: ADMIN.id }, "/start");
+    const call = h.calls("setChatMenuButton").at(-1);
+    expect(call?.payload.menu_button).toMatchObject({
+      web_app: { url: "https://admin.tgbox.test" },
+    });
   });
 });

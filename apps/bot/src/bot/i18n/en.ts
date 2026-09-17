@@ -24,6 +24,10 @@ export const en: typeof zh = {
       ? `Contact support: @${username}`
       : "Support isn't set up yet. Please try again later.",
   help: "Listing criteria: public channels, groups or bots with legal content, regular updates and no fake subscribers.\n\nHow to submit: send a t.me link or @username, then pick a category and tags.\nYou'll get a private message with the review result.\n\n/lang switches the language, /support reaches the team.",
+  menuButtonApp: "Open TGbox",
+  menuButtonAdmin: "Admin panel",
+  openApp: "📱 Open in the app",
+  openAppMy: "📱 View my submissions",
   langButton: "🌐 语言 / Language",
   commands: {
     submit: "Submit a listing",

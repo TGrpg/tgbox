@@ -44,6 +44,7 @@ const testEnv: Env = Object.assign({}, env, {
   ADMIN_CHAT_ID: String(ADMIN_CHAT_ID),
   GITHUB_REPO: "owner/tgbox",
   SITE_URL: "https://tgbox.test",
+  ADMIN_URL: "https://admin.tgbox.test",
   R2_PUBLIC_URL: "https://media.tgbox.test",
   AI: fakeAi(aiCalls, () => aiRespond()) as unknown as Ai,
 });
@@ -400,7 +401,7 @@ function commandEntities(text: string) {
     : {};
 }
 
-type Button = { text: string; callback_data?: string; url?: string };
+type Button = { text: string; callback_data?: string; url?: string; web_app?: { url: string } };
 
 /** Buttons of the inline keyboard attached to a Telegram API call. */
 export function buttons(call: TelegramCall | undefined): Button[] {

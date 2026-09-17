@@ -10,6 +10,7 @@ import { getSubmission } from "@tgbox/db";
 import { Composer, type Context, InlineKeyboard } from "grammy";
 import type { App } from "./app.ts";
 import { messages } from "./i18n/index.ts";
+import { miniAppUrl } from "./menu-button.ts";
 
 export function reviewKeyboard(submissionId: number) {
   const m = messages("zh").admin;
@@ -48,8 +49,22 @@ export function review(app: App) {
     });
   }
 
+  /**
+   * Both outcomes link into the Mini App, which is the only place a submitter can see *why* they
+   * were rejected — `submissions.rejectReason` has never been visible to them anywhere else.
+   */
+  function appButton(target: App) {
+    // The submitter's own language isn't known here (this runs in the reviewer's context), so the
+    // link goes to the default locale and the app switches on the user's stored preference.
+    const appUrl = miniAppUrl(target.env.SITE_URL, "zh");
+    if (!appUrl) return undefined;
+    return {
+      reply_markup: new InlineKeyboard().webApp(messages("zh").openAppMy, `${appUrl}me/`),
+    };
+  }
+
   async function notifySubmitter(ctx: Context, userId: number, text: string) {
-    await app.background(() => ctx.api.sendMessage(userId, text));
+    await app.background(() => ctx.api.sendMessage(userId, text, appButton(app)));
   }
 
   composer.callbackQuery(/^ra:(\d+)$/, async (ctx) => {
@@ -71,7 +86,7 @@ export function review(app: App) {
         console.error("closing review failed", error),
       );
       await ctx.api
-        .sendMessage(submission.tgUserId, notice.approved(submission.username))
+        .sendMessage(submission.tgUserId, notice.approved(submission.username), appButton(app))
         .catch((error: unknown) => console.error("approval notice failed", error));
     });
     await ctx.answerCallbackQuery();

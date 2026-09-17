@@ -12,6 +12,9 @@ export const GET: APIRoute = () =>
       "Disallow: /go/",
       "Disallow: /en/go/",
       "Disallow: /r/",
+      // The Telegram Mini App is an app, not content; its pages are noindexed too.
+      "Disallow: /app/",
+      "Disallow: /en/app/",
       "",
       `Sitemap: ${absoluteUrl("/sitemap-index.xml")}`,
       "",

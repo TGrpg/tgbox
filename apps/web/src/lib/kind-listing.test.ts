@@ -71,6 +71,7 @@ test("category listings are built for both sort orders, each paginated", () => {
     ...devSiteData,
     categories: [
       {
+        id: 1,
         slug: "tech",
         kind: "channel" as const,
         nameZh: "科技",
@@ -80,6 +81,7 @@ test("category listings are built for both sort orders, each paginated", () => {
         count: 61,
       },
       {
+        id: 2,
         slug: "empty",
         kind: "channel" as const,
         nameZh: "空",
@@ -105,6 +107,7 @@ test("kind sections skip empty categories and cap entries per section", () => {
     ...devSiteData,
     categories: [
       {
+        id: 1,
         slug: "news",
         kind: "channel" as const,
         nameZh: "新闻",
@@ -114,6 +117,7 @@ test("kind sections skip empty categories and cap entries per section", () => {
         count: 12,
       },
       {
+        id: 2,
         slug: "tech",
         kind: "channel" as const,
         nameZh: "科技",
@@ -123,6 +127,7 @@ test("kind sections skip empty categories and cap entries per section", () => {
         count: 0,
       },
       {
+        id: 3,
         slug: "vps",
         kind: "group" as const,
         nameZh: "VPS",
@@ -144,10 +149,10 @@ test("related tags are ranked by how often they co-occur with the tag", () => {
   const data = {
     ...devSiteData,
     tags: [
-      { slug: "ai", nameZh: "AI", nameEn: "AI", count: 3 },
-      { slug: "code", nameZh: "编程", nameEn: "Code", count: 2 },
-      { slug: "news", nameZh: "新闻", nameEn: "News", count: 1 },
-      { slug: "lonely", nameZh: "孤", nameEn: "Lonely", count: 1 },
+      { id: 1, slug: "ai", nameZh: "AI", nameEn: "AI", count: 3 },
+      { id: 2, slug: "code", nameZh: "编程", nameEn: "Code", count: 2 },
+      { id: 3, slug: "news", nameZh: "新闻", nameEn: "News", count: 1 },
+      { id: 4, slug: "lonely", nameZh: "孤", nameEn: "Lonely", count: 1 },
     ],
     entries: [
       entry({ username: "x", tags: ["ai", "code", "news"] }),

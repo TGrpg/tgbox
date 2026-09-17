@@ -36,7 +36,14 @@ function withDefaults<TValue extends object>(defaults: TValue, stored: unknown) 
 
 /** All settings in one query. Never throws on bad stored values. */
 export async function getSettings(ctx: Pick<CoreContext, "db">): Promise<Settings> {
-  const rows = await listSettingsRows(ctx.db);
+  return settingsFromRows(await listSettingsRows(ctx.db));
+}
+
+/**
+ * The same validation for callers that already hold the rows — the Mini App reads them inside the
+ * one batch `/api/app/me` is allowed, instead of spending a second query on them.
+ */
+export function settingsFromRows(rows: { key: string; value: string }[]): Settings {
   const stored = (key: SettingsKey) => storedValue(rows.find((row) => row.key === key)?.value);
   const bot = BotSettings.safeParse(withDefaults(settingsDefaults.bot, stored("bot")));
   const site = SiteSettings.safeParse(withDefaults(settingsDefaults.site, stored("site")));

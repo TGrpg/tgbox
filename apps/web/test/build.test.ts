@@ -881,4 +881,71 @@ describe("site build from snapshot data", () => {
       );
     }
   });
+
+  test("the Telegram Mini App ships four prerendered pages per locale, each one an island shell", () => {
+    for (const prefix of ["", "en/"]) {
+      for (const screen of ["app", "app/submit", "app/me", "app/promote"]) {
+        const route = `${prefix}${screen}`;
+        expect(existsSync(path.join(client, route, "index.html")), route).toBe(true);
+        // One island, no SPA fallback and no hash routing: Telegram owns the URL fragment.
+        const page = html(route);
+        expect(page.match(/<astro-island/g)?.length, route).toBe(1);
+        expect(page, route).toMatch(/component-url="[^"]*root\.[^"]*\.js"/);
+      }
+    }
+  });
+
+  test("app pages are noindex and absent from every sitemap", () => {
+    for (const prefix of ["", "en/"]) {
+      for (const screen of ["app", "app/submit", "app/me", "app/promote"]) {
+        const route = `${prefix}${screen}`;
+        expect(html(route), route).toContain('<meta name="robots" content="noindex, follow">');
+        // noindex pages advertise neither a canonical nor hreflang alternates.
+        expect(html(route), route).not.toContain('<link rel="canonical"');
+      }
+    }
+    for (const file of allFiles(client).filter((name) => name.endsWith(".xml"))) {
+      expect(readFileSync(file, "utf8"), file).not.toContain("/app/");
+    }
+    const robots = readFileSync(path.join(client, "robots.txt"), "utf8");
+    expect(robots).toContain("Disallow: /app/");
+    expect(robots).toContain("Disallow: /en/app/");
+  });
+
+  test("the app reads entries, taxonomy and products as static files, not from the Worker", () => {
+    const read = (name: string): unknown =>
+      JSON.parse(readFileSync(path.join(client, "data", name), "utf8"));
+    const entries = read("app-entries.json");
+    expect(Array.isArray(entries) && entries.length).toBeGreaterThan(0);
+    // The promoted entry leads the browse list, exactly as it leads the site's own listings.
+    expect(Array.isArray(entries) && entries[0]).toMatchObject({
+      username: "aiwatch",
+      kind: "channel",
+    });
+    const taxonomy = read("app-taxonomy.json");
+    expect(taxonomy).toMatchObject({
+      categories: expect.arrayContaining([
+        expect.objectContaining({ slug: "tech", kind: "channel", id: expect.any(Number) }),
+      ]),
+    });
+    // Submissions post category and tag ids, so the static taxonomy has to carry them.
+    expect(taxonomy).toMatchObject({
+      tags: expect.arrayContaining([
+        expect.objectContaining({ slug: "programming", id: expect.any(Number) }),
+      ]),
+    });
+    // The price list is public — the bot quotes the same products in chat — so it ships static too.
+    expect(read("app-products.json")).toMatchObject([
+      {
+        id: 1,
+        kind: "pin",
+        days: 7,
+        priceStars: expect.any(Number),
+        priceUsdt: expect.any(String),
+      },
+      { id: 2, kind: "pin", days: 30 },
+      { id: 3, kind: "banner", days: 7 },
+      { id: 4, kind: "banner", days: 30 },
+    ]);
+  });
 });

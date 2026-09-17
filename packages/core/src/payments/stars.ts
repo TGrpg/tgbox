@@ -19,3 +19,34 @@ export async function refundStars(ctx: CoreContext, input: { userId: number; cha
   console.error("refundStarPayment failed", res.status, description);
   return false;
 }
+
+const InvoiceLink = z.object({ ok: z.literal(true), result: z.string() });
+
+/**
+ * A Stars invoice the Mini App can open with `Telegram.WebApp.openInvoice`. The bot sends its
+ * invoices into the chat instead (`sendInvoice`), but both carry the same `order:<id>` payload,
+ * so a payment settles through the same `pre_checkout_query` / `successful_payment` handlers.
+ */
+export async function createStarsInvoiceLink(
+  ctx: CoreContext,
+  input: { title: string; description: string; payload: string; amount: number },
+) {
+  const token = ctx.config.BOT_TOKEN;
+  if (!token) throw new Error("BOT_TOKEN is not configured");
+  const res = await ctx.fetch(`https://api.telegram.org/bot${token}/createInvoiceLink`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      // Telegram truncates silently; cut at its documented limits so the invoice reads as intended.
+      title: input.title.slice(0, 32),
+      description: input.description.slice(0, 255),
+      payload: input.payload,
+      currency: "XTR",
+      prices: [{ label: input.title.slice(0, 32), amount: input.amount }],
+    }),
+  });
+  const body = InvoiceLink.safeParse(await res.json().catch(() => null));
+  if (body.success) return body.data.result;
+  console.error("createInvoiceLink failed", res.status);
+  return null;
+}

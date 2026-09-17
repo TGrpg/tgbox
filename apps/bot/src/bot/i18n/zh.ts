@@ -78,6 +78,10 @@ export const zh = {
   support: (username: string | null) =>
     username ? `客服联系方式：@${username}` : "暂未设置客服，请稍后再试。",
   help: "收录标准：公开的频道、群组或机器人，内容合法、持续更新、无刷粉。\n\n提交方式：发送 t.me 链接或 @用户名，按提示选择分类和标签。\n审核结果会通过私信通知。\n\n/lang 切换语言，/support 联系客服。",
+  menuButtonApp: "打开 TGbox",
+  menuButtonAdmin: "管理后台",
+  openApp: "📱 在 App 中打开",
+  openAppMy: "📱 查看我的提交",
   langButton: "🌐 语言 / Language",
   /** Telegram's command menu (`setMyCommands`); one source of truth for the bot and the deploy script. */
   commands: {

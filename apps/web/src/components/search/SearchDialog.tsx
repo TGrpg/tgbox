@@ -17,6 +17,7 @@ import {
 import { Spinner } from "@/components/coss/ui/spinner";
 import { localizePath } from "@/i18n/locale.ts";
 import { springs } from "@/lib/motion-presets.ts";
+import { loadPagefind, resetPagefind } from "@/lib/pagefind.ts";
 import { externalSearchUrls, safeExcerpt } from "@/lib/search.ts";
 
 interface Props {
@@ -39,18 +40,6 @@ interface Props {
   };
 }
 
-/** The subset of the Pagefind browser API used here. */
-interface Pagefind {
-  search(term: string): Promise<{ results: { data(): Promise<PagefindData> }[] }>;
-}
-
-interface PagefindData {
-  url: string;
-  excerpt: string;
-  meta: Partial<Record<string, string>>;
-  filters: Partial<Record<string, string[]>>;
-}
-
 interface Result {
   url: string;
   title: string;
@@ -66,13 +55,6 @@ const popupSpring: Transition = { type: "spring", ...springs.lift };
 const highlightSpring: Transition = { type: "spring", ...springs.snappy };
 const listSpring: Transition = { type: "spring", ...springs.gentle };
 const DEBOUNCE_MS = 200;
-
-let pagefindModule: Promise<Pagefind> | undefined;
-
-function loadPagefind(baseUrl: string): Promise<Pagefind> {
-  pagefindModule ??= import(/* @vite-ignore */ `${baseUrl}/pagefind.js`);
-  return pagefindModule;
-}
 
 /** Base UI types list items as `unknown`; the input shows the title of a chosen result. */
 function resultTitle(item: unknown) {
@@ -165,7 +147,7 @@ export default function SearchDialog({
           })),
         });
       } catch {
-        pagefindModule = undefined;
+        resetPagefind();
         if (!cancelled) setState({ status: "error", results: [] });
       }
     }, DEBOUNCE_MS);

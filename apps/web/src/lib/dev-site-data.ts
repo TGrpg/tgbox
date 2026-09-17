@@ -153,13 +153,16 @@ export const devSiteData: SiteData = {
     groups: usernamesOf("group").length,
     bots: usernamesOf("bot").length,
   },
-  categories: categories.map((category) => ({
+  // Ids mirror the seed migration's insertion order, which is what the real database assigns.
+  categories: categories.map((category, index) => ({
     ...category,
+    id: index + 1,
     icon: null,
     count: entries.filter((e) => e.kind === category.kind && e.category === category.slug).length,
   })),
-  tags: tags.map((tag) => ({
+  tags: tags.map((tag, index) => ({
     ...tag,
+    id: index + 1,
     count: entries.filter((entry) => entry.tags.includes(tag.slug)).length,
   })),
   entries,
@@ -172,4 +175,24 @@ export const devSiteData: SiteData = {
   announcement: null,
   promos: [],
   showAdSlots: true,
+  products: [
+    {
+      id: 1,
+      kind: "pin",
+      nameZh: "分类置顶 · 7 天",
+      nameEn: "Category pin · 7 days",
+      days: 7,
+      priceStars: 300,
+      priceUsdt: "5",
+    },
+    {
+      id: 2,
+      kind: "banner",
+      nameZh: "首页横幅 · 7 天",
+      nameEn: "Home banner · 7 days",
+      days: 7,
+      priceStars: 600,
+      priceUsdt: "10",
+    },
+  ],
 };

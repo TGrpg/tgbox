@@ -28,7 +28,7 @@ export {
   parseCryptoPayUpdate,
   verifyCryptoPaySignature,
 } from "./payments/cryptopay.ts";
-export { refundStars } from "./payments/stars.ts";
+export { createStarsInvoiceLink, refundStars } from "./payments/stars.ts";
 export {
   isTronAddress,
   matchTransfer,
@@ -60,6 +60,7 @@ export {
 export { publishEntryToChannel } from "./publish.ts";
 export { type MediaBucket, REFRESH_INTERVAL_MS, runRefresh } from "./refresh.ts";
 export { approveSubmissions, previewSubmission, rejectSubmissions } from "./review.ts";
+export { notifyNewSubmission } from "./review-notify.ts";
 export {
   getCredential,
   getSettings,
@@ -67,14 +68,17 @@ export {
   SettingsKeyMissingError,
   type SettingsUpdate,
   setCredential,
+  settingsFromRows,
   updateSettings,
 } from "./settings.ts";
 export {
   approveSubmission,
+  checkSubmission,
   listApprovedSubmission,
   type RejectReason,
   rejectReasons,
   rejectSubmission,
+  submitEntry,
 } from "./submissions.ts";
 export {
   deleteCategory,

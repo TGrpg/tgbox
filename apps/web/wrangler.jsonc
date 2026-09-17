@@ -14,6 +14,12 @@
       "migrations_dir": "../../packages/db/migrations"
     }
   ],
+  // Banner images uploaded from the Mini App (`promos/<order id>.jpg`), the same bucket and key the
+  // bot writes when a banner is bought in chat.
+  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "tgbox-media" }],
+  "vars": {
+    "R2_PUBLIC_URL": "https://media.tgbox.cc"
+  },
   "assets": {
     // Astro writes static pages to dist/client; its build also emits dist/server/wrangler.json, which
     // `wrangler deploy` picks up via .wrangler/deploy/config.json.
@@ -23,4 +29,5 @@
     "run_worker_first": ["/api/*", "/r/*"],
     "not_found_handling": "404-page"
   }
+  // Secrets (see .dev.vars.example): BOT_TOKEN — Mini App initData verification only.
 }

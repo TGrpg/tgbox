@@ -1,0 +1,8 @@
+# Copy to .dev.vars for `wrangler dev`. In production set with `wrangler secret put <NAME>`.
+# The bot token is used for one thing only: verifying the Mini App's initData signature
+# (and creating Stars invoice links for promotion orders). The web Worker never receives updates.
+BOT_TOKEN=123456:replace-me
+# Telegram ids that review submissions. Set so a Mini App submission reaches the reviewers; these
+# are ids, not capabilities — BOT_TOKEN above can already message any chat.
+ADMIN_IDS=123456789
+ADMIN_CHAT_ID=-1001234567890

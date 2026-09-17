@@ -24,6 +24,8 @@
   "ai": { "binding": "AI" },
   "vars": {
     "SITE_URL": "https://tgbox.cc",
+    // Admins get the chat menu button pointed here; everyone else gets SITE_URL/app/.
+    "ADMIN_URL": "https://admin.tgbox.cc",
     "R2_PUBLIC_URL": "https://media.tgbox.cc",
     "GITHUB_REPO": "TGrpg/tgbox",
     "BOT_USERNAME": "tgboxccbot",

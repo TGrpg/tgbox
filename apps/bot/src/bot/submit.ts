@@ -1,11 +1,8 @@
+import { checkSubmission } from "@tgbox/core";
 import {
-  countSubmissionsSince,
   createSubmission,
   deleteBotDraft,
-  findPendingSubmission,
-  getBlacklistEntry,
   getBotDraft,
-  getEntryByUsername,
   listCategories,
   listTags,
   putBotDraft,
@@ -15,10 +12,10 @@ import { type EntryKind, entryKinds, type Locale, MAX_TAGS, parseTelegramRef } f
 import { Composer, type Context, InlineKeyboard } from "grammy";
 import type { App } from "./app.ts";
 import { messages } from "./i18n/index.ts";
+import { miniAppUrl } from "./menu-button.ts";
 import { reviewKeyboard } from "./review.ts";
 import { relayEnabled } from "./support.ts";
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 const TAGS_PER_PAGE = 10;
 
 type Step = "choosing_category" | "choosing_tags" | "confirming";
@@ -183,18 +180,28 @@ export function submit(app: App) {
     }
   }
 
-  /** Open submissions, then checks 2–4 of the submission order (blacklist runs in the guard); returns an error text. */
+  /**
+   * The submission rules, shared with the Mini App (`checkSubmission`), as bot copy: null means
+   * go ahead, an empty string means say nothing at all (blacklisted username, like the guard).
+   */
   async function precheck(locale: Locale, userId: number, username: string) {
     const m = messages(locale);
-    const settings = (await app.settings()).bot;
-    if (!settings.submissionsOpen) return m.submissionsClosed;
-    if (await getEntryByUsername(app.db, username)) return m.alreadyListed(username);
-    if (await findPendingSubmission(app.db, username)) return m.alreadyPending(username);
-    const limit = settings.submitDailyLimit;
-    if ((await countSubmissionsSince(app.db, userId, app.now() - DAY_MS)) >= limit) {
-      return m.dailyLimit(limit);
+    const result = await checkSubmission(app.core, { tgUserId: userId, username });
+    if (result.ok) return null;
+    switch (result.error) {
+      case "closed":
+        return m.submissionsClosed;
+      case "invalid":
+        return m.invalidLink;
+      case "banned":
+        return "";
+      case "already_listed":
+        return m.alreadyListed(username);
+      case "already_pending":
+        return m.alreadyPending(username);
+      case "daily_limit":
+        return m.dailyLimit((await app.settings()).bot.submitDailyLimit);
     }
-    return null;
   }
 
   composer.on("message:text", async (ctx, next) => {
@@ -214,14 +221,9 @@ export function submit(app: App) {
       await ctx.reply(m.invalidLink);
       return;
     }
-    if (!settings.submissionsOpen) {
-      await ctx.reply(m.submissionsClosed);
-      return;
-    }
-    if (await getBlacklistEntry(app.db, "username", username)) return;
     const problem = await precheck(locale, ctx.from.id, username);
-    if (problem) {
-      await ctx.reply(problem);
+    if (problem !== null) {
+      if (problem) await ctx.reply(problem);
       return;
     }
 
@@ -339,10 +341,10 @@ export function submit(app: App) {
 
     if (action === "so" && step === "confirming" && draft.categoryId !== null) {
       const problem = await precheck(locale, userId, draft.username);
-      if (problem) {
+      if (problem !== null) {
         await deleteBotDraft(app.db, userId);
         await ctx.answerCallbackQuery();
-        await ctx.editMessageText(problem);
+        if (problem) await ctx.editMessageText(problem);
         return;
       }
       const tags = await allTags();
@@ -392,7 +394,13 @@ export function submit(app: App) {
         }
       });
       await ctx.answerCallbackQuery();
-      await ctx.editMessageText(m.submitted);
+      // Until now this message was a dead end: the bot has no way to show a submission's status.
+      const appUrl = miniAppUrl(app.env.SITE_URL, locale);
+      await ctx.editMessageText(m.submitted, {
+        reply_markup: appUrl
+          ? new InlineKeyboard().webApp(messages(locale).openAppMy, `${appUrl}me/`)
+          : undefined,
+      });
       return;
     }
 

@@ -1,0 +1,55 @@
+---
+import "@/styles/starwind.css";
+import type { Locale } from "@tgbox/shared";
+import Seo from "@/components/layout/Seo.astro";
+import { htmlLang } from "@/i18n/locale.ts";
+
+/**
+ * Document shell of the Telegram Mini App. Deliberately not `BaseLayout`: no site header, footer,
+ * announcement bar or search dialog — this is an app, and every one of those is a link out of it.
+ * The pages are prerendered static assets like the rest of the site, and `noindex` because an app
+ * screen is not content (they are kept out of the sitemap for the same reason).
+ */
+interface Props {
+  locale: Locale;
+  title: string;
+  description: string;
+}
+const { locale, title, description } = Astro.props;
+---
+
+<!doctype html>
+<html lang={htmlLang[locale]}>
+  <head>
+    <meta charset="utf-8">
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"
+    >
+    <Seo
+      locale={locale}
+      title={title}
+      description={description}
+      path={Astro.url.pathname}
+      noindex={true}
+    />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    {/* Runs before first paint; inside Telegram the theme params replace these a moment later. */}
+    <script is:inline>
+    (() => {
+      const root = document.documentElement;
+      root.classList.add("js");
+      try {
+        const stored = localStorage.getItem("theme");
+        root.classList.toggle(
+          "dark",
+          stored ? stored === "dark" : matchMedia("(prefers-color-scheme: dark)").matches,
+        );
+      } catch {}
+    })();
+    </script>
+  </head>
+  <body class="bg-background text-foreground">
+    <slot />
+  </body>
+</html>

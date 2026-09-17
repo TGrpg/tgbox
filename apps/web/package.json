@@ -8,7 +8,7 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "wrangler dev --local",
-    "types": "wrangler types",
+    "types": "wrangler types --strict-vars=false --env-file .dev.vars.example",
     "typecheck": "astro check",
     "test": "vitest run --passWithNoTests",
     "test:e2e": "playwright test"
@@ -21,20 +21,22 @@
     "@tabler/icons": "catalog:",
     "@tailwindcss/forms": "catalog:",
     "@tailwindcss/vite": "catalog:",
+    "@tgbox/core": "workspace:*",
     "@tgbox/db": "workspace:*",
     "@tgbox/shared": "workspace:*",
+    "@tgbox/telegram": "workspace:*",
     "astro": "catalog:",
     "class-variance-authority": "catalog:",
     "clsx": "catalog:",
     "lucide-react": "catalog:",
+    "motion": "catalog:",
     "qrcode": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "tailwind-merge": "catalog:",
     "tailwind-variants": "catalog:",
     "tailwindcss": "catalog:",
-    "tw-animate-css": "catalog:",
-    "motion": "catalog:"
+    "tw-animate-css": "catalog:"
   },
   "devDependencies": {
     "@astrojs/check": "catalog:",

@@ -9,6 +9,8 @@ import { localeOf, type Messages, messages } from "./i18n/index.ts";
 export type BotEnv = Env & {
   /** Public bot username (without @); used to match `/command@bot` in groups. */
   BOT_USERNAME?: string;
+  /** Admin panel origin; admins get the chat menu button pointed here instead of the Mini App. */
+  ADMIN_URL?: string;
 };
 
 export type BotDeps = {
@@ -71,6 +73,8 @@ export function createApp(env: BotEnv, deps: BotDeps): App {
       BOT_TOKEN: env.BOT_TOKEN,
       SITE_URL: env.SITE_URL,
       SETTINGS_KEY: env.SETTINGS_KEY,
+      ADMIN_IDS: env.ADMIN_IDS,
+      ADMIN_CHAT_ID: env.ADMIN_CHAT_ID,
     },
     waitUntil: deps.waitUntil,
   };
