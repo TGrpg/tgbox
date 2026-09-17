@@ -265,6 +265,10 @@ describe("build dispatch", () => {
   const prefixed = (prefix: string) =>
     channelPosts.replace(/(tgme_widget_message_text[^>]*>)/, `$1${prefix}: `);
 
+  /** What the build workflow does when it finishes: the flag is cleared, the timestamp stays. */
+  const buildFinished = () =>
+    env.DB.prepare("DELETE FROM site_state WHERE key = ?").bind("dirty_since").run();
+
   test("a change found by the cron dispatches a build, then at most one every 30 minutes", async () => {
     await addEntry("telegram");
     const pages: { posts?: string } = {};
@@ -289,6 +293,32 @@ describe("build dispatch", () => {
     expect(tg.dispatches()).toHaveLength(2);
     expect(await getSiteState(db, "build_dispatched_at")).toBe(String(T0 + 32 * MINUTE));
     expect(later.subrequests).toBeLessThanOrEqual(50);
+  });
+
+  test("the throttle also holds for the first change after a build cleared the flag", async () => {
+    await addEntry("telegram");
+    const pages: { posts?: string } = {};
+    const tg = fakeTelegram({ telegram: "channel" }, pages);
+    await runRefresh(env, T0, tg);
+    expect(tg.dispatches()).toHaveLength(1);
+    // That build ran and cleared `dirty_since`, so the next change is a fresh transition —
+    // which used to dispatch immediately, giving a build every few minutes.
+    await buildFinished();
+
+    pages.posts = prefixed("Two");
+    await runRefresh(env, T0 + 2 * MINUTE, tg);
+    expect(await getSiteState(db, "dirty_since")).toBe(String(T0 + 2 * MINUTE));
+    expect(tg.dispatches()).toHaveLength(1);
+
+    pages.posts = prefixed("Twenty");
+    await runRefresh(env, T0 + 20 * MINUTE, tg);
+    expect(tg.dispatches()).toHaveLength(1);
+
+    pages.posts = prefixed("ThirtyOne");
+    await runRefresh(env, T0 + 31 * MINUTE, tg);
+    expect(tg.dispatches()).toHaveLength(2);
+    // The change from minute 2 was never lost: the flag stayed set until this build.
+    expect(await getSiteState(db, "dirty_since")).toBe(String(T0 + 2 * MINUTE));
   });
 
   test("a refresh that changes nothing dispatches nothing", async () => {

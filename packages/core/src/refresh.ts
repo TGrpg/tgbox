@@ -49,6 +49,8 @@ const DIRTY_DISPATCH_COST = 4;
 // The dirty handling above + settings read + admin summary at the end of the run.
 const FINAL_RESERVE = DIRTY_DISPATCH_COST + 2;
 // Content the cron noticed is less urgent than a person's edit: at most one build every 30 minutes.
+// The flag is cleared by every build, so these changes must not take the transition shortcut —
+// otherwise the first stat drift after a build dispatches again, and so on every few minutes.
 const REFRESH_DISPATCH_INTERVAL_MS = 30 * MINUTE_MS;
 
 // A single batch is 5–10 entries, so "more than 5% failed" is any failure at all;
@@ -219,7 +221,10 @@ export async function runRefresh(
         GITHUB_DISPATCH_TOKEN: env.GITHUB_DISPATCH_TOKEN ?? "",
       },
     };
-    await markDirtyAndDispatch(core, { minIntervalMs: REFRESH_DISPATCH_INTERVAL_MS });
+    await markDirtyAndDispatch(core, {
+      minIntervalMs: REFRESH_DISPATCH_INTERVAL_MS,
+      onTransition: false,
+    });
     result.subrequests += DIRTY_DISPATCH_COST;
   }
   if (result.hidden.length > 0) {

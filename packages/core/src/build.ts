@@ -48,23 +48,29 @@ async function dispatchMessage(res: Response) {
 }
 
 /**
- * Marks the site dirty and dispatches a build unless one just went out.
+ * Marks the site dirty and dispatches a build unless one went out recently.
  *
- * `dirty_since` stays set until the workflow clears it, so "already dirty" cannot mean "a build is
- * on the way" — a cron-detected change can have set it hours earlier. The dispatch is therefore
- * throttled on the last dispatch instead of on the flag.
+ * The flag alone can't decide: `dirty_since` stays set until the workflow clears it, so "already
+ * dirty" may mean a cron-detected change nobody dispatched hours ago — while "not dirty yet" is
+ * the normal state right after any build, which makes every change look like a fresh transition.
+ * The throttle therefore runs on `build_dispatched_at`, and `onTransition` decides whether a
+ * change that flips the flag may skip it.
  */
 export async function markDirtyAndDispatch(
   ctx: CoreContext,
-  options: { minIntervalMs?: number } = {},
+  options: {
+    minIntervalMs?: number;
+    /** Dispatch immediately when this change flips the flag. Off for cron-detected changes. */
+    onTransition?: boolean;
+  } = {},
 ) {
+  const { minIntervalMs = DEFAULT_MIN_INTERVAL_MS, onTransition = true } = options;
   const now = ctx.now();
   const transitioned = await markDirty(ctx.db, now);
-  if (!transitioned) {
+  if (!(transitioned && onTransition)) {
     const last = Number(await getSiteState(ctx.db, "build_dispatched_at"));
-    if (Number.isFinite(last) && now - last < (options.minIntervalMs ?? DEFAULT_MIN_INTERVAL_MS)) {
-      return;
-    }
+    // Still dirty, so the change isn't lost: the next eligible dispatch or the hourly net takes it.
+    if (Number.isFinite(last) && now - last < minIntervalMs) return;
   }
   await background(ctx, () => dispatchBuild(ctx));
 }

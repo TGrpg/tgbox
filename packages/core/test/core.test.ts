@@ -16,6 +16,7 @@ import {
   triggerBuild,
 } from "@tgbox/core";
 import {
+  clearDirty,
   createSubmission,
   getBlacklistEntry,
   getEntryByUsername,
@@ -273,6 +274,53 @@ describe("build and blacklist", () => {
     expect(dispatches).toHaveLength(2);
     expect(await getSiteState(db, "build_dispatched_at")).toBe(String(NOW + MINUTE));
     logged.mockRestore();
+  });
+
+  test("after a build clears the flag a person's change dispatches at once, the cron's waits", async () => {
+    const { ctx, dispatches } = await setup();
+    let clock = NOW;
+    const at = { ...ctx, now: () => clock };
+    // How the refresh cron asks: never on the transition alone, at most one build per 30 minutes.
+    const cron = { minIntervalMs: 30 * MINUTE, onTransition: false };
+
+    await markDirtyAndDispatch(at, cron);
+    expect(dispatches).toHaveLength(1);
+    // The workflow built the site and cleared the flag, so the next change looks brand new.
+    await clearDirty(db, clock + 1);
+
+    clock = NOW + 2 * MINUTE;
+    await markDirtyAndDispatch(at, cron);
+    expect(dispatches).toHaveLength(1);
+    expect(await getSiteState(db, "dirty_since")).toBe(String(clock));
+
+    clock = NOW + 20 * MINUTE;
+    await markDirtyAndDispatch(at, cron);
+    expect(dispatches).toHaveLength(1);
+
+    // A person's change takes the transition shortcut even inside the cron's window.
+    await clearDirty(db, clock + 1);
+    clock = NOW + 21 * MINUTE;
+    await markDirtyAndDispatch(at);
+    expect(dispatches).toHaveLength(2);
+  });
+
+  test("the hourly net publishes a change the cron throttle held back", async () => {
+    const { ctx, dispatches } = await setup();
+    let clock = NOW;
+    const at = { ...ctx, now: () => clock };
+    const cron = { minIntervalMs: 30 * MINUTE, onTransition: false };
+
+    await markDirtyAndDispatch(at, cron);
+    await clearDirty(db, clock + 1);
+    clock = NOW + 2 * MINUTE;
+    await markDirtyAndDispatch(at, cron);
+    expect(dispatches).toHaveLength(1);
+
+    // Nothing else changes, so no later refresh dispatches it: the hourly net is the backstop.
+    clock = NOW + 31 * MINUTE;
+    expect(await dispatchStaleBuild(at)).toBe(true);
+    expect(dispatches).toHaveLength(2);
+    expect(await getSiteState(db, "dirty_since")).toBe(String(NOW + 2 * MINUTE));
   });
 
   test("the hourly safety net rebuilds only while dirty with a stale dispatch", async () => {
