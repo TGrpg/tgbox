@@ -49,6 +49,7 @@
 ### 管理后台（`apps/admin`）
 - 看板、审核队列、条目管理（服务端筛选、批量操作）
 - 手动收录、分类和标签管理、黑名单、操作日志、立即构建
+- 设置页（审核消息去向、发布频道、公告、支付方式）、推广页（订单、投放中、价格）
 - 浏览器中通过 **Cloudflare Access** 登录，或在 Telegram 中作为 **Mini App** 打开（校验 `initData` 签名 + 管理员白名单）
 
 ## 截图
@@ -132,7 +133,12 @@ pnpm --filter @tgbox/admin dev         # 后台 → http://localhost:8789（本�
    curl "https://api.telegram.org/bot$BOT_TOKEN/setWebhook" \
      -d url="https://<机器人 Worker 域名>/webhook" -d secret_token="$WEBHOOK_SECRET"
    ```
-5. **网站发布流水线**：在仓库添加 Secrets `CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID`、`R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY` 和 Variables `SITE_URL`、`R2_PUBLIC_URL`、`PUBLIC_BOT_USERNAME`，手动运行一次 **Build & deploy**。之后机器人会自动触发重新构建。
+5. **自动重新构建**：页面是预先生成的，靠 GitHub Actions 构建发布，需要两个 token。
+   - **Cloudflare API token**：在 [API Tokens](https://dash.cloudflare.com/profile/api-tokens) 用 *Edit Cloudflare Workers* 模板创建，选中自己的账号和域名，并额外加上 **D1 → Edit**（构建要导出数据库）。存为仓库 Secret `CLOUDFLARE_API_TOKEN`。
+   - **GitHub token**（机器人用来触发构建）：classic token 勾 `public_repo`，或 fine-grained token 只授权本仓库并把 **Contents 设为 Read and write**。用 `wrangler secret put` 存为 Worker 密钥 `GITHUB_DISPATCH_TOKEN`，并在 `apps/bot/wrangler.jsonc`、`apps/admin/wrangler.jsonc` 里填好 `GITHUB_REPO`。
+   - 仓库 Secret `CLOUDFLARE_ACCOUNT_ID`，Variables `SITE_URL`、`R2_PUBLIC_URL`、`PUBLIC_BOT_USERNAME`。
+   - 手动运行一次 **Build & deploy**。之后审核通过、支付成功、推广到期都会触发构建（约 3–5 分钟上线），另有每天 00:30 UTC 的定时构建（刷新排行榜）和每 6 小时一次的变更检查。
+   - Pagefind 索引随网站一起发布；条目超过约 9,000 个时改用 `scripts/sync-pagefind.ts` 放到 R2（那条路径需要 `R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY` 和 `PUBLIC_PAGEFIND_URL`），避免占用静态文件配额。
 
 ### 免费额度
 
@@ -148,8 +154,10 @@ pnpm --filter @tgbox/admin dev         # 后台 → http://localhost:8789（本�
 - [x] 静态双语导航、详情页、搜索、漂流瓶
 - [x] 收录机器人、审核流程、定时刷新和失效检测
 - [x] 管理后台（Cloudflare Access + Telegram Mini App 登录）
-- [ ] 自助购买推广位（Telegram Stars + USDT / Crypto Pay）
-- [ ] 增长排行榜、AI 翻译简介、语义搜索
+- [x] 后台设置（机器人 / 网站 / 支付）、机器人内自助购买推广位（Telegram Stars 或 USDT），到期自动下架
+- [x] 涨粉排行榜页面、每日频道日报
+- [ ] 推广点击统计、横幅图片上传
+- [ ] AI 翻译简介、语义搜索
 
 ## 参与贡献
 

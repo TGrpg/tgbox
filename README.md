@@ -50,6 +50,7 @@ Most Telegram directories are either a static list that goes stale, or a server-
 ### Admin panel (`apps/admin`)
 - Dashboard, review queue, entry management with server-side filters and bulk actions
 - Manual add, categories and tags editor, blacklist, audit log, "build now" button
+- Settings for the review destination, publish channel, announcement and payment providers; promotions page for orders, running ads and pricing
 - Opens in the browser behind **Cloudflare Access**, or inside Telegram as a **Mini App** (signed `initData` + admin allow-list)
 
 ## Screenshots
@@ -145,7 +146,12 @@ Checks: `pnpm check` (Biome + typecheck), `pnpm test`, `pnpm --filter @tgbox/web
    curl "https://api.telegram.org/bot$BOT_TOKEN/setWebhook" \
      -d url="https://<bot-worker-host>/webhook" -d secret_token="$WEBHOOK_SECRET"
    ```
-5. **Site pipeline**: add repository secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` and variables `SITE_URL`, `R2_PUBLIC_URL`, `PUBLIC_BOT_USERNAME`, then run the **Build & deploy** workflow. After that the bot triggers rebuilds automatically.
+5. **Automatic rebuilds**: pages are pre-built, so the site refreshes through a GitHub Actions build. Two tokens are needed.
+   - **Cloudflare API token** — [create one](https://dash.cloudflare.com/profile/api-tokens) from the *Edit Cloudflare Workers* template, scoped to your account and zone, plus **D1 → Edit** (the build exports the database). Store it as the repository secret `CLOUDFLARE_API_TOKEN`.
+   - **GitHub token** so the bot can trigger builds — a classic token with the `public_repo` scope, or a fine-grained token limited to this repository with **Contents: Read and write**. Store it as the Worker secret `GITHUB_DISPATCH_TOKEN` (`wrangler secret put`), and set `GITHUB_REPO` in `apps/bot/wrangler.jsonc` and `apps/admin/wrangler.jsonc`.
+   - Repository secret `CLOUDFLARE_ACCOUNT_ID`, and variables `SITE_URL`, `R2_PUBLIC_URL`, `PUBLIC_BOT_USERNAME`.
+   - Run **Build & deploy** once by hand. After that: approvals, payments and expiries dispatch a build (live in ~3–5 minutes), plus a daily build at 00:30 UTC for the rankings and a dirty check every 6 hours.
+   - The Pagefind index ships with the site. Past roughly 9,000 entries, move it to R2 with `scripts/sync-pagefind.ts` (that path needs `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` and `PUBLIC_PAGEFIND_URL`) so it stops counting against the static-file limit.
 
 ### Free-plan budget
 
@@ -161,8 +167,10 @@ Checks: `pnpm check` (Biome + typecheck), `pnpm test`, `pnpm --filter @tgbox/web
 - [x] Static bilingual directory, detail pages, search, random discovery
 - [x] Submission bot, review workflow, scheduled refresh and liveness detection
 - [x] Admin panel with Cloudflare Access and Telegram Mini App login
-- [ ] Self-serve promoted listings paid with Telegram Stars and USDT (Crypto Pay)
-- [ ] Growth rankings, AI-translated descriptions, semantic search
+- [x] Admin settings for bot, site and payments; self-serve promoted listings paid with Telegram Stars or USDT (Crypto Pay), with automatic expiry
+- [x] Growth rankings page and a daily digest posted to a Telegram channel
+- [ ] Promotion click stats, banner image upload
+- [ ] AI-translated descriptions, semantic search
 
 ## Contributing
 
