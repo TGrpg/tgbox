@@ -222,6 +222,60 @@ describe("buildSiteData", () => {
     expect(data.stats.bots).toBe(1);
   });
 
+  describe("payment methods a buyer can use", () => {
+    const withPayments = async (payments: Record<string, unknown>) => {
+      const dbPath = fixtureDb();
+      const db = new DatabaseSync(dbPath);
+      db.prepare("INSERT INTO settings (key, value, updated_at) VALUES ('payments', ?, 0)").run(
+        JSON.stringify(payments),
+      );
+      db.close();
+      return (await buildSiteData({ dbPath, now: fixtureNow })).payments;
+    };
+
+    test("a switched-off method is not advertised", async () => {
+      // The Mini App reads this to decide which prices to show. Quoting Stars while Stars is off
+      // puts a price on screen with no button behind it, which is what this prevents.
+      expect(
+        await withPayments({
+          starsEnabled: false,
+          usdtSelfEnabled: true,
+          usdtAddress: "T".padEnd(34, "a"),
+        }),
+      ).toEqual({ stars: false, usdt: true });
+      expect(await withPayments({ starsEnabled: true, usdtSelfEnabled: false })).toEqual({
+        stars: true,
+        usdt: false,
+      });
+    });
+
+    test("USDT switched on without a receiving address is not usable", async () => {
+      expect(
+        await withPayments({ starsEnabled: false, usdtSelfEnabled: true, usdtAddress: "" }),
+      ).toEqual({ stars: false, usdt: false });
+    });
+
+    test("no payments row falls back to the defaults", async () => {
+      const dbPath = fixtureDb();
+      expect((await buildSiteData({ dbPath, now: fixtureNow })).payments).toEqual({
+        stars: true,
+        usdt: false,
+      });
+    });
+
+    test("the receiving address is never part of public build output", async () => {
+      const address = "TTAPZZznSGph3H7k2vMAWPgPhK22zQ4Xid";
+      const dbPath = fixtureDb();
+      const db = new DatabaseSync(dbPath);
+      db.prepare("INSERT INTO settings (key, value, updated_at) VALUES ('payments', ?, 0)").run(
+        JSON.stringify({ usdtSelfEnabled: true, usdtAddress: address }),
+      );
+      db.close();
+      const data = await buildSiteData({ dbPath, now: fixtureNow });
+      expect(JSON.stringify(data)).not.toContain(address);
+    });
+  });
+
   test("publishes the enabled announcement, live banners and live pins", async () => {
     const dbPath = fixtureDb();
     const now = fixtureNow.getTime();

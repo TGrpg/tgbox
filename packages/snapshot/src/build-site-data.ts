@@ -5,6 +5,7 @@ import {
   BannerContent,
   EntryKind,
   MemberPoint,
+  PaymentSettings,
   PostView,
   SiteData,
   SiteSettings,
@@ -232,6 +233,9 @@ export async function buildSiteData(options: BuildSiteDataOptions): Promise<Site
     const siteRow = hasTable("settings")
       ? db.prepare("SELECT value FROM settings WHERE key = 'site'").get()
       : undefined;
+    const paymentsRow = hasTable("settings")
+      ? db.prepare("SELECT value FROM settings WHERE key = 'payments'").get()
+      : undefined;
     // Merge over the defaults so a row stored before a field existed keeps the rest of its values.
     const stored = jsonOrNull(siteRow?.value ?? null);
     const parsed = SiteSettings.safeParse(
@@ -291,6 +295,7 @@ export async function buildSiteData(options: BuildSiteDataOptions): Promise<Site
       announcement,
       promos,
       showAdSlots: site.showAdSlots,
+      payments: paymentMethods(),
       products: productRows.map((row) => ({
         id: int(row.id),
         kind: text(row.kind),
@@ -301,6 +306,26 @@ export async function buildSiteData(options: BuildSiteDataOptions): Promise<Site
         priceUsdt: text(row.price_usdt),
       })),
     });
+
+    /**
+     * The two flags a buyer can see, derived the same way the bot derives its payment buttons:
+     * a method counts as usable only if it is switched on *and* configured. Crypto Pay needs a
+     * token we can't see from here, so it is reported as USDT only when the self-hosted address
+     * is set — a buyer is never shown a price they cannot pay.
+     */
+    function paymentMethods(): { stars: boolean; usdt: boolean } {
+      const stored = jsonOrNull(paymentsRow?.value ?? null);
+      const parsed = PaymentSettings.safeParse(
+        typeof stored === "object" && stored !== null
+          ? { ...settingsDefaults.payments, ...stored }
+          : stored,
+      );
+      const payments = parsed.success ? parsed.data : settingsDefaults.payments;
+      return {
+        stars: payments.starsEnabled,
+        usdt: payments.usdtSelfEnabled && payments.usdtAddress !== "",
+      };
+    }
 
     /** Applies the operator's post filters: whole entry, single posts, keywords, media. */
     function visiblePosts(entry: (typeof entries)[number]): PostView[] {

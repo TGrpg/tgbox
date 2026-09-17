@@ -175,6 +175,7 @@ export const devSiteData: SiteData = {
   announcement: null,
   promos: [],
   showAdSlots: true,
+  payments: { stars: true, usdt: true },
   products: [
     {
       id: 1,

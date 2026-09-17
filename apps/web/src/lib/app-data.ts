@@ -80,6 +80,13 @@ export function appTaxonomy(data: SiteData): AppTaxonomy {
   };
 }
 
-export function appProducts(data: SiteData): ProductView[] {
-  return data.products;
+export type AppProducts = { products: ProductView[]; payments: SiteData["payments"] };
+
+/**
+ * The price list plus which methods can actually be paid with. They travel together because a
+ * price is only worth showing if there is a button behind it — quoting Stars while Stars is off
+ * is what this shape exists to prevent.
+ */
+export function appProducts(data: SiteData): AppProducts {
+  return { products: data.products, payments: data.payments };
 }

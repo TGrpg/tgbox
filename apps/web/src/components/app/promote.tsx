@@ -15,6 +15,7 @@ import { Spinner } from "@/components/coss/ui/spinner";
 import { localizePath } from "@/i18n/locale.ts";
 import { appUi } from "@/i18n/ui-app.ts";
 import { hashText } from "@/lib/announcement.ts";
+import type { AppProducts } from "@/lib/app-data.ts";
 import { cn } from "@/lib/cn.ts";
 import { fill } from "@/lib/format.ts";
 import { promoBackgrounds } from "@/lib/promos.ts";
@@ -167,7 +168,7 @@ function BannerPreview({
 export function PromoteScreen({ locale }: { locale: Locale }) {
   const strings = appUi(locale);
   const webApp = useWebApp();
-  const products = useStaticJson<ProductView[]>("/data/app-products.json");
+  const catalogue = useStaticJson<AppProducts>("/data/app-products.json");
 
   const [stage, setStage] = useState<Stage>(() => {
     const order = Number(new URLSearchParams(window.location.search).get("order"));
@@ -190,9 +191,19 @@ export function PromoteScreen({ locale }: { locale: Locale }) {
   const onPaid = useCallback(() => setStage({ name: "paid" }), []);
   useOrderPolling(stage.name === "usdt" ? stage.orderId : null, onPaid);
 
-  if (products.status === "loading") return <LoadingScreen label={strings.common.loading} />;
-  if (products.status === "error") {
+  if (catalogue.status === "loading") return <LoadingScreen label={strings.common.loading} />;
+  if (catalogue.status === "error") {
     return <ErrorScreen locale={locale} error="offline" onRetry={() => window.location.reload()} />;
+  }
+  const { products, payments } = catalogue.data;
+
+  /** Only the prices a buyer can actually pay — the operator may have either method switched off. */
+  function priceLine(product: ProductView) {
+    const parts = [
+      payments.stars ? fill(strings.promote.stars, { n: product.priceStars }) : null,
+      payments.usdt ? fill(strings.promote.usdt, { n: product.priceUsdt }) : null,
+    ].filter((part): part is string => part !== null);
+    return parts.join(` ${strings.promote.or} `);
   }
 
   function pickImage(file: File | undefined) {
@@ -307,10 +318,14 @@ export function PromoteScreen({ locale }: { locale: Locale }) {
           {fill(strings.promote.payTitle, { id: stage.orderId })}
         </h1>
         {error && <p className="text-error text-sm">{error}</p>}
-        <Button size="lg" loading={busy} onClick={() => void pay(stage.orderId, "stars")}>
-          {strings.promote.payStars}
-        </Button>
-        <p className="text-center text-muted-foreground text-xs">{strings.promote.or}</p>
+        {payments.stars && (
+          <Button size="lg" loading={busy} onClick={() => void pay(stage.orderId, "stars")}>
+            {strings.promote.payStars}
+          </Button>
+        )}
+        {payments.stars && payments.usdt && (
+          <p className="text-center text-muted-foreground text-xs">{strings.promote.or}</p>
+        )}
         <Button
           size="lg"
           variant="outline"
@@ -332,9 +347,7 @@ export function PromoteScreen({ locale }: { locale: Locale }) {
             {locale === "zh" ? product.nameZh : product.nameEn}
           </h1>
           <p className="mt-1 text-muted-foreground text-sm">
-            {fill(strings.promote.days, { n: product.days })} ·{" "}
-            {fill(strings.promote.stars, { n: product.priceStars })} {strings.promote.or}{" "}
-            {fill(strings.promote.usdt, { n: product.priceUsdt })}
+            {fill(strings.promote.days, { n: product.days })} · {priceLine(product)}
           </p>
         </header>
 
@@ -425,11 +438,11 @@ export function PromoteScreen({ locale }: { locale: Locale }) {
         <h1 className="font-semibold text-lg">{strings.promote.title}</h1>
         <p className="mt-1 text-muted-foreground text-sm">{strings.promote.lead}</p>
       </header>
-      {products.data.length === 0 ? (
+      {products.length === 0 ? (
         <p className="py-12 text-center text-muted-foreground text-sm">{strings.promote.soldOut}</p>
       ) : (
         <ul className="flex flex-col gap-2">
-          {products.data.map((product) => (
+          {products.map((product) => (
             <li
               key={product.id}
               className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3"
@@ -442,8 +455,7 @@ export function PromoteScreen({ locale }: { locale: Locale }) {
                   {strings.promote.productKind[product.kind]}
                 </p>
                 <p className="mt-0.5 font-medium text-primary-accent text-xs">
-                  {fill(strings.promote.stars, { n: product.priceStars })} {strings.promote.or}{" "}
-                  {fill(strings.promote.usdt, { n: product.priceUsdt })}
+                  {priceLine(product)}
                 </p>
               </div>
               <Button size="sm" onClick={() => setStage({ name: "details", product })}>

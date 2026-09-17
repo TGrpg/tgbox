@@ -155,6 +155,13 @@ export const SiteData = z.object({
   promos: z.array(PromoView),
   /** Admin setting: pad the unsold sponsor slots with "for rent" cards instead of hiding them. */
   showAdSlots: z.boolean(),
+  /**
+   * Which payment methods a buyer can actually use, so the Mini App never quotes a price with no
+   * button behind it. Booleans only — the receiving address is not public build output.
+   */
+  payments: z
+    .object({ stars: z.boolean(), usdt: z.boolean() })
+    .default({ stars: true, usdt: false }),
   /** Products currently on sale, ordered as the admin sorted them. */
   products: z.array(ProductView).default([]),
 });

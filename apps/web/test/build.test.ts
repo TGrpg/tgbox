@@ -934,18 +934,23 @@ describe("site build from snapshot data", () => {
         expect.objectContaining({ slug: "programming", id: expect.any(Number) }),
       ]),
     });
-    // The price list is public — the bot quotes the same products in chat — so it ships static too.
-    expect(read("app-products.json")).toMatchObject([
-      {
-        id: 1,
-        kind: "pin",
-        days: 7,
-        priceStars: expect.any(Number),
-        priceUsdt: expect.any(String),
-      },
-      { id: 2, kind: "pin", days: 30 },
-      { id: 3, kind: "banner", days: 7 },
-      { id: 4, kind: "banner", days: 30 },
-    ]);
+    // The price list is public — the bot quotes the same products in chat — so it ships static too,
+    // together with the methods a buyer can pay with: a price with no button behind it is the bug
+    // this shape exists to prevent.
+    expect(read("app-products.json")).toMatchObject({
+      products: [
+        {
+          id: 1,
+          kind: "pin",
+          days: 7,
+          priceStars: expect.any(Number),
+          priceUsdt: expect.any(String),
+        },
+        { id: 2, kind: "pin", days: 30 },
+        { id: 3, kind: "banner", days: 7 },
+        { id: 4, kind: "banner", days: 30 },
+      ],
+      payments: { stars: expect.any(Boolean), usdt: expect.any(Boolean) },
+    });
   });
 });
