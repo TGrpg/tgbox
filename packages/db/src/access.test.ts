@@ -17,6 +17,7 @@ import {
   getEntryTagIds,
   getMaxEntryId,
   getSiteState,
+  getSiteStates,
   insertApprovedEntry,
   listCategories,
   listTags,
@@ -316,9 +317,19 @@ describe("blacklist, drafts, site state", () => {
   });
 
   test("site state set is write-free when unchanged", async () => {
-    await setSiteState(db, "last_dispatch_at", "1");
-    expect(await setSiteState(db, "last_dispatch_at", "1")).toEqual({ rowsWritten: 0 });
-    expect(await getSiteState(db, "last_dispatch_at")).toBe("1");
+    await setSiteState(db, "build_dispatched_at", "1");
+    expect(await setSiteState(db, "build_dispatched_at", "1")).toEqual({ rowsWritten: 0 });
+    expect(await getSiteState(db, "build_dispatched_at")).toBe("1");
+  });
+
+  test("several site state keys are read in one query", async () => {
+    await setSiteState(db, "dirty_since", String(NOW));
+    await setSiteState(db, "build_dispatched_at", String(NOW));
+    expect(await getSiteStates(db, ["dirty_since", "build_dispatched_at", "missing"])).toEqual({
+      dirty_since: String(NOW),
+      build_dispatched_at: String(NOW),
+    });
+    await clearDirty(db, NOW + 1);
   });
 
   test("markDirty dispatches only on the empty → dirty transition", async () => {

@@ -1,6 +1,6 @@
 import type { EntryStatus, Liveness } from "@tgbox/shared";
 import { categories as categoryDefs, tags as tagDefs } from "@tgbox/shared";
-import { and, between, count, eq, gte, max, or, SQL, sql } from "drizzle-orm";
+import { and, between, count, eq, gte, inArray, max, or, SQL, sql } from "drizzle-orm";
 import { type AnyD1Database, drizzle } from "drizzle-orm/d1";
 import {
   integer,
@@ -528,6 +528,14 @@ export async function deleteBotDraft(db: Db, tgUserId: number) {
 export async function getSiteState(db: Db, key: string) {
   const [row] = await db.select().from(siteState).where(eq(siteState.key, key));
   return row?.value;
+}
+
+/** Several keys in one query, for callers on a tight subrequest budget (the hourly cron). */
+export async function getSiteStates(db: Db, keys: string[]) {
+  const rows = await db.select().from(siteState).where(inArray(siteState.key, keys));
+  const state: Record<string, string | undefined> = {};
+  for (const row of rows) state[row.key] = row.value;
+  return state;
 }
 
 /** Conditional upsert: 0 rows written when the value is unchanged. */

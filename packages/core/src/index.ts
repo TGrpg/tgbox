@@ -1,7 +1,7 @@
 export { type EntryPreview, previewEntry } from "./add.ts";
 export { type AuditAction, auditActions } from "./audit.ts";
 export { addBlacklist, removeBlacklist } from "./blacklist.ts";
-export { markDirtyAndDispatch, triggerBuild } from "./build.ts";
+export { dispatchStaleBuild, markDirtyAndDispatch, triggerBuild } from "./build.ts";
 export { type Actor, background, type CoreContext, emailActor, tgActor } from "./context.ts";
 export {
   type ListEntryError,

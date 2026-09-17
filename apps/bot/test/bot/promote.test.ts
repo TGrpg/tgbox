@@ -1,5 +1,11 @@
 import { createOrder, markOrderPaid } from "@tgbox/core";
-import { getOrder, insertApprovedEntry, listActivePromotions } from "@tgbox/db";
+import {
+  getOrder,
+  getSiteState,
+  insertApprovedEntry,
+  listActivePromotions,
+  setSiteState,
+} from "@tgbox/db";
 import { beforeEach, describe, expect, test } from "vitest";
 import {
   ADMIN,
@@ -323,5 +329,26 @@ describe("hourly promotion maintenance", () => {
     const ended = h.calls("sendMessage").filter((c) => c.payload.chat_id === buyer.id);
     expect(ended).toHaveLength(1);
     expect(ended[0]?.payload.text).toContain("已到期下架");
+  });
+});
+
+describe("hourly build safety net", () => {
+  // Noon UTC: the hourly cron runs maintenance without the daily digest.
+  const NOON = Date.UTC(2026, 8, 17, 12);
+
+  test("a change left unpublished is rebuilt within the hour, a clean site is not", async () => {
+    await h.scheduled(NOON, HOURLY);
+    expect(h.dispatches).toEqual([]);
+
+    // A change whose own dispatch never landed (failed token, throttled away).
+    await setSiteState(db, "dirty_since", String(NOON - 40 * 60 * 1000));
+    await h.scheduled(NOON, HOURLY);
+    expect(h.dispatches).toHaveLength(1);
+    expect(await getSiteState(db, "build_dispatched_at")).toBe(String(NOON));
+
+    // That build is on its way: the next hourly run leaves it alone.
+    h.reset();
+    await h.scheduled(NOON + 20 * 60 * 1000, HOURLY);
+    expect(h.dispatches).toEqual([]);
   });
 });

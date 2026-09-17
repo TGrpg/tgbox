@@ -43,6 +43,8 @@ export async function setup(config: Partial<CoreContext["config"]> = {}) {
   );
   await syncTaxonomy(db);
   const dispatches: string[] = [];
+  // Tests can make GitHub refuse a dispatch (revoked token, repo renamed…).
+  const github = { status: 204, body: "" };
   const tme: string[] = [];
   const telegram: { method: string; body: unknown }[] = [];
   const ctx: CoreContext = {
@@ -53,7 +55,7 @@ export async function setup(config: Partial<CoreContext["config"]> = {}) {
       const url = new URL(input);
       if (url.hostname === "api.github.com") {
         dispatches.push(url.pathname);
-        return new Response(null, { status: 204 });
+        return new Response(github.body || null, { status: github.status });
       }
       if (url.hostname === "api.telegram.org") {
         telegram.push({
@@ -76,7 +78,7 @@ export async function setup(config: Partial<CoreContext["config"]> = {}) {
       throw new Error(`unexpected fetch ${url.href}`);
     },
   };
-  return { ctx, dispatches, tme, telegram };
+  return { ctx, dispatches, github, tme, telegram };
 }
 
 export async function auditRows() {

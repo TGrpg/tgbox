@@ -6,13 +6,14 @@ import {
   type EntryStats,
   getEntriesByIdRange,
   getMaxEntryId,
-  markDirty,
   recordLivenessResult,
   updateEntryCold,
   upsertEntryStats,
 } from "@tgbox/db";
 import { type Liveness, MemberPoint, type PostView, reviewRecipients } from "@tgbox/shared";
 import { type EntrySnapshot, fetchEntrySnapshot } from "@tgbox/telegram";
+import { markDirtyAndDispatch } from "./build.ts";
+import type { CoreContext } from "./context.ts";
 import { getSettings } from "./settings.ts";
 
 type Fetch = (input: string, init?: RequestInit) => Promise<Response>;
@@ -43,8 +44,12 @@ const SUBREQUEST_LIMIT = 50;
 // Worst case for one entry: 3 t.me pages + avatar get/put + posts head/put
 // + history get/put + cold, stats and liveness writes.
 const ENTRY_WORST_CASE = 12;
-// markDirty + settings read + admin summary at the end of the run.
-const FINAL_RESERVE = 3;
+// markDirty + last-dispatch read + the GitHub dispatch + the dispatched-at write.
+const DIRTY_DISPATCH_COST = 4;
+// The dirty handling above + settings read + admin summary at the end of the run.
+const FINAL_RESERVE = DIRTY_DISPATCH_COST + 2;
+// Content the cron noticed is less urgent than a person's edit: at most one build every 30 minutes.
+const REFRESH_DISPATCH_INTERVAL_MS = 30 * MINUTE_MS;
 
 // A single batch is 5–10 entries, so "more than 5% failed" is any failure at all;
 // instead treat ≥ 2 definitive failures in one batch as a likely Telegram-side/parser issue:
@@ -69,6 +74,9 @@ type RefreshEnv = {
   ADMIN_CHAT_ID: string;
   ADMIN_IDS?: string;
   REFRESH_BATCH_SIZE?: string;
+  /** `owner/repo`; absent or empty disables the build dispatch (local dev). */
+  GITHUB_REPO?: string;
+  GITHUB_DISPATCH_TOKEN?: string;
 };
 
 function batchSizeOf(env: RefreshEnv) {
@@ -201,8 +209,18 @@ export async function runRefresh(
   }
 
   if (result.dirty) {
-    await markDirty(db, now);
-    result.subrequests++;
+    // The whole run already sits in `ctx.waitUntil`, so the dispatch is awaited here.
+    const core: CoreContext = {
+      db,
+      fetch: deps.fetch,
+      now: () => now,
+      config: {
+        GITHUB_REPO: env.GITHUB_REPO ?? "",
+        GITHUB_DISPATCH_TOKEN: env.GITHUB_DISPATCH_TOKEN ?? "",
+      },
+    };
+    await markDirtyAndDispatch(core, { minIntervalMs: REFRESH_DISPATCH_INTERVAL_MS });
+    result.subrequests += DIRTY_DISPATCH_COST;
   }
   if (result.hidden.length > 0) {
     // Settings decide the review chat or private copies; only read when there is news.

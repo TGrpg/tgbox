@@ -34,6 +34,7 @@ function fakeTelegram(site: Record<string, Behaviour>, pages: { posts?: string }
     calls.push({ url: input, body });
     const url = new URL(input);
     if (url.hostname === "api.telegram.org") return Response.json({ ok: true });
+    if (url.hostname === "api.github.com") return new Response(null, { status: 204 });
     if (url.hostname.endsWith("telesco.pe")) {
       return new Response(new Uint8Array([0xff, 0xd8, 0xff, 1, 2, 3]), {
         headers: { "content-type": "image/jpeg" },
@@ -56,7 +57,8 @@ function fakeTelegram(site: Record<string, Behaviour>, pages: { posts?: string }
   };
   const tme = (username: string) =>
     calls.filter((call) => new URL(call.url).pathname.split("/").includes(username));
-  return { fetch, calls, tme };
+  const dispatches = () => calls.filter((call) => call.url.startsWith("https://api.github.com/"));
+  return { fetch, calls, tme, dispatches };
 }
 
 async function addEntry(
@@ -256,6 +258,59 @@ describe("posts", () => {
     expect((await postsOf("telegram")).some((post) => post.text.startsWith("Breaking: "))).toBe(
       true,
     );
+  });
+});
+
+describe("build dispatch", () => {
+  const prefixed = (prefix: string) =>
+    channelPosts.replace(/(tgme_widget_message_text[^>]*>)/, `$1${prefix}: `);
+
+  test("a change found by the cron dispatches a build, then at most one every 30 minutes", async () => {
+    await addEntry("telegram");
+    const pages: { posts?: string } = {};
+    const tg = fakeTelegram({ telegram: "channel" }, pages);
+
+    // First listing refresh: everything is new, so the site is dirty and a build goes out.
+    const first = await runRefresh(env, T0, tg);
+    expect(first.dirty).toBe(true);
+    expect(tg.dispatches()).toHaveLength(1);
+    expect(await getSiteState(db, "build_dispatched_at")).toBe(String(T0));
+
+    // `dirty_since` is still set (the build has not finished), but a fresh change soon after
+    // must not dispatch again.
+    pages.posts = prefixed("Breaking");
+    const soon = await runRefresh(env, T0 + 6 * MINUTE, tg);
+    expect(soon.dirty).toBe(true);
+    expect(tg.dispatches()).toHaveLength(1);
+
+    pages.posts = prefixed("Later");
+    const later = await runRefresh(env, T0 + 32 * MINUTE, tg);
+    expect(later.dirty).toBe(true);
+    expect(tg.dispatches()).toHaveLength(2);
+    expect(await getSiteState(db, "build_dispatched_at")).toBe(String(T0 + 32 * MINUTE));
+    expect(later.subrequests).toBeLessThanOrEqual(50);
+  });
+
+  test("a refresh that changes nothing dispatches nothing", async () => {
+    await addEntry("telegram");
+    const tg = fakeTelegram({ telegram: "channel" });
+    await runRefresh(env, T0, tg);
+    await env.DB.prepare("DELETE FROM site_state").run();
+
+    const second = await runRefresh(env, T0 + 2 * MINUTE, tg);
+    expect(second.dirty).toBe(false);
+    expect(tg.dispatches()).toHaveLength(1);
+    expect(await getSiteState(db, "build_dispatched_at")).toBeUndefined();
+  });
+
+  test("without a GitHub repo the refresh still marks dirty", async () => {
+    await addEntry("telegram");
+    const tg = fakeTelegram({ telegram: "channel" });
+    const run = await runRefresh({ ...env, GITHUB_REPO: "" }, T0, tg);
+    expect(run.dirty).toBe(true);
+    expect(tg.dispatches()).toEqual([]);
+    expect(await getSiteState(db, "dirty_since")).toBe(String(T0));
+    expect(await getSiteState(db, "build_dispatched_at")).toBeUndefined();
   });
 });
 

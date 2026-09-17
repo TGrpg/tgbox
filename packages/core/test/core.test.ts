@@ -2,8 +2,10 @@ import { env } from "cloudflare:workers";
 import {
   addBlacklist,
   approveSubmission,
+  dispatchStaleBuild,
   listApprovedSubmission,
   listEntryManually,
+  markDirtyAndDispatch,
   refreshEntryNow,
   rejectSubmission,
   removeBlacklist,
@@ -25,8 +27,10 @@ import {
   listTags,
 } from "@tgbox/db";
 import { PostView } from "@tgbox/shared";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { actor, auditRows, db, NOW, setup } from "./fake.ts";
+
+const MINUTE = 60_000;
 
 async function pendingSubmission(username = "review_me") {
   const tagIds = (await listTags(db)).slice(0, 2).map((tag) => tag.id);
@@ -220,10 +224,75 @@ describe("build and blacklist", () => {
     expect(await getSiteState(db, "dirty_since")).toBe(String(NOW));
   });
 
-  test("without a GitHub repo nothing is dispatched", async () => {
+  test("without a GitHub repo nothing is dispatched or recorded", async () => {
     const { ctx, dispatches } = await setup({ GITHUB_REPO: "" });
     expect(await triggerBuild(ctx, { actor })).toEqual({ dispatched: false });
     expect(dispatches).toEqual([]);
+    expect(await getSiteState(db, "build_dispatched_at")).toBeUndefined();
+  });
+
+  test("a change while the site is already dirty dispatches once the last build is 3 min old", async () => {
+    const { ctx, dispatches } = await setup();
+    let clock = NOW;
+    const at = { ...ctx, now: () => clock };
+
+    // The site was left dirty by an earlier cron run that did dispatch.
+    await markDirtyAndDispatch(at);
+    expect(dispatches).toHaveLength(1);
+    expect(await getSiteState(db, "build_dispatched_at")).toBe(String(NOW));
+
+    clock = NOW + 2 * MINUTE;
+    await markDirtyAndDispatch(at);
+    expect(dispatches).toHaveLength(1);
+
+    clock = NOW + 4 * MINUTE;
+    await markDirtyAndDispatch(at);
+    expect(dispatches).toHaveLength(2);
+    expect(await getSiteState(db, "dirty_since")).toBe(String(NOW));
+    expect(await getSiteState(db, "build_dispatched_at")).toBe(String(NOW + 4 * MINUTE));
+  });
+
+  test("a refused dispatch is not recorded, so the next change retries right away", async () => {
+    const { ctx, dispatches, github } = await setup();
+    let clock = NOW;
+    const at = { ...ctx, now: () => clock };
+    github.status = 401;
+    github.body = JSON.stringify({ message: "Bad credentials" });
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await markDirtyAndDispatch(at);
+    expect(dispatches).toHaveLength(1);
+    expect(await getSiteState(db, "build_dispatched_at")).toBeUndefined();
+    expect(logged).toHaveBeenCalledWith("github dispatch failed", 401, "Bad credentials");
+
+    // Within the throttle window, but nothing has been published yet.
+    clock = NOW + MINUTE;
+    github.status = 204;
+    github.body = "";
+    await markDirtyAndDispatch(at);
+    expect(dispatches).toHaveLength(2);
+    expect(await getSiteState(db, "build_dispatched_at")).toBe(String(NOW + MINUTE));
+    logged.mockRestore();
+  });
+
+  test("the hourly safety net rebuilds only while dirty with a stale dispatch", async () => {
+    const { ctx, dispatches } = await setup();
+    let clock = NOW;
+    const at = { ...ctx, now: () => clock };
+
+    // Nothing to publish.
+    expect(await dispatchStaleBuild(at)).toBe(false);
+    expect(dispatches).toEqual([]);
+
+    await markDirtyAndDispatch(at);
+    expect(dispatches).toHaveLength(1);
+
+    clock = NOW + 29 * MINUTE;
+    expect(await dispatchStaleBuild(at)).toBe(false);
+    clock = NOW + 31 * MINUTE;
+    expect(await dispatchStaleBuild(at)).toBe(true);
+    expect(dispatches).toHaveLength(2);
+    expect(await getSiteState(db, "build_dispatched_at")).toBe(String(NOW + 31 * MINUTE));
   });
 
   test("blacklist add/remove are audited only when they change something", async () => {
