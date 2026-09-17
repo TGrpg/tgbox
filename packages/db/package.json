@@ -1,0 +1,27 @@
+{
+  "name": "@tgbox/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "generate": "drizzle-kit generate",
+    "typecheck": "tsc",
+    "test": "vitest run --passWithNoTests"
+  },
+  "devDependencies": {
+    "@tgbox/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "drizzle-kit": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "@cloudflare/vitest-pool-workers": "catalog:",
+    "wrangler": "catalog:"
+  },
+  "dependencies": {
+    "drizzle-orm": "catalog:",
+    "@tgbox/shared": "workspace:*"
+  }
+}

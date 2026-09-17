@@ -1,0 +1,32 @@
+---
+import Language from "@tabler/icons/outline/language.svg";
+import type { Locale } from "@tgbox/shared";
+import { alternatePaths } from "@/i18n/locale.ts";
+import { ui } from "@/i18n/ui.ts";
+
+interface Props {
+  locale: Locale;
+  path: string;
+  class?: string | undefined;
+}
+const { locale, path, class: className } = Astro.props;
+const target = locale === "zh" ? "en" : "zh";
+const strings = ui(locale).lang;
+// The 404 page has no counterpart URL (`/en/404/` is not a page): switch to the other home page.
+const href = alternatePaths(/^(\/en)?\/404(\.html)?\/?$/.test(path) ? "/" : path)[target];
+---
+
+<a
+  href={href}
+  hreflang={target === "zh" ? "zh-CN" : "en"}
+  lang={target === "zh" ? "zh-CN" : "en"}
+  aria-label={strings.switchLabel}
+  data-lang-switch={target}
+  class:list={[
+    "inline-flex h-9 items-center gap-1.5 rounded-full px-2.5 text-sm text-muted-foreground transition-colors hover:bg-card hover:text-foreground focus-visible:ring-3 focus-visible:ring-outline/40 outline-none",
+    className,
+  ]}
+>
+  <Language class="size-4" aria-hidden="true" />
+  <span>{strings.switchTo}</span>
+</a>

@@ -1,0 +1,50 @@
+---
+import type { Locale } from "@tgbox/shared";
+import Breadcrumbs from "@/components/Breadcrumbs.astro";
+import { cn } from "@/lib/cn.ts";
+import { formatNumber } from "@/lib/format.ts";
+
+interface Props {
+  locale: Locale;
+  title: string;
+  description: string;
+  breadcrumbs: { label: string; href?: string | undefined }[];
+  /** Entry count under the title; `template` contains `{n}`, the number counts up. */
+  count?: { n: number; template: string } | undefined;
+  class?: string | undefined;
+}
+
+const { locale, title, description, breadcrumbs, count, class: className } = Astro.props;
+const [countBefore = "", countAfter = ""] = count?.template.split("{n}") ?? [];
+const hasIcon = Astro.slots.has("icon");
+---
+
+<header class={cn("relative", className)}>
+  <Breadcrumbs locale={locale} items={breadcrumbs} />
+  <div class="mt-4 flex items-start gap-4">
+    {hasIcon && (
+        <div
+          class="kind-icon-tile grid size-14 shrink-0 place-items-center rounded-2xl bg-primary-soft text-primary-soft-foreground shadow-card sm:size-16"
+          data-reveal
+        >
+          <slot name="icon" />
+        </div>
+      )}
+    <div class="min-w-0 flex-1">
+      <h1
+        class="text-[1.85rem] leading-tight font-bold tracking-tight text-balance text-primary-accent sm:text-[2.25rem]"
+      >
+        {title}
+      </h1>
+      {count && (
+          <p class="mt-1 text-sm font-medium text-muted-foreground tabular-nums">
+            {countBefore}<span data-count-up={count.n}>{formatNumber(count.n, locale)}</span>{countAfter}
+          </p>
+        )}
+    </div>
+  </div>
+  <p class="mt-3 max-w-3xl text-[0.95rem] leading-relaxed text-pretty text-muted-foreground">
+    {description}
+  </p>
+  <slot />
+</header>

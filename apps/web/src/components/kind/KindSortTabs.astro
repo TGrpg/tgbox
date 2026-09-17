@@ -1,0 +1,43 @@
+---
+import ArrowsSort from "@tabler/icons/outline/arrows-sort.svg";
+import Clock from "@tabler/icons/outline/clock.svg";
+import Users from "@tabler/icons/outline/users.svg";
+import type { EntryKind, Locale } from "@tgbox/shared";
+import { localizePath } from "@/i18n/locale.ts";
+import { kindUi } from "@/i18n/ui-kind.ts";
+import { categoryListingBase, type ListingSort, listingSorts } from "@/lib/kind-listing.ts";
+
+interface Props {
+  locale: Locale;
+  kind: EntryKind;
+  slug: string;
+  sort: ListingSort;
+}
+
+const { locale, kind, slug, sort } = Astro.props;
+const strings = kindUi(locale);
+const icons = { members: Users, latest: Clock } satisfies Record<ListingSort, unknown>;
+---
+
+{/* Static links, not ARIA tabs: each order is its own prerendered URL. */}
+<nav aria-label={strings.sortLabel} class="flex items-center gap-2">
+  <ArrowsSort class="size-4 text-muted-foreground" aria-hidden="true" />
+  <ul class="inline-flex rounded-full border border-border bg-muted/60 p-1">
+    {listingSorts.map((item) => {
+        const Icon = icons[item];
+        return (
+          <li>
+            <a
+              href={localizePath(categoryListingBase(kind, slug, item), locale)}
+              aria-current={item === sort ? "page" : undefined}
+              data-press
+              class="flex h-8 items-center gap-1.5 rounded-full px-3.5 text-sm whitespace-nowrap text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-outline/40 aria-[current=page]:bg-card aria-[current=page]:font-semibold aria-[current=page]:text-primary-accent aria-[current=page]:shadow-card"
+            >
+              <Icon class="size-4" aria-hidden="true" />
+              {strings.sort[item]}
+            </a>
+          </li>
+        );
+      })}
+  </ul>
+</nav>

@@ -1,0 +1,526 @@
+@import "tailwindcss" source("../");
+@import "tw-animate-css";
+@source not "../data";
+@plugin "@tailwindcss/forms";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--starwind-accordion-content-height);
+    }
+  }
+
+  @keyframes accordion-up {
+    from {
+      height: var(--starwind-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-accent: var(--primary-accent);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary-accent: var(--secondary-accent);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-error: var(--error);
+  --color-error-foreground: var(--error-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-outline: var(--outline);
+
+  --radius-xs: calc(var(--radius) - 0.375rem);
+  --radius-sm: calc(var(--radius) - 0.25rem);
+  --radius-md: calc(var(--radius) - 0.125rem);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 0.25rem);
+  --radius-2xl: calc(var(--radius) + 0.5rem);
+  --radius-3xl: calc(var(--radius) + 1rem);
+
+  --color-sidebar: var(--sidebar-background);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-outline: var(--sidebar-outline);
+}
+
+/*
+ * TGbox — clean Telegram-blue directory.
+ * Light: gray-blue canvas, white cards, one saturated blue for actions/selection, an orange dot for
+ * the brand mark. Dark: deep blue-gray layers (not neutral black) so blue accents stay calm.
+ */
+:root {
+  --background: #f5f8fb;
+  --foreground: #0f1b2a;
+  --card: #ffffff;
+  --card-foreground: #0f1b2a;
+  --popover: #ffffff;
+  --popover-foreground: #0f1b2a;
+  --primary: #0088cc;
+  --primary-hover: #0077b5;
+  --primary-foreground: #ffffff;
+  /* Text-safe blue on white/gray-blue (≥4.5:1). */
+  --primary-accent: #0074ad;
+  --primary-soft: #e3f2fb;
+  --primary-soft-foreground: #006496;
+  --secondary: #edf2f7;
+  --secondary-foreground: #1d2b3a;
+  --secondary-accent: #0f1b2a;
+  --muted: #eef3f8;
+  --muted-foreground: #556476;
+  --accent: #e8f3fa;
+  --accent-foreground: #0b4f75;
+  --brand-dot: #ff8a1f;
+  --info: #dcefff;
+  --info-foreground: #0b4f75;
+  --success: #dcf5e6;
+  --success-foreground: #17603a;
+  --warning: #fff0d9;
+  --warning-foreground: #8a4b00;
+  --error: #d93b3b;
+  --error-foreground: #ffffff;
+  --border: #e2e8ef;
+  --input: #d6dfe8;
+  --outline: #0088cc;
+  --radius: 1rem;
+  --grid-line: rgb(15 27 42 / 4.5%);
+  --header-surface: rgb(245 248 251 / 72%);
+  --glass: rgb(255 255 255 / 72%);
+
+  --shadow-card: 0 1px 2px rgb(15 27 42 / 4%), 0 1px 3px rgb(15 27 42 / 3%);
+  --shadow-card-hover: 0 14px 32px -14px rgb(0 110 170 / 28%), 0 2px 6px rgb(15 27 42 / 5%);
+  --shadow-float: 0 10px 34px -10px rgb(15 27 42 / 22%), 0 2px 8px rgb(15 27 42 / 6%);
+  --shadow-header: 0 1px 0 rgb(15 27 42 / 6%), 0 8px 24px -18px rgb(15 27 42 / 25%);
+
+  /* Motion tokens; spring curves are sampled from src/lib/motion-presets.ts. */
+  --motion-fast: 150ms;
+  --motion-base: 220ms;
+  --motion-slow: 400ms;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --spring-snappy-duration: 425ms;
+  --spring-snappy: linear(
+    0,
+    0.053,
+    0.173,
+    0.315,
+    0.457,
+    0.584,
+    0.691,
+    0.778,
+    0.845,
+    0.895,
+    0.932,
+    0.958,
+    0.976,
+    0.987,
+    0.995,
+    0.999,
+    1.002,
+    1.003,
+    1.003,
+    1.003,
+    1.003,
+    1.002,
+    1.002,
+    1.001,
+    1
+  );
+  --spring-bouncy-duration: 683ms;
+  --spring-bouncy: linear(
+    0,
+    0.164,
+    0.506,
+    0.848,
+    1.086,
+    1.196,
+    1.199,
+    1.141,
+    1.067,
+    1.004,
+    0.968,
+    0.957,
+    0.963,
+    0.978,
+    0.993,
+    1.003,
+    1.008,
+    1.009,
+    1.006,
+    1.003,
+    1,
+    0.999,
+    0.998,
+    0.998,
+    1
+  );
+
+  --sidebar-background: #ffffff;
+  --sidebar-foreground: #0f1b2a;
+  --sidebar-primary: #0088cc;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e3f2fb;
+  --sidebar-accent-foreground: #006496;
+  --sidebar-border: #e2e8ef;
+  --sidebar-outline: #0088cc;
+}
+
+.dark {
+  --background: #0e1621;
+  --foreground: #e4ebf2;
+  --card: #17212b;
+  --card-foreground: #e4ebf2;
+  --popover: #1b2733;
+  --popover-foreground: #e4ebf2;
+  --primary: #1f97d6;
+  --primary-hover: #36a6e0;
+  --primary-foreground: #ffffff;
+  --primary-accent: #5ab8ec;
+  --primary-soft: rgb(90 184 236 / 14%);
+  --primary-soft-foreground: #7cc8f2;
+  --secondary: #1f2b37;
+  --secondary-foreground: #d5dee7;
+  --secondary-accent: #e4ebf2;
+  --muted: #1b2632;
+  --muted-foreground: #93a4b5;
+  --accent: #1d2d3c;
+  --accent-foreground: #a9d9f5;
+  --brand-dot: #ff9a3d;
+  --info: #16324a;
+  --info-foreground: #a9d9f5;
+  --success: #143626;
+  --success-foreground: #8fe0b2;
+  --warning: #3a2a12;
+  --warning-foreground: #ffc978;
+  --error: #e05252;
+  --error-foreground: #ffffff;
+  --border: rgb(255 255 255 / 7.5%);
+  --input: rgb(255 255 255 / 12%);
+  --outline: #5ab8ec;
+  --grid-line: rgb(255 255 255 / 3.5%);
+  --header-surface: rgb(14 22 33 / 72%);
+  --glass: rgb(23 33 43 / 72%);
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 30%);
+  --shadow-card-hover: 0 16px 36px -16px rgb(0 0 0 / 70%), 0 0 0 1px rgb(90 184 236 / 18%);
+  --shadow-float: 0 12px 36px -10px rgb(0 0 0 / 60%), 0 0 0 1px rgb(255 255 255 / 6%);
+  --shadow-header: 0 1px 0 rgb(255 255 255 / 6%), 0 8px 24px -18px rgb(0 0 0 / 80%);
+
+  --sidebar-background: #17212b;
+  --sidebar-foreground: #e4ebf2;
+  --sidebar-primary: #1f97d6;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgb(90 184 236 / 14%);
+  --sidebar-accent-foreground: #7cc8f2;
+  --sidebar-border: rgb(255 255 255 / 7.5%);
+  --sidebar-outline: #5ab8ec;
+}
+
+@theme {
+  --font-sans:
+    "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+  --font-mono:
+    ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@theme inline {
+  --color-brand: var(--primary-accent);
+  --color-brand-dot: var(--brand-dot);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-soft-foreground: var(--primary-soft-foreground);
+  --color-grid-line: var(--grid-line);
+  --color-glass: var(--glass);
+  --shadow-card: var(--shadow-card);
+  --shadow-card-hover: var(--shadow-card-hover);
+  --shadow-float: var(--shadow-float);
+  --ease-out-expo: var(--ease-out-expo);
+  --ease-spring-snappy: var(--spring-snappy);
+  --ease-spring-bouncy: var(--spring-bouncy);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-outline/50;
+  }
+  html {
+    @apply scroll-pt-24;
+    text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-background text-foreground scheme-light dark:scheme-dark font-sans antialiased;
+    font-feature-settings: "palt" 0;
+    line-height: 1.7;
+    -webkit-tap-highlight-color: transparent;
+  }
+  ::selection {
+    background: color-mix(in oklch, var(--primary-accent) 28%, transparent);
+  }
+  button {
+    @apply cursor-pointer;
+  }
+}
+
+/* coss ui extras */
+:root {
+  --destructive-foreground: var(--color-red-700);
+}
+.dark {
+  --destructive-foreground: var(--color-red-400);
+}
+@theme inline {
+  --color-destructive-foreground: var(--destructive-foreground);
+}
+
+/* ---------- Site ---------- */
+
+/* Faint ledger grid behind page intros. */
+.paper-grid {
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: linear-gradient(to bottom, black 30%, transparent);
+}
+
+/* Long-form content pages (no @tailwindcss/typography dependency). */
+.prose-tg {
+  @apply text-[0.975rem] leading-[1.85] text-foreground/90;
+  max-width: 44rem;
+}
+.prose-tg > * + * {
+  @apply mt-4;
+}
+.prose-tg h2 {
+  @apply mt-12 mb-3 flex items-baseline gap-3 text-xl font-semibold tracking-tight text-foreground;
+}
+.prose-tg h2::before {
+  content: "";
+  @apply inline-block size-2 shrink-0 translate-y-[-0.15em] rounded-[2px] bg-brand;
+}
+.prose-tg h3 {
+  @apply mt-8 text-base font-semibold text-foreground;
+}
+.prose-tg a {
+  @apply text-primary underline decoration-primary/30 underline-offset-4 transition-colors hover:decoration-primary;
+}
+.prose-tg ul,
+.prose-tg ol {
+  @apply space-y-2 pl-5;
+}
+.prose-tg ul {
+  @apply list-disc marker:text-brand;
+}
+.prose-tg ol {
+  @apply list-decimal marker:font-mono marker:text-sm marker:text-muted-foreground;
+}
+.prose-tg code {
+  @apply rounded bg-muted px-1.5 py-0.5 font-mono text-[0.85em];
+}
+.prose-tg strong {
+  @apply font-semibold text-foreground;
+}
+
+/* ---------- Motion: native cross-document view transitions (zero JS) ---------- */
+
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-old(root) {
+  animation: 160ms var(--ease-out-quint) both vt-fade-out;
+}
+::view-transition-new(root) {
+  animation: 280ms var(--ease-out-quint) both vt-rise-in;
+}
+/* The header stays put while content changes underneath it. */
+.site-header {
+  view-transition-name: site-header;
+}
+.mobile-tab-bar {
+  view-transition-name: mobile-tab-bar;
+}
+::view-transition-old(site-header),
+::view-transition-new(site-header),
+::view-transition-old(mobile-tab-bar),
+::view-transition-new(mobile-tab-bar) {
+  animation: none;
+}
+
+@keyframes vt-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes vt-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/*
+ * Motion layer (src/scripts/motion.ts). Content stays visible without JS: `.js` is set by an inline
+ * head script, and a CSS fallback reveals anything the observer never reaches after 2.5s.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .js [data-reveal]:not([data-revealed]) {
+    opacity: 0;
+    animation: reveal-fallback 0s 2.5s forwards;
+  }
+}
+@keyframes reveal-fallback {
+  to {
+    opacity: 1;
+  }
+}
+
+[data-hover-lift] {
+  transition:
+    box-shadow var(--motion-base) var(--ease-out-quint),
+    border-color var(--motion-base) var(--ease-out-quint);
+}
+[data-hover-lift][data-lifted] {
+  box-shadow: var(--shadow-card-hover);
+}
+
+/* Set before first paint by the head script in BaseLayout. */
+html[data-announcement-dismissed] [data-announcement] {
+  display: none;
+}
+
+/* Tooltip for icon buttons: `<span role="tooltip" class="tip">` inside a `.group` trigger. */
+.tip {
+  @apply pointer-events-none absolute top-full left-1/2 z-50 mt-2 -translate-x-1/2 translate-y-1 rounded-lg bg-foreground px-2 py-1 text-xs whitespace-nowrap text-background opacity-0 shadow-float;
+  transition:
+    opacity var(--motion-fast) var(--ease-out-quint),
+    translate var(--motion-fast) var(--ease-out-quint);
+}
+.group:hover > .tip,
+.group:focus-visible > .tip {
+  @apply translate-y-0 opacity-100;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none;
+  }
+}
+
+/* Indeterminate progress line under the search input. */
+.search-progress::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, var(--primary), transparent);
+  animation: search-progress 900ms var(--ease-out-quint) infinite;
+}
+@keyframes search-progress {
+  from {
+    translate: -100% 0;
+  }
+  to {
+    translate: 250% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .search-progress::after {
+    animation: none;
+    width: 100%;
+    opacity: 0.4;
+  }
+}
+
+/* Share dialog backdrop (panel motion lives in src/scripts/overlays.ts). */
+.share-dialog::backdrop {
+  background: rgb(11 21 32 / 40%);
+  backdrop-filter: blur(6px);
+  transition: opacity var(--motion-base) var(--ease-out-quint);
+}
+@starting-style {
+  .share-dialog[open]::backdrop {
+    opacity: 0;
+  }
+}
+.share-dialog[data-closing]::backdrop {
+  opacity: 0;
+  transition-duration: var(--motion-fast);
+}
+
+/* Copy toast created by src/scripts/overlays.ts. */
+.site-toast {
+  @apply pointer-events-none fixed left-1/2 z-[60] rounded-full bg-foreground px-4 py-2 text-sm font-medium whitespace-nowrap text-background shadow-float;
+  bottom: calc(max(0.75rem, env(safe-area-inset-bottom)) + 5rem);
+  opacity: 0;
+  translate: -50% 14px;
+  scale: 0.92;
+  transition:
+    opacity var(--motion-fast) var(--ease-out-quint),
+    translate var(--motion-fast) var(--ease-out-quint),
+    scale var(--motion-fast) var(--ease-out-quint);
+}
+.site-toast[data-shown] {
+  opacity: 1;
+  translate: -50% 0;
+  scale: 1;
+  transition-duration:
+    var(--motion-base), var(--spring-bouncy-duration), var(--spring-bouncy-duration);
+  transition-timing-function: var(--ease-out-quint), var(--spring-bouncy), var(--spring-bouncy);
+}
+@media (prefers-reduced-motion: reduce) {
+  .site-toast {
+    transition: opacity var(--motion-fast) linear;
+    translate: -50% 0;
+    scale: 1;
+  }
+}
+.site-toast::before {
+  content: "✓";
+  margin-right: 0.4rem;
+  color: var(--primary-accent);
+}
+@media (min-width: 48rem) {
+  .site-toast {
+    bottom: 2rem;
+  }
+}

@@ -1,0 +1,44 @@
+---
+import ChevronRight from "@tabler/icons/outline/chevron-right.svg";
+import type { Locale } from "@tgbox/shared";
+import { ui } from "@/i18n/ui.ts";
+import { absoluteUrl } from "@/lib/site.ts";
+
+interface Props {
+  locale: Locale;
+  /** The last item is the current page and should have no href. */
+  items: { label: string; href?: string | undefined }[];
+}
+
+const { locale, items } = Astro.props;
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: items.map((item, index) => ({
+    "@type": "ListItem",
+    position: index + 1,
+    name: item.label,
+    ...(item.href ? { item: absoluteUrl(item.href) } : {}),
+  })),
+};
+---
+
+<nav aria-label={ui(locale).breadcrumbs.label}>
+  <ol class="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
+    {items.map((item, index) => (
+        <li class="flex items-center gap-1">
+          {index > 0 && <ChevronRight class="size-3.5 opacity-50" aria-hidden="true" />}
+          {item.href ? (
+            <a href={item.href} class="transition-colors hover:text-foreground">
+              {item.label}
+            </a>
+          ) : (
+            <span aria-current="page" class="text-foreground">
+              {item.label}
+            </span>
+          )}
+        </li>
+      ))}
+  </ol>
+</nav>
+<script is:inline type="application/ld+json" set:html={JSON.stringify(jsonLd)} />

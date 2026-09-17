@@ -1,0 +1,22 @@
+---
+import ArrowUp from "@tabler/icons/outline/arrow-up.svg";
+import type { Locale } from "@tgbox/shared";
+import { ui } from "@/i18n/ui.ts";
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+---
+
+{/* Revealed by motion.ts after scrolling; stays hidden without JS (nothing to click then). */}
+<button
+  type="button"
+  hidden
+  data-back-to-top
+  data-press
+  aria-label={ui(locale).nav.backToTop}
+  class="fixed right-4 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.75rem)] z-40 grid size-11 place-items-center rounded-full border border-border bg-card text-primary shadow-float transition-colors hover:bg-primary-soft focus-visible:ring-3 focus-visible:ring-outline/40 outline-none md:right-6 md:bottom-6 [&[hidden]]:hidden"
+>
+  <ArrowUp class="size-5" aria-hidden="true" />
+</button>

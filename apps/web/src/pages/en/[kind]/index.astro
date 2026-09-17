@@ -1,0 +1,11 @@
+---
+import type { InferGetStaticPropsType } from "astro";
+import { kindPaths } from "@/lib/site-data.ts";
+import KindPage from "@/views/KindPage.astro";
+
+export const getStaticPaths = kindPaths;
+type Props = InferGetStaticPropsType<typeof getStaticPaths>;
+const { kind }: Props = Astro.props;
+---
+
+<KindPage locale="en" kind={kind} />

@@ -1,0 +1,14 @@
+// Test-only config: gives the vitest Workers pool local D1 and R2 bindings.
+{
+  "name": "tgbox-core-test",
+  "compatibility_date": "2026-09-15",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "tgbox",
+      "database_id": "local",
+      "migrations_dir": "../db/migrations"
+    }
+  ],
+  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "tgbox-media" }]
+}

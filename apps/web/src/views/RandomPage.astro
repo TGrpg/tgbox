@@ -1,0 +1,560 @@
+---
+import ArrowRight from "@tabler/icons/outline/arrow-right.svg";
+import Refresh from "@tabler/icons/outline/refresh.svg";
+import { entryKinds, type Locale, t } from "@tgbox/shared";
+import Breadcrumbs from "@/components/Breadcrumbs.astro";
+import { htmlLang, localizePath } from "@/i18n/locale.ts";
+import { kindTitles, ui } from "@/i18n/ui.ts";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const strings = ui(locale);
+const title = t(locale, "site.random");
+const titles = kindTitles(locale);
+const tabs = [
+  { key: "all", label: strings.random.all },
+  ...entryKinds.map((kind) => ({ key: kind, label: titles[kind] })),
+];
+const config = {
+  detailPrefix: localizePath("/detail/", locale),
+  lang: htmlLang[locale],
+  kinds: strings.entry.kind,
+  members: strings.entry.members,
+  noDescription: strings.entry.noDescription,
+  empty: strings.random.empty,
+  error: strings.random.error,
+};
+---
+
+<BaseLayout locale={locale} title={title} description={strings.random.lead}>
+  <div class="mx-auto max-w-3xl px-4 pt-6 pb-28 sm:px-6 sm:pt-8 md:pb-16">
+    <Breadcrumbs
+      locale={locale}
+      items={[{ label: t(locale, "site.home"), href: localizePath("/", locale) }, { label: title }]}
+    />
+
+    <div id="bottle" data-config={JSON.stringify(config)} class="mt-5">
+      <section
+        class="ocean relative isolate overflow-hidden rounded-[1.75rem] border border-border shadow-float"
+        aria-labelledby="bottle-title"
+      >
+        <div class="ocean-sky absolute inset-0 -z-10" aria-hidden="true">
+          <span class="ocean-sun"></span>
+          <span class="ocean-glint"></span>
+        </div>
+
+        <div class="relative px-5 pt-6 sm:px-8 sm:pt-8">
+          <p
+            class="text-xs font-semibold tracking-[0.18em] text-sky-900/60 uppercase dark:text-sky-100/60"
+          >
+            {strings.random.eyebrow}
+          </p>
+          <h1
+            id="bottle-title"
+            class="mt-1.5 text-3xl font-bold tracking-tight text-sky-950 sm:text-4xl dark:text-white"
+          >
+            {title}
+          </h1>
+          <p
+            class="mt-2 max-w-md text-sm leading-relaxed text-sky-950/70 sm:text-[0.95rem] dark:text-sky-50/70"
+          >
+            {strings.random.lead}
+          </p>
+
+          <div
+            role="tablist"
+            aria-label={strings.random.kinds}
+            data-bottle-tabs
+            class="relative mt-5 inline-flex rounded-full bg-white/55 p-1 shadow-[inset_0_0_0_1px_rgb(255_255_255/60%)] backdrop-blur-md dark:bg-white/8 dark:shadow-[inset_0_0_0_1px_rgb(255_255_255/8%)]"
+          >
+            <span
+              data-bottle-indicator
+              aria-hidden="true"
+              class="absolute top-1 left-0 h-[calc(100%-0.5rem)] rounded-full bg-white shadow-card dark:bg-white/16"
+            ></span>
+            {tabs.map((tab, index) => (
+                <button
+                  type="button"
+                  role="tab"
+                  data-bottle-kind={tab.key}
+                  aria-selected={index === 0 ? "true" : "false"}
+                  class="relative z-10 rounded-full px-3.5 py-1.5 text-sm font-medium text-sky-950/65 transition-colors outline-none hover:text-sky-950 focus-visible:ring-3 focus-visible:ring-outline/40 aria-selected:text-sky-950 sm:px-4 dark:text-white/60 dark:hover:text-white dark:aria-selected:text-white"
+                >
+                  {tab.label}
+                </button>
+              ))}
+          </div>
+        </div>
+
+        <div class="relative h-44 sm:h-52" aria-hidden="true">
+          <div
+            class="bottle-float absolute bottom-14 left-1/2 w-20 -translate-x-1/2 sm:bottom-16 sm:w-24"
+          >
+            <svg
+              aria-hidden="true"
+              data-bottle-art
+              viewBox="0 0 96 132"
+              class="bottle-svg w-full overflow-visible"
+            >
+              <defs>
+                <linearGradient id="bottle-glass" x1="0" x2="1">
+                  <stop offset="0" stop-color="#bfe8d8" stop-opacity="0.85"></stop>
+                  <stop offset="0.55" stop-color="#7fd0bd" stop-opacity="0.7"></stop>
+                  <stop offset="1" stop-color="#3aa393" stop-opacity="0.85"></stop>
+                </linearGradient>
+              </defs>
+              <g transform="rotate(-18 48 70)">
+                <rect x="38" y="4" width="20" height="14" rx="3" fill="#b9814f"></rect>
+                <rect x="38" y="4" width="20" height="4" rx="2" fill="#d59c68"></rect>
+                <path
+                  d="M36 18h24v14c0 6 20 14 20 34v48c0 8-6 14-14 14H30c-8 0-14-6-14-14V66c0-20 20-28 20-34z"
+                  fill="url(#bottle-glass)"
+                  stroke="#1f6f67"
+                  stroke-opacity="0.35"
+                  stroke-width="2"
+                ></path>
+                <rect
+                  x="30"
+                  y="62"
+                  width="36"
+                  height="46"
+                  rx="4"
+                  fill="#fff8e7"
+                  transform="rotate(8 48 85)"
+                ></rect>
+                <path
+                  d="M36 74h22M36 82h24M36 90h16"
+                  stroke="#d1b58a"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                  transform="rotate(8 48 85)"
+                ></path>
+                <path
+                  d="M26 70c0-10 8-16 12-20"
+                  stroke="#fff"
+                  stroke-opacity="0.7"
+                  stroke-width="4"
+                  stroke-linecap="round"
+                  fill="none"
+                ></path>
+              </g>
+            </svg>
+            <span data-bottle-ripple class="bottle-ripple"></span>
+          </div>
+          <svg
+            aria-hidden="true"
+            class="wave wave-back"
+            viewBox="0 0 1200 120"
+            preserveAspectRatio="none"
+          >
+            <path d="M0 50c150 30 300 30 450 0s300-30 450 0 300 30 450 0v70H0z"></path>
+          </svg>
+          <svg
+            aria-hidden="true"
+            class="wave wave-front"
+            viewBox="0 0 1200 120"
+            preserveAspectRatio="none"
+          >
+            <path d="M0 60c150-30 300-30 450 0s300 30 450 0 300-30 450 0v60H0z"></path>
+          </svg>
+        </div>
+      </section>
+
+      <div
+        class="relative z-10 -mt-12 px-2 sm:-mt-14 sm:px-8 [perspective:1400px]"
+        aria-live="polite"
+      >
+        <p
+          data-bottle-status
+          class="rounded-2xl border border-border bg-card px-6 py-8 text-center text-sm text-muted-foreground shadow-float"
+        >
+          {strings.random.loading}
+        </p>
+        <article
+          data-bottle-card
+          hidden
+          class="origin-top rounded-3xl border border-border bg-card p-5 shadow-float sm:p-7"
+        >
+          <div class="flex items-start gap-4">
+            <img
+              data-card-avatar
+              src="/images/default-avatar.svg"
+              alt=""
+              width="72"
+              height="72"
+              class="size-16 shrink-0 rounded-full bg-muted object-cover ring-4 ring-primary-soft sm:size-[4.5rem]"
+            >
+            <div class="min-w-0 flex-1">
+              <h2 class="text-xl leading-snug font-bold tracking-tight sm:text-2xl">
+                <a
+                  data-card-link
+                  data-card-title
+                  class="transition-colors hover:text-primary-accent"
+                  href="/"
+                  dir="auto"
+                >
+                  {strings.random.loading}
+                </a>
+              </h2>
+              <p class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+                <span data-card-username class="font-mono text-muted-foreground"></span>
+                <span
+                  data-card-kind
+                  class="rounded-full bg-primary-soft px-2 py-0.5 font-medium text-primary-soft-foreground"
+                ></span>
+                <span data-card-members class="text-muted-foreground tabular-nums"></span>
+              </p>
+            </div>
+          </div>
+          <p
+            data-card-description
+            class="mt-4 line-clamp-4 text-[0.95rem] leading-relaxed text-foreground/80"
+            dir="auto"
+          ></p>
+        </article>
+
+        <div class="mt-5 flex flex-wrap justify-center gap-3">
+          <button
+            type="button"
+            data-bottle-again
+            data-press
+            class="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-6 font-semibold text-primary-foreground shadow-[0_10px_24px_-10px_color-mix(in_oklch,var(--primary)_75%,transparent)] transition-colors outline-none hover:bg-primary-hover focus-visible:ring-3 focus-visible:ring-primary/50"
+          >
+            <Refresh class="bottle-again-icon size-[1.1rem]" aria-hidden="true" />
+            {strings.random.again}
+          </button>
+          <a
+            data-card-link
+            hidden
+            data-press
+            href="/"
+            class="inline-flex h-11 items-center gap-1.5 rounded-full border border-border bg-card px-6 font-medium shadow-card transition-colors outline-none hover:border-primary/40 hover:text-primary-accent focus-visible:ring-3 focus-visible:ring-outline/40"
+          >
+            {strings.random.open}
+            <ArrowRight class="size-4" aria-hidden="true" />
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+.ocean-sky {
+  background:
+    radial-gradient(120% 70% at 85% 0%, rgb(255 236 200 / 70%), transparent 55%),
+    linear-gradient(180deg, #d9effb 0%, #a9dcf5 45%, #5fb6e4 100%);
+}
+:global(.dark) .ocean-sky {
+  background:
+    radial-gradient(120% 70% at 85% 0%, rgb(120 170 230 / 22%), transparent 55%),
+    linear-gradient(180deg, #0f2132 0%, #12324b 50%, #0f4a6e 100%);
+}
+.ocean-sun {
+  position: absolute;
+  top: 1.75rem;
+  right: 2.25rem;
+  width: 4.5rem;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  background: radial-gradient(circle, #fff6dc 0%, #ffd79a 55%, transparent 72%);
+  opacity: 0.9;
+}
+:global(.dark) .ocean-sun {
+  background: radial-gradient(circle at 38% 38%, #f4f7ff 0%, #c9d6ea 50%, transparent 70%);
+  box-shadow: 0 0 60px 10px rgb(200 220 255 / 12%);
+  width: 3.25rem;
+  opacity: 0.85;
+}
+.ocean-glint {
+  position: absolute;
+  inset: auto 0 0;
+  height: 45%;
+  background: repeating-linear-gradient(
+    100deg,
+    transparent 0 22px,
+    rgb(255 255 255 / 9%) 22px 24px
+  );
+  mask-image: linear-gradient(to top, black, transparent);
+}
+.wave {
+  position: absolute;
+  left: 0;
+  width: 200%;
+  pointer-events: none;
+}
+.wave-back {
+  bottom: 2.5rem;
+  height: 4.5rem;
+  fill: #3d9fd6;
+  opacity: 0.55;
+  animation: wave-drift 14s linear infinite;
+}
+.wave-front {
+  bottom: 0;
+  height: 5.5rem;
+  fill: #1c83c2;
+  animation: wave-drift 9s linear infinite reverse;
+}
+:global(.dark) .wave-back {
+  fill: #1c5a86;
+}
+:global(.dark) .wave-front {
+  fill: #134a70;
+}
+@keyframes wave-drift {
+  to {
+    translate: -50% 0;
+  }
+}
+.bottle-float {
+  z-index: 1;
+}
+.bottle-ripple {
+  position: absolute;
+  left: 50%;
+  bottom: -0.5rem;
+  width: 7rem;
+  height: 1.25rem;
+  translate: -50% 0;
+  border-radius: 999px;
+  border: 2px solid rgb(255 255 255 / 65%);
+  opacity: 0;
+}
+[data-fishing] .bottle-again-icon {
+  animation: spin-once 700ms var(--ease-out-quint);
+}
+@keyframes spin-once {
+  to {
+    rotate: 360deg;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wave-back,
+  .wave-front,
+  [data-fishing] .bottle-again-icon {
+    animation: none;
+  }
+}
+</style>
+
+<script>
+import { animate } from "motion/mini";
+import { durations, easeOut, springs, springTransition } from "@/lib/motion-presets.ts";
+
+interface Card {
+  u: string;
+  k: string;
+  t: string;
+  d: string;
+  a: string | null;
+  m: number | null;
+}
+
+interface Config {
+  detailPrefix: string;
+  lang: string;
+  kinds: Record<string, string | undefined>;
+  members: Record<string, string | undefined>;
+  noDescription: string;
+  empty: string;
+  error: string;
+}
+
+const root = document.getElementById("bottle");
+if (root) {
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const snappy = springTransition(springs.snappy);
+  const bouncy = springTransition(springs.bouncy);
+  const gentle = springTransition(springs.gentle);
+  const config: Config = JSON.parse(root.dataset.config ?? "{}");
+  const status = root.querySelector<HTMLElement>("[data-bottle-status]");
+  const card = root.querySelector<HTMLElement>("[data-bottle-card]");
+  const art = root.querySelector<SVGElement>("[data-bottle-art]");
+  const float = root.querySelector<HTMLElement>(".bottle-float");
+  const ripple = root.querySelector<HTMLElement>("[data-bottle-ripple]");
+  const again = root.querySelector<HTMLElement>("[data-bottle-again]");
+  const tabList = root.querySelector<HTMLElement>("[data-bottle-tabs]");
+  const indicator = root.querySelector<HTMLElement>("[data-bottle-indicator]");
+  const tabs = [...root.querySelectorAll<HTMLElement>("[data-bottle-kind]")];
+  const shards = new Map<string, Promise<Card[]>>();
+  const compact = new Intl.NumberFormat(config.lang, {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  });
+  let kind = "all";
+  let current: string | undefined;
+  let request = 0;
+
+  // Idle bob: a gentle spring curve played back and forth forever.
+  const bob = () => {
+    if (!art || reduced) return;
+    animate(
+      art,
+      { translate: ["0 0", "0 -9px"], rotate: [-4, 5] },
+      { duration: 1.6, ease: gentle.ease, repeat: Number.POSITIVE_INFINITY, repeatType: "mirror" },
+    );
+  };
+
+  const placeIndicator = (tab: HTMLElement | undefined, animated: boolean) => {
+    if (!indicator || !tab) return;
+    const frame = { translate: `${tab.offsetLeft}px 0`, width: `${tab.offsetWidth}px` };
+    if (!animated || reduced) Object.assign(indicator.style, frame);
+    else animate(indicator, frame, snappy);
+  };
+
+  const set = (selector: string, apply: (element: HTMLElement) => void) => {
+    for (const element of root.querySelectorAll<HTMLElement>(selector)) apply(element);
+  };
+
+  const load = (key: string) => {
+    let shard = shards.get(key);
+    if (!shard) {
+      shard = fetch(`/data/random-${key}.json`).then((response) => {
+        if (!response.ok) throw new Error(String(response.status));
+        return response.json();
+      });
+      shard.catch(() => shards.delete(key));
+      shards.set(key, shard);
+    }
+    return shard;
+  };
+
+  const show = (item: Card, shard: string) => {
+    current = item.u;
+    const href = `${config.detailPrefix}${item.u}/`;
+    set("[data-card-link]", (element) => {
+      element.setAttribute("href", href);
+      element.hidden = false;
+    });
+    set("[data-card-title]", (element) => {
+      element.textContent = item.t;
+    });
+    set("[data-card-username]", (element) => {
+      element.textContent = `@${item.u}`;
+    });
+    set("[data-card-kind]", (element) => {
+      element.textContent = config.kinds[item.k] ?? item.k;
+    });
+    set("[data-card-members]", (element) => {
+      element.textContent =
+        item.m === null ? "" : `${compact.format(item.m)} ${config.members[item.k] ?? ""}`;
+    });
+    set("[data-card-description]", (element) => {
+      element.textContent = item.d || config.noDescription;
+    });
+    set("[data-card-avatar]", (element) => {
+      element.setAttribute("src", item.a ?? "/images/default-avatar.svg");
+    });
+    if (card) {
+      card.hidden = false;
+      card.dataset.bottleCard = item.u;
+      card.dataset.shard = shard;
+    }
+  };
+
+  /** Bottle jumps out of the water and splashes back while the card flips over. */
+  const throwBottle = () => {
+    if (reduced || !float || !ripple) return;
+    animate(
+      float,
+      { translate: ["-50% 0", "-50% -46px", "-50% 0"], rotate: [0, -24, 0] },
+      { duration: 0.7, ease: easeOut },
+    );
+    animate(
+      ripple,
+      { opacity: [0.9, 0], scale: [0.4, 1.4] },
+      { duration: 0.8, delay: 0.55, ease: easeOut },
+    );
+  };
+
+  const fish = async () => {
+    const id = ++request;
+    const key = kind;
+    again?.removeAttribute("data-fishing");
+    void again?.offsetWidth;
+    again?.setAttribute("data-fishing", "");
+    throwBottle();
+    const flipOut =
+      card && !card.hidden && !reduced
+        ? animate(
+            card,
+            { opacity: 0, transform: "rotateX(-70deg) translateY(-12px)" },
+            { duration: durations.base, ease: [0.4, 0, 1, 1] },
+          )
+        : undefined;
+    try {
+      const [cards] = await Promise.all([load(key), flipOut]);
+      // A slower response for a previously selected tab must not replace the current one.
+      if (id !== request) return;
+      const pool = cards.length > 1 ? cards.filter((item) => item.u !== current) : cards;
+      const item = pool[Math.floor(Math.random() * pool.length)];
+      if (status) {
+        status.textContent = item ? "" : config.empty;
+        status.hidden = Boolean(item);
+      }
+      if (!item) {
+        if (card) card.hidden = true;
+        return;
+      }
+      show(item, key);
+      if (card && !reduced) {
+        animate(
+          card,
+          {
+            opacity: [0, 1],
+            transform: ["rotateX(80deg) translateY(24px)", "rotateX(0deg) translateY(0px)"],
+          },
+          bouncy,
+        );
+      }
+    } catch {
+      if (id !== request) return;
+      if (card) card.hidden = true;
+      if (status) {
+        status.hidden = false;
+        status.textContent = config.error;
+      }
+    }
+  };
+
+  tabList?.addEventListener("click", (event) => {
+    const tab =
+      event.target instanceof Element ? event.target.closest<HTMLElement>("[role=tab]") : null;
+    if (!tab || tab.getAttribute("aria-selected") === "true") return;
+    kind = tab.dataset.bottleKind ?? "all";
+    for (const element of tabs) element.setAttribute("aria-selected", String(element === tab));
+    placeIndicator(tab, true);
+    void fish();
+  });
+  tabList?.addEventListener("keydown", (event) => {
+    const index =
+      document.activeElement instanceof HTMLElement ? tabs.indexOf(document.activeElement) : -1;
+    const step = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
+    if (index < 0 || !step) return;
+    event.preventDefault();
+    const next = tabs[(index + step + tabs.length) % tabs.length];
+    next?.focus();
+    next?.click();
+  });
+  again?.addEventListener("click", () => void fish());
+
+  const img = root.querySelector<HTMLImageElement>("[data-card-avatar]");
+  img?.addEventListener("error", () => {
+    if (!img.src.endsWith("/images/default-avatar.svg")) img.src = "/images/default-avatar.svg";
+  });
+
+  placeIndicator(tabs[0], false);
+  window.addEventListener("resize", () =>
+    placeIndicator(
+      tabs.find((tab) => tab.getAttribute("aria-selected") === "true"),
+      false,
+    ),
+  );
+  bob();
+  void fish();
+}
+</script>

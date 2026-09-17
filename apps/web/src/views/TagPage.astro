@@ -1,0 +1,93 @@
+---
+import Hash from "@tabler/icons/outline/hash.svg";
+import { type Locale, type TagView, t } from "@tgbox/shared";
+import KindGrid from "@/components/kind/KindGrid.astro";
+import KindPageHeader from "@/components/kind/KindPageHeader.astro";
+import Pagination from "@/components/Pagination.astro";
+import { localizePath } from "@/i18n/locale.ts";
+import { ui } from "@/i18n/ui.ts";
+import { kindUi } from "@/i18n/ui-kind.ts";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { fill } from "@/lib/format.ts";
+import { relatedTags } from "@/lib/kind-listing.ts";
+import {
+  byMembers,
+  getSiteData,
+  localName,
+  PAGE_SIZE,
+  pageHref,
+  pageSlice,
+} from "@/lib/site-data.ts";
+
+interface Props {
+  locale: Locale;
+  tag: TagView;
+  page: number;
+}
+const { locale, tag, page } = Astro.props;
+const strings = ui(locale);
+const kindStrings = kindUi(locale);
+const data = getSiteData();
+const name = localName(tag, locale);
+const entries = byMembers(data.entries.filter((entry) => entry.tags.includes(tag.slug)));
+const related = relatedTags(data, tag.slug);
+const totalPages = Math.max(1, Math.ceil(entries.length / PAGE_SIZE));
+const base = localizePath(`/tag/${tag.slug}/`, locale);
+const pageSuffix = page > 1 ? ` · ${fill(strings.pagination.page, { n: page })}` : "";
+const title = `${strings.listing.tag}: ${name}${pageSuffix}`;
+const description = fill(strings.listing.tagDescription, { tag: name, n: entries.length });
+---
+
+<BaseLayout locale={locale} title={title} description={description}>
+  <div class="mx-auto max-w-7xl px-4 pt-5 sm:px-6 md:pt-8">
+    <KindPageHeader
+      locale={locale}
+      title={`${name}${pageSuffix}`}
+      description={description}
+      count={{ n: entries.length, template: kindStrings.entries }}
+      breadcrumbs={[
+          { label: t(locale, "site.home"), href: localizePath("/", locale) },
+          { label: `#${name}` },
+        ]}
+    >
+      <Hash slot="icon" class="size-7 sm:size-8" aria-hidden="true" />
+      {related.length > 0 && (
+          <nav aria-label={kindStrings.relatedTags} class="mt-5 border-t border-border pt-4">
+            <h2 class="mb-2.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+              {kindStrings.relatedTags}
+            </h2>
+            <ul class="flex flex-wrap gap-2">
+              {related.map((item) => (
+                <li>
+                  <a
+                    href={localizePath(`/tag/${item.slug}/`, locale)}
+                    data-press
+                    class="group inline-flex h-8 items-center gap-1 rounded-full border border-border bg-card pr-1.5 pl-3 text-sm shadow-card transition-colors outline-none hover:border-primary/40 hover:text-primary-accent focus-visible:ring-3 focus-visible:ring-outline/40"
+                  >
+                    <span class="text-primary-accent/70">#</span>
+                    {localName(item, locale)}
+                    <span class="ml-1 rounded-full bg-muted px-1.5 text-[0.7rem] leading-5 text-muted-foreground tabular-nums group-hover:bg-primary-soft group-hover:text-primary-soft-foreground">
+                      {item.count}
+                    </span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        )}
+    </KindPageHeader>
+    <KindGrid
+      locale={locale}
+      entries={pageSlice(entries, page)}
+      eager={12}
+      variant="wide"
+      class="mt-6"
+    />
+    <Pagination
+      locale={locale}
+      current={page}
+      total={totalPages}
+      href={(target) => pageHref(base, target)}
+    />
+  </div>
+</BaseLayout>

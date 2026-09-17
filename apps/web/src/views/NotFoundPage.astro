@@ -1,0 +1,51 @@
+---
+import HomeIcon from "@tabler/icons/outline/home.svg";
+import SearchIcon from "@tabler/icons/outline/search.svg";
+import { type Locale, t } from "@tgbox/shared";
+import { ButtonVariants } from "@/components/starwind/button";
+import { localizePath } from "@/i18n/locale.ts";
+import { ui } from "@/i18n/ui.ts";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const strings = ui(locale).notFound;
+const { button } = ButtonVariants;
+---
+
+<BaseLayout locale={locale} title={t(locale, "site.notFound")} noindex announcement={false}>
+  <section
+    class="mx-auto flex max-w-7xl flex-col items-center px-4 py-20 text-center sm:px-6 sm:py-28"
+  >
+    <div
+      data-reveal
+      class="flex w-full max-w-lg flex-col items-center rounded-3xl border border-border bg-card px-6 py-12 shadow-card sm:px-10"
+    >
+      <p
+        class="relative text-[5.5rem] leading-none font-bold tracking-tight text-primary tabular-nums sm:text-[7rem]"
+      >
+        {strings.eyebrow}
+        <span
+          class="absolute top-2 -right-4 size-4 rounded-full bg-brand-dot ring-4 ring-card sm:size-5"
+          aria-hidden="true"
+        ></span>
+      </p>
+      <h1 class="mt-6 text-2xl font-bold tracking-tight text-balance sm:text-3xl">
+        {t(locale, "site.notFound")}
+      </h1>
+      <p class="mt-3 text-pretty text-muted-foreground">{strings.lead}</p>
+      <div class="mt-8 flex flex-wrap justify-center gap-3">
+        <a href={localizePath("/", locale)} data-press class={button({ variant: "primary" })}>
+          <HomeIcon aria-hidden="true" />
+          {strings.home}
+        </a>
+        <button type="button" data-press class={button({ variant: "outline" })} data-search-trigger>
+          <SearchIcon aria-hidden="true" />
+          {strings.search}
+        </button>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

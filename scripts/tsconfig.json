@@ -1,0 +1,12 @@
+{
+  // Scripts run with `node file.ts` (type stripping). Typecheck: `pnpm exec tsc -p scripts`.
+  "extends": "../tools/tsconfig/base.json",
+  "compilerOptions": {
+    "lib": ["ES2024"],
+    "erasableSyntaxOnly": true,
+    // The root package has no @types/node; borrow the workspace copy.
+    "typeRoots": ["../packages/snapshot/node_modules/@types"],
+    "types": ["node"]
+  },
+  "include": ["**/*.ts"]
+}

@@ -1,0 +1,124 @@
+---
+import SearchIcon from "@tabler/icons/outline/search.svg";
+import { type Locale, t } from "@tgbox/shared";
+import CategoryIcon from "@/components/CategoryIcon.astro";
+import { localizePath } from "@/i18n/locale.ts";
+import { ui } from "@/i18n/ui.ts";
+import { homeUi } from "@/i18n/ui-home.ts";
+import { hotCategories } from "@/lib/home.ts";
+import { getSiteData, localName } from "@/lib/site-data.ts";
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const strings = homeUi(locale);
+const chips = hotCategories(getSiteData().categories, 6);
+---
+
+<section class="relative isolate overflow-hidden">
+  <div class="home-hero-glow absolute inset-0 -z-10" aria-hidden="true"></div>
+  <div class="paper-grid absolute inset-0 -z-10 opacity-60" aria-hidden="true"></div>
+  <div
+    class="mx-auto flex max-w-3xl flex-col items-center px-4 pt-12 pb-10 text-center sm:px-6 sm:pt-20 sm:pb-14"
+  >
+    <h1 data-reveal class="home-wordmark text-[3.75rem] leading-none font-black sm:text-[6.5rem]">
+      <span aria-hidden="true">TGbox</span
+      ><span class="home-wordmark-dot" aria-hidden="true"></span>
+      <span class="sr-only">{t(locale, "site.title")}</span>
+    </h1>
+    <p data-reveal class="mt-4 text-base text-muted-foreground text-balance sm:text-lg">
+      {t(locale, "site.tagline")}
+    </p>
+
+    <button
+      type="button"
+      data-search-trigger
+      data-reveal
+      aria-label={t(locale, "site.search")}
+      class="group mt-8 flex h-14 w-full max-w-2xl items-center gap-3 rounded-full border border-border bg-card pr-3 pl-5 text-left shadow-float transition-[border-color,box-shadow] duration-200 outline-none hover:border-primary/50 focus-visible:ring-4 focus-visible:ring-outline/40 sm:h-16 sm:pl-6"
+    >
+      <SearchIcon class="size-5 shrink-0 text-primary sm:size-6" aria-hidden="true" />
+      <span class="min-w-0 flex-1 truncate text-[0.95rem] text-muted-foreground sm:text-base">
+        {strings.searchPlaceholder}
+      </span>
+      <kbd
+        class="hidden items-center gap-1 rounded-lg border border-border bg-muted px-2 font-sans text-xs leading-7 text-muted-foreground sm:inline-flex"
+      >
+        {ui(locale).search.shortcut}
+      </kbd>
+      <span
+        class="inline-grid size-9 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition-colors group-hover:bg-primary-hover sm:size-10"
+        aria-hidden="true"
+      >
+        <SearchIcon class="size-[1.1rem]" />
+      </span>
+    </button>
+
+    {chips.length > 0 && (
+        <nav aria-label={strings.hotCategories} class="mt-6 w-full">
+          <ul class="flex flex-wrap justify-center gap-2">
+            {chips.map((category) => (
+              <li data-reveal>
+                <a
+                  href={localizePath(`/${category.kind}/${category.slug}/`, locale)}
+                  data-press
+                  class="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/80 px-3 py-1.5 text-sm font-medium text-foreground/85 shadow-card backdrop-blur transition-colors outline-none hover:border-primary/40 hover:text-primary-accent focus-visible:ring-3 focus-visible:ring-outline/40"
+                >
+                  <CategoryIcon slug={category.slug} icon={category.icon} class="size-4 text-primary" />
+                  {localName(category, locale)}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      )}
+  </div>
+</section>
+
+<style>
+.home-hero-glow {
+  background:
+    radial-gradient(
+      40rem 22rem at 50% -4rem,
+      color-mix(in oklch, var(--primary) 22%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      18rem 14rem at 78% 30%,
+      color-mix(in oklch, var(--brand-dot) 14%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      20rem 14rem at 18% 55%,
+      color-mix(in oklch, #36c3ff 14%, transparent),
+      transparent 70%
+    );
+}
+.home-wordmark {
+  letter-spacing: -0.06em;
+  background: linear-gradient(115deg, #36c3ff 0%, var(--primary) 38%, #1c5fd6 70%, #0f3f99 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 10px 24px color-mix(in oklch, var(--primary) 22%, transparent));
+}
+:global(.dark) .home-wordmark {
+  background-image: linear-gradient(
+    115deg,
+    #8be0ff 0%,
+    #4fb8f5 40%,
+    var(--primary) 75%,
+    #2f7fe0 100%
+  );
+}
+.home-wordmark-dot {
+  display: inline-block;
+  width: 0.16em;
+  height: 0.16em;
+  margin-left: 0.04em;
+  border-radius: 999px;
+  background: var(--brand-dot);
+  box-shadow: 0 0 0 0.035em var(--background);
+}
+</style>

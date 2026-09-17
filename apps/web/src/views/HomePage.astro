@@ -1,0 +1,56 @@
+---
+import ClockIcon from "@tabler/icons/outline/clock.svg";
+import { entryKinds, type Locale } from "@tgbox/shared";
+import EntryCardCompact from "@/components/EntryCardCompact.astro";
+import HomeCta from "@/components/HomeCta.astro";
+import HomeHero from "@/components/HomeHero.astro";
+import HomeHotColumn from "@/components/HomeHotColumn.astro";
+import HomePromos from "@/components/HomePromos.astro";
+import HomeSectionHeader from "@/components/HomeSectionHeader.astro";
+import HomeStats from "@/components/HomeStats.astro";
+import { homeUi } from "@/i18n/ui-home.ts";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { latestEntries } from "@/lib/home.ts";
+import { getSiteData } from "@/lib/site-data.ts";
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const strings = homeUi(locale);
+const data = getSiteData();
+const hotKinds = entryKinds.filter((kind) => data.entries.some((entry) => entry.kind === kind));
+const latest = latestEntries(data.entries, 12);
+---
+
+<BaseLayout locale={locale}>
+  <HomeHero locale={locale} />
+  <HomePromos locale={locale} />
+
+  {hotKinds.length > 0 && (
+      <div class="mx-auto grid max-w-7xl grid-cols-1 gap-4 px-4 pt-8 sm:px-6 md:grid-cols-2 lg:grid-cols-3 lg:gap-5 [&>*]:min-w-0">
+        {hotKinds.map((kind) => <HomeHotColumn locale={locale} kind={kind} />)}
+      </div>
+    )}
+
+  {latest.length > 0 && (
+      <section class="mx-auto max-w-7xl px-4 pt-14 sm:px-6">
+        <HomeSectionHeader title={strings.latest} description={strings.latestDescription}>
+          <ClockIcon slot="icon" class="size-5 text-primary" aria-hidden="true" />
+        </HomeSectionHeader>
+        <div class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 [&>*]:min-w-0">
+          {latest.map((entry, index) => (
+            <EntryCardCompact entry={entry} locale={locale} eagerAvatar={index < 4} />
+          ))}
+        </div>
+      </section>
+    )}
+
+  <section class="mx-auto max-w-7xl px-4 pt-12 sm:px-6">
+    <HomeStats locale={locale} />
+  </section>
+
+  <section class="mx-auto max-w-7xl px-4 pt-8 pb-4 sm:px-6">
+    <HomeCta locale={locale} />
+  </section>
+</BaseLayout>

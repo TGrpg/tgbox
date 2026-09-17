@@ -1,0 +1,4 @@
+# Copy to .dev.vars for `wrangler dev`. In production set with `wrangler secret put <NAME>`.
+BOT_TOKEN=123456:replace-me
+WEBHOOK_SECRET=replace-me
+GITHUB_DISPATCH_TOKEN=replace-me

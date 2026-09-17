@@ -1,0 +1,100 @@
+---
+import ChevronDown from "@tabler/icons/outline/chevron-down.svg";
+import ExternalLink from "@tabler/icons/outline/external-link.svg";
+import Eye from "@tabler/icons/outline/eye.svg";
+import Message from "@tabler/icons/outline/message-2.svg";
+import type { EntryView, Locale } from "@tgbox/shared";
+import { ui } from "@/i18n/ui.ts";
+import { detailUi } from "@/i18n/ui-detail.ts";
+import { fill, formatDate, formatNumber } from "@/lib/format.ts";
+import { linkify } from "@/lib/linkify.ts";
+
+interface Props {
+  locale: Locale;
+  username: string;
+  posts: EntryView["posts"];
+}
+const { locale, username, posts } = Astro.props;
+const strings = ui(locale).detail;
+const text = detailUi(locale);
+/** Long enough to be clamped at five lines on a narrow card. */
+const isLong = (body: string) => body.length > 160 || body.split("\n").length > 5;
+---
+
+<section data-pagefind-ignore aria-labelledby="detail-posts-title">
+  <h2 id="detail-posts-title" class="flex items-center gap-2 text-base font-semibold">
+    <Message class="size-5 text-primary-accent" aria-hidden="true" />
+    {strings.posts}
+  </h2>
+  <ol
+    class="relative mt-5 space-y-3 before:absolute before:top-2 before:bottom-2 before:left-[0.4rem] before:w-px before:bg-border"
+  >
+    {posts.map((post) => (
+        <li data-reveal class="group/post relative pl-7">
+          <span
+            aria-hidden="true"
+            class="absolute top-5 left-0 size-3.5 rounded-full border-[3px] border-background bg-primary-accent/70 ring-1 ring-border"
+          ></span>
+          <article class="flex gap-4 rounded-2xl border border-border bg-card p-4 shadow-card">
+            <div class="min-w-0 flex-1">
+              <p class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                <a
+                  href={`https://t.me/${username}/${post.id}`}
+                  rel="noopener nofollow"
+                  target="_blank"
+                  class="font-medium text-foreground/80 hover:text-primary-accent"
+                >
+                  <time datetime={post.date}>{formatDate(post.date, locale)}</time>
+                </a>
+                {post.views !== null && (
+                  <span class="inline-flex items-center gap-1 font-mono tabular-nums">
+                    <Eye class="size-3.5" aria-hidden="true" />
+                    <span aria-hidden="true">{formatNumber(post.views, locale, { compact: true })}</span>
+                    <span class="sr-only">{fill(strings.views, { n: formatNumber(post.views, locale) })}</span>
+                  </span>
+                )}
+              </p>
+              <p
+                class:list={[
+                  "mt-2 text-[0.925rem] leading-relaxed break-words whitespace-pre-line [&_a]:text-primary-accent [&_a]:underline [&_a]:underline-offset-4",
+                  isLong(post.text) && "line-clamp-5 group-has-[details[open]]/post:line-clamp-none",
+                ]}
+                dir="auto"
+                set:html={linkify(post.text)}
+              />
+              {isLong(post.text) && (
+                <details class="group/more mt-1.5">
+                  <summary class="inline-flex cursor-pointer list-none items-center gap-0.5 rounded text-xs font-medium text-primary-accent outline-none select-none focus-visible:ring-3 focus-visible:ring-outline/40 [&::-webkit-details-marker]:hidden">
+                    <span class="group-open/more:hidden">{text.expand}</span>
+                    <span class="hidden group-open/more:inline">{text.collapse}</span>
+                    <ChevronDown class="size-3.5 transition-transform group-open/more:rotate-180" aria-hidden="true" />
+                  </summary>
+                </details>
+              )}
+            </div>
+            {post.mediaThumb && (
+              <img
+                src={post.mediaThumb}
+                alt=""
+                width="96"
+                height="96"
+                loading="lazy"
+                decoding="async"
+                class="size-20 shrink-0 rounded-xl border border-border bg-muted object-cover sm:size-24"
+                onerror="this.remove()"
+              />
+            )}
+          </article>
+        </li>
+      ))}
+  </ol>
+  <a
+    href={`https://t.me/s/${username}`}
+    rel="noopener nofollow"
+    target="_blank"
+    class="mt-4 ml-7 inline-flex items-center gap-1 text-sm font-medium text-primary-accent hover:underline"
+  >
+    {strings.viewMore}
+    <ExternalLink class="size-4" aria-hidden="true" />
+  </a>
+</section>

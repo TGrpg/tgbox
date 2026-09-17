@@ -1,0 +1,41 @@
+---
+import RosetteCheck from "@tabler/icons/filled/rosette-discount-check.svg";
+import type { EntryView, Locale } from "@tgbox/shared";
+import Avatar from "@/components/Avatar.astro";
+import { localizePath } from "@/i18n/locale.ts";
+import { ui } from "@/i18n/ui.ts";
+import { formatNumber } from "@/lib/format.ts";
+
+interface Props {
+  entry: Pick<EntryView, "username" | "kind" | "title" | "verified" | "avatarUrl" | "members">;
+  locale: Locale;
+}
+
+const { entry, locale } = Astro.props;
+const strings = ui(locale).entry;
+---
+
+<a
+  href={localizePath(`/detail/${entry.username}/`, locale)}
+  data-entry-row={entry.username}
+  data-press
+  class="group flex items-center gap-3 rounded-xl px-2 py-2 transition-colors outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-outline/40"
+>
+  <Avatar title={entry.title} src={entry.avatarUrl} size={36} />
+  <span class="flex min-w-0 flex-1 items-center gap-1">
+    <span class="truncate text-[0.925rem] font-medium group-hover:text-primary-accent">
+      {entry.title}
+    </span>
+    {entry.verified && (
+        <RosetteCheck class="size-4 shrink-0 text-primary" aria-label={strings.verified} role="img" />
+      )}
+  </span>
+  {entry.members !== null && (
+      <span
+        class="shrink-0 text-xs text-muted-foreground tabular-nums"
+        title={strings.members[entry.kind]}
+      >
+        {formatNumber(entry.members, locale, { compact: true })}
+      </span>
+    )}
+</a>

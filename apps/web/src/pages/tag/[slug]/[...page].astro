@@ -1,0 +1,11 @@
+---
+import type { InferGetStaticPropsType } from "astro";
+import { tagPaths } from "@/lib/site-data.ts";
+import TagPage from "@/views/TagPage.astro";
+
+export const getStaticPaths = tagPaths;
+type Props = InferGetStaticPropsType<typeof getStaticPaths>;
+const { tag, page }: Props = Astro.props;
+---
+
+<TagPage locale="zh" tag={tag} page={page} />

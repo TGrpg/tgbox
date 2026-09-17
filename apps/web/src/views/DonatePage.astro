@@ -1,0 +1,57 @@
+---
+import type { Locale } from "@tgbox/shared";
+import { localizePath } from "@/i18n/locale.ts";
+import { ui } from "@/i18n/ui.ts";
+import PageLayout from "@/layouts/PageLayout.astro";
+import { botUrl, botUsername } from "@/lib/site.ts";
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const zh = locale === "zh";
+const bot = `@${botUsername}`;
+---
+
+<PageLayout
+  locale={locale}
+  title={ui(locale).page.donate}
+  eyebrow="Support"
+  description={zh
+      ? "TGbox由个人维护、免费使用。如果它对你有帮助，这里是支持我们的几种方式。"
+      : "TGbox is run by one person and free to use. If it helps you, here is how you can support it."}
+>
+  {zh ? (
+      <>
+        <p>本站不设会员、不强制登录，也不在内容里夹带广告。服务器和数据刷新依靠免费额度精打细算地运行，维护和审核则完全靠业余时间。</p>
+
+        <h2>不花钱的支持</h2>
+        <ul>
+          <li><strong>推荐好内容</strong>：把你喜欢的优质频道、群组或机器人<a href={localizePath("/enroll/", locale)}>提交收录</a>。</li>
+          <li><strong>反馈问题</strong>：发现失效条目、错误分类或违规内容，私聊 <a href={botUrl} rel="noopener" target="_blank">{bot}</a> 告诉我们。</li>
+          <li><strong>分享本站</strong>：在详情页一键复制链接或分享到 Telegram，推荐给需要的朋友。</li>
+        </ul>
+
+        <h2>赞助</h2>
+        <p>如果你愿意赞助网站的运营，或者有推广合作的想法，请私聊 <a href={botUrl} rel="noopener" target="_blank">{bot}</a> 并发送 <code>/help</code> 获取联系方式。赞助不会影响条目的审核结果；所有付费展示都会明确标注“推广”。</p>
+
+        <p>感谢每一位支持者。</p>
+      </>
+    ) : (
+      <>
+        <p>There are no memberships, no forced sign-ins and no ads mixed into content. Hosting and data refreshes run carefully within free tiers, and maintenance and reviews happen in spare time.</p>
+
+        <h2>Free ways to help</h2>
+        <ul>
+          <li><strong>Recommend good content</strong>: <a href={localizePath("/enroll/", locale)}>submit</a> quality channels, groups or bots you enjoy.</li>
+          <li><strong>Report problems</strong>: dead entries, wrong categories or abusive content — message <a href={botUrl} rel="noopener" target="_blank">{bot}</a>.</li>
+          <li><strong>Share the site</strong>: copy a link or share an entry to Telegram from any detail page.</li>
+        </ul>
+
+        <h2>Sponsorship</h2>
+        <p>If you would like to sponsor the site or discuss a partnership, message <a href={botUrl} rel="noopener" target="_blank">{bot}</a> and send <code>/help</code> for contact details. Sponsorship never affects review decisions, and every paid placement is clearly marked “Promoted”.</p>
+
+        <p>Thank you to everyone who supports the project.</p>
+      </>
+    )}
+</PageLayout>

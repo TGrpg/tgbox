@@ -1,0 +1,68 @@
+---
+import type { Locale } from "@tgbox/shared";
+import { localizePath } from "@/i18n/locale.ts";
+import { ui } from "@/i18n/ui.ts";
+import PageLayout from "@/layouts/PageLayout.astro";
+import { botUrl, botUsername } from "@/lib/site.ts";
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const zh = locale === "zh";
+const bot = `@${botUsername}`;
+---
+
+<PageLayout
+  locale={locale}
+  title={ui(locale).page.about}
+  eyebrow="About"
+  updated="2026-09-17"
+  description={zh
+      ? "TGbox是一个中英双语的 Telegram 频道、群组和机器人导航站，数据自动更新，失效条目自动下架。"
+      : "TGbox is a bilingual directory of Telegram channels, groups and bots, with automatically refreshed data and dead entries removed on their own."}
+>
+  {zh ? (
+      <>
+        <p>Telegram 上有大量优质的公开频道、群组和机器人，但自带的搜索很弱，中文用户很难发现好内容。很多导航站内容单薄、数据长期不更新，收录的频道早已被封或停更，页面却还挂着。TGbox想把这件事做得更好。</p>
+
+        <h2>我们做什么</h2>
+        <ul>
+          <li><strong>信息充实</strong>：每个条目都有头像、简介、分类、标签、语言、精确成员数、创建时间、收录时间和活跃度，频道还能预览最近 20 条消息。</li>
+          <li><strong>数据新鲜</strong>：系统定时从 Telegram 公开页面刷新资料，自动识别被封、不存在、转私有的条目并下架，你不会在这里浪费时间。</li>
+          <li><strong>提交简单</strong>：频道主在 Telegram 里私聊 <a href={botUrl} rel="noopener" target="_blank">{bot}</a> 发送链接即可提交，审核结果会私信通知。详见<a href={localizePath("/enroll/", locale)}>提交收录说明</a>。</li>
+          <li><strong>中英双语</strong>：每个页面都有中文和英文版本，可以随时在右上角切换。</li>
+        </ul>
+
+        <h2>推广标记</h2>
+        <p>部分条目可能是付费或合作展示，这些条目会明确标注“推广”，与普通条目区分开，不会混在自然排序里误导你。</p>
+
+        <h2>快速、轻量</h2>
+        <p>整个网站是预先生成的静态页面，不需要登录、不跟踪个人身份，在弱网和手机上也能快速打开。你还可以把网站添加到手机主屏幕，像 App 一样使用。</p>
+
+        <h2>联系我们</h2>
+        <p>发现失效条目、错误分类、违规内容，或者希望删除自己的条目，请私聊 <a href={botUrl} rel="noopener" target="_blank">{bot}</a> 并发送 <code>/help</code> 获取联系方式。</p>
+      </>
+    ) : (
+      <>
+        <p>Telegram is full of great public channels, groups and bots, but its built-in search is weak and good content is hard to discover. Many directories are thin, rarely updated, and keep listing channels that were banned or abandoned long ago. TGbox aims to do better.</p>
+
+        <h2>What we do</h2>
+        <ul>
+          <li><strong>Rich pages</strong>: every entry shows its avatar, description, category, tags, language, exact member count, creation date, listing date and activity level. Channels also preview their latest 20 posts.</li>
+          <li><strong>Fresh data</strong>: details are refreshed from public Telegram pages on a schedule. Banned, deleted or privatised entries are detected and taken down automatically.</li>
+          <li><strong>Easy submissions</strong>: owners message <a href={botUrl} rel="noopener" target="_blank">{bot}</a> with a link and get the review result by private message. See the <a href={localizePath("/enroll/", locale)}>submission guide</a>.</li>
+          <li><strong>Bilingual</strong>: every page exists in Chinese and English; switch any time from the header.</li>
+        </ul>
+
+        <h2>Promoted entries</h2>
+        <p>Some entries may be paid or partner placements. They are always clearly marked “Promoted” so they are never confused with regular listings.</p>
+
+        <h2>Fast and light</h2>
+        <p>The whole site is pre-built static pages: no sign-in, no personal tracking, and quick to load on slow networks and phones. You can also add it to your home screen and use it like an app.</p>
+
+        <h2>Contact</h2>
+        <p>To report a dead entry, a wrong category or abusive content, or to have your own entry removed, message <a href={botUrl} rel="noopener" target="_blank">{bot}</a> and send <code>/help</code> for contact details.</p>
+      </>
+    )}
+</PageLayout>

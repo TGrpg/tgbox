@@ -1,0 +1,64 @@
+---
+import BrandTelegram from "@tabler/icons/outline/brand-telegram.svg";
+import type { Locale } from "@tgbox/shared";
+import { localizePath } from "@/i18n/locale.ts";
+import { homeUi } from "@/i18n/ui-home.ts";
+import { botUrl } from "@/lib/site.ts";
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const strings = homeUi(locale);
+---
+
+<div
+  data-reveal
+  class="home-cta relative isolate flex flex-col items-start gap-6 overflow-hidden rounded-3xl p-7 text-white shadow-float sm:p-10 md:flex-row md:items-center md:justify-between"
+>
+  <BrandTelegram
+    class="pointer-events-none absolute -right-8 -bottom-10 -z-10 size-56 -rotate-12 text-white/10 sm:size-72"
+    aria-hidden="true"
+  />
+  <div class="max-w-xl">
+    <p class="text-xs font-semibold tracking-[0.18em] text-white/75 uppercase">
+      {strings.ctaEyebrow}
+    </p>
+    <h2 class="mt-2 text-2xl leading-snug font-extrabold tracking-tight text-balance sm:text-3xl">
+      {strings.ctaTitle}
+    </h2>
+    <p class="mt-2 text-white/85">{strings.ctaText}</p>
+  </div>
+  <div class="flex flex-wrap gap-3">
+    <a
+      href={botUrl}
+      rel="noopener"
+      target="_blank"
+      data-press
+      class="inline-flex h-11 items-center gap-2 rounded-full bg-white px-5 font-semibold text-[#0a5f93] shadow-card transition-colors outline-none hover:bg-white/90 focus-visible:ring-4 focus-visible:ring-white/50"
+    >
+      <BrandTelegram class="size-5" aria-hidden="true" />
+      {strings.ctaButton}
+    </a>
+    <a
+      href={localizePath("/enroll/", locale)}
+      data-press
+      class="inline-flex h-11 items-center rounded-full border border-white/40 px-5 font-medium text-white transition-colors outline-none hover:bg-white/10 focus-visible:ring-4 focus-visible:ring-white/50"
+    >
+      {strings.ctaGuide}
+    </a>
+  </div>
+</div>
+
+<style>
+.home-cta {
+  background:
+    radial-gradient(
+      28rem 16rem at 100% 0%,
+      color-mix(in oklch, var(--brand-dot) 45%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(30rem 20rem at 0% 100%, #36c3ff, transparent 70%),
+    linear-gradient(120deg, #0088cc 0%, #1466c9 60%, #173f9c 100%);
+}
+</style>

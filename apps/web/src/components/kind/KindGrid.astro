@@ -1,0 +1,43 @@
+---
+import type { EntryView, Locale } from "@tgbox/shared";
+import EntryCardCompact from "@/components/EntryCardCompact.astro";
+import { ui } from "@/i18n/ui.ts";
+import { cn } from "@/lib/cn.ts";
+
+interface Props {
+  locale: Locale;
+  entries: EntryView[];
+  /** Avatars of the first N cards load eagerly (above the fold). */
+  eager?: number | undefined;
+  /** `wide` has no sidebar next to it, so it fits one more column. */
+  variant?: "sidebar" | "wide" | undefined;
+  class?: string | undefined;
+}
+
+const { locale, entries, eager = 0, variant = "sidebar", class: className } = Astro.props;
+---
+
+{entries.length === 0 ? (
+    <p
+      class={cn(
+        "rounded-2xl border border-dashed border-border bg-card/50 p-10 text-center text-muted-foreground",
+        className,
+      )}
+    >
+      {ui(locale).listing.empty}
+    </p>
+  ) : (
+    <ul
+      class={cn(
+        "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3",
+        variant === "sidebar" ? "xl:grid-cols-5" : "xl:grid-cols-5 2xl:grid-cols-6",
+        className,
+      )}
+    >
+      {entries.map((entry, index) => (
+        <li class="min-w-0">
+          <EntryCardCompact entry={entry} locale={locale} eagerAvatar={index < eager} />
+        </li>
+      ))}
+    </ul>
+  )}

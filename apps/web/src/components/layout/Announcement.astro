@@ -1,0 +1,53 @@
+---
+import ArrowRight from "@tabler/icons/outline/arrow-right.svg";
+import Speakerphone from "@tabler/icons/outline/speakerphone.svg";
+import X from "@tabler/icons/outline/x.svg";
+import type { Locale } from "@tgbox/shared";
+import { localizePath } from "@/i18n/locale.ts";
+import { ui } from "@/i18n/ui.ts";
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const strings = ui(locale).announcement;
+---
+
+{/*
+  Hidden before first paint when html[data-announcement-dismissed] is set by the head script in
+  BaseLayout; the dismiss click is handled there too (inline, no module).
+*/}
+<div data-announcement class="mx-auto w-full max-w-7xl px-4 pt-3 sm:px-6 md:pt-4">
+  <div
+    class="relative flex items-start gap-3 overflow-hidden rounded-2xl border border-border bg-card py-2.5 pr-2 pl-6 shadow-card sm:items-center"
+  >
+    <span
+      class="absolute inset-y-2.5 left-2.5 w-1 rounded-full bg-primary"
+      aria-hidden="true"
+    ></span>
+    <span
+      class="mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full bg-primary-soft px-2 py-0.5 text-xs font-semibold text-primary-soft-foreground sm:mt-0"
+    >
+      <Speakerphone class="size-3.5" aria-hidden="true" />
+      {strings.badge}
+    </span>
+    <p class="min-w-0 flex-1 text-sm leading-relaxed text-foreground/90">
+      {strings.text}
+      <a
+        href={localizePath("/enroll/", locale)}
+        class="ml-1 inline-flex items-center gap-0.5 font-medium whitespace-nowrap text-brand underline decoration-brand/30 underline-offset-4 transition-colors hover:decoration-brand"
+      >
+        {strings.cta}
+        <ArrowRight class="size-3.5" aria-hidden="true" />
+      </a>
+    </p>
+    <button
+      type="button"
+      data-announcement-dismiss
+      aria-label={strings.dismiss}
+      class="inline-grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-outline/40 outline-none"
+    >
+      <X class="size-4" aria-hidden="true" />
+    </button>
+  </div>
+</div>

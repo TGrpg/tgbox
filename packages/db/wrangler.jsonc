@@ -1,0 +1,13 @@
+// Test-only config: gives the vitest Workers pool a local D1 binding and `wrangler types` a D1Database type.
+{
+  "name": "tgbox-db-test",
+  "compatibility_date": "2026-09-15",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "tgbox",
+      "database_id": "local",
+      "migrations_dir": "./migrations"
+    }
+  ]
+}

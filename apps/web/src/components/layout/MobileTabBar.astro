@@ -1,0 +1,34 @@
+---
+import type { Locale } from "@tgbox/shared";
+import { ui } from "@/i18n/ui.ts";
+import { navItems } from "./nav-items.ts";
+
+interface Props {
+  locale: Locale;
+  path: string;
+}
+const { locale, path } = Astro.props;
+---
+
+<nav
+  aria-label={ui(locale).nav.primary}
+  class="mobile-tab-bar fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 md:hidden"
+>
+  <ul
+    class="mx-auto grid max-w-md grid-cols-5 rounded-[1.4rem] border border-border bg-glass p-1.5 shadow-float backdrop-blur-xl backdrop-saturate-150"
+  >
+    {navItems(locale, path).map((item) => (
+        <li>
+          <a
+            href={item.href}
+            aria-current={item.active ? "page" : undefined}
+            data-press
+            class="flex flex-col items-center gap-0.5 rounded-2xl py-1.5 text-[0.7rem] leading-tight text-muted-foreground transition-colors outline-none focus-visible:ring-3 focus-visible:ring-outline/40 aria-[current=page]:bg-primary-soft aria-[current=page]:font-semibold aria-[current=page]:text-primary-soft-foreground"
+          >
+            <item.icon class="size-[1.35rem]" aria-hidden="true" />
+            {item.label}
+          </a>
+        </li>
+      ))}
+  </ul>
+</nav>

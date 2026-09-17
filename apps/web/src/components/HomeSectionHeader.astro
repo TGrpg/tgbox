@@ -1,0 +1,34 @@
+---
+import ArrowRight from "@tabler/icons/outline/arrow-right.svg";
+
+interface Props {
+  title: string;
+  description?: string | undefined;
+  href?: string | undefined;
+  moreLabel?: string | undefined;
+}
+const { title, description, href, moreLabel } = Astro.props;
+---
+
+<div class="flex items-end justify-between gap-6">
+  <div class="min-w-0">
+    <h2 class="flex items-center gap-2.5 text-xl font-bold tracking-tight sm:text-2xl">
+      <span
+        class="h-5 w-1.5 shrink-0 rounded-full bg-linear-to-b from-primary to-brand-dot"
+        aria-hidden="true"
+      ></span>
+      <slot name="icon" />
+      <span class="truncate">{title}</span>
+    </h2>
+    {description && <p class="mt-1 pl-4 text-sm text-muted-foreground">{description}</p>}
+  </div>
+  {href && moreLabel && (
+      <a
+        href={href}
+        class="group inline-flex shrink-0 items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-primary-accent"
+      >
+        {moreLabel}
+        <ArrowRight class="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+      </a>
+    )}
+</div>

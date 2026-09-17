@@ -1,0 +1,423 @@
+---
+import RosetteCheck from "@tabler/icons/filled/rosette-discount-check.svg";
+import ArrowLeft from "@tabler/icons/outline/arrow-left.svg";
+import BrandTelegram from "@tabler/icons/outline/brand-telegram.svg";
+import FileDescription from "@tabler/icons/outline/file-description.svg";
+import LinkIcon from "@tabler/icons/outline/link.svg";
+import Qrcode from "@tabler/icons/outline/qrcode.svg";
+import Send from "@tabler/icons/outline/send.svg";
+import Speakerphone from "@tabler/icons/outline/speakerphone.svg";
+import UsersGroup from "@tabler/icons/outline/users-group.svg";
+import World from "@tabler/icons/outline/world.svg";
+import { type EntryView, type Locale, t } from "@tgbox/shared";
+import Avatar from "@/components/Avatar.astro";
+import DetailPosts from "@/components/DetailPosts.astro";
+import DetailPromos from "@/components/DetailPromos.astro";
+import DetailStickyBar from "@/components/DetailStickyBar.astro";
+import DetailTrend from "@/components/DetailTrend.astro";
+import EntryCardCompact from "@/components/EntryCardCompact.astro";
+import ShareButton from "@/components/ShareButton.astro";
+import { htmlLang, localizePath } from "@/i18n/locale.ts";
+import { kindTitles, ui } from "@/i18n/ui.ts";
+import { detailUi } from "@/i18n/ui-detail.ts";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { activitySegments } from "@/lib/detail-trend.ts";
+import { fill, formatDate, formatNumber } from "@/lib/format.ts";
+import { linkify } from "@/lib/linkify.ts";
+import { absoluteUrl } from "@/lib/site.ts";
+import { findCategory, findEntries, findTag, localName } from "@/lib/site-data.ts";
+
+interface Props {
+  locale: Locale;
+  entry: EntryView;
+}
+const { locale, entry } = Astro.props;
+const strings = ui(locale);
+const detail = strings.detail;
+const text = detailUi(locale);
+const kindTitle = kindTitles(locale)[entry.kind];
+const kindLabel = strings.entry.kind[entry.kind];
+const category = findCategory(entry.kind, entry.category);
+const categoryName = category ? localName(category, locale) : entry.category;
+const categoryHref =
+  category && category.count > 0 ? localizePath(`/${entry.kind}/${entry.category}/`, locale) : null;
+const kindHref = localizePath(`/${entry.kind}/`, locale);
+const tags = entry.tags.map((slug) => {
+  const tag = findTag(slug);
+  return { slug, name: tag ? localName(tag, locale) : slug };
+});
+const defaultAvatar = "/images/default-avatar.svg";
+const path = localizePath(`/detail/${entry.username}/`, locale);
+const pageUrl = absoluteUrl(path);
+const tmeUrl = `https://t.me/${entry.username}`;
+const goHref = `${localizePath("/go/", locale)}?u=${entry.username}`;
+
+function languageName(code: string) {
+  try {
+    return new Intl.DisplayNames([htmlLang[locale]], { type: "language" }).of(code) ?? code;
+  } catch {
+    return code;
+  }
+}
+
+const membersLabel = entry.kind === "bot" ? text.monthlyUsers : strings.entry.members[entry.kind];
+const membersText =
+  entry.members === null
+    ? null
+    : `${formatNumber(entry.members, locale)} ${strings.entry.members[entry.kind]}`;
+const tierLabel =
+  entry.activityTier === null ? null : (detail.activityTier[entry.activityTier] ?? null);
+const segments = activitySegments(entry.activityTier);
+
+const relatedChannels = findEntries(entry.related.channels);
+const relatedGroups = findEntries(entry.related.groups);
+
+const summary = entry.description.replace(/\s+/g, " ").trim().slice(0, 120);
+const metaDescription = fill(detail.metaDescription, {
+  title: entry.title,
+  username: entry.username,
+  kind: kindLabel,
+  members: membersText ?? detail.unknown,
+  description: summary,
+}).trim();
+
+const jsonLd = [
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    url: pageUrl,
+    name: entry.title,
+    description: metaDescription,
+    inLanguage: htmlLang[locale],
+    about: {
+      "@type": "Organization",
+      name: entry.title,
+      alternateName: `@${entry.username}`,
+      url: tmeUrl,
+      sameAs: [tmeUrl],
+      ...(entry.description ? { description: entry.description } : {}),
+      ...(entry.avatarUrl ? { logo: entry.avatarUrl, image: entry.avatarUrl } : {}),
+      ...(entry.tgCreatedAt ? { foundingDate: entry.tgCreatedAt.slice(0, 10) } : {}),
+      ...(entry.members !== null
+        ? {
+            interactionStatistic: {
+              "@type": "InteractionCounter",
+              interactionType: "https://schema.org/FollowAction",
+              userInteractionCount: entry.members,
+            },
+          }
+        : {}),
+    },
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { name: t(locale, "site.home"), item: absoluteUrl(localizePath("/", locale)) },
+      { name: kindTitle, item: absoluteUrl(kindHref) },
+      ...(categoryHref ? [{ name: categoryName, item: absoluteUrl(categoryHref) }] : []),
+      { name: entry.title },
+    ].map((item, index) => ({ "@type": "ListItem", position: index + 1, ...item })),
+  },
+];
+
+const badge =
+  "inline-flex h-6 items-center gap-1 rounded-md px-2 text-xs font-medium whitespace-nowrap";
+const iconButton =
+  "grid size-10 shrink-0 place-items-center rounded-full bg-muted text-foreground/80 transition-colors outline-none hover:bg-primary-soft hover:text-primary-soft-foreground focus-visible:ring-3 focus-visible:ring-outline/40";
+const statCell =
+  "flex min-w-0 flex-col items-center justify-center gap-1 px-2 py-4 text-center [&:nth-child(even)]:border-l [&:nth-child(n+3)]:border-t sm:[&:nth-child(n+2)]:border-l sm:[&:nth-child(n+3)]:border-t-0";
+---
+
+<BaseLayout
+  locale={locale}
+  title={`${entry.title} (@${entry.username}) · ${kindLabel}`}
+  description={metaDescription}
+  image={entry.avatarUrl ?? undefined}
+  type="article"
+>
+  {jsonLd.map((item) => (
+      <script
+        is:inline
+        slot="head"
+        type="application/ld+json"
+        set:html={JSON.stringify(item).replace(/</g, "\\u003c")}
+      />
+    ))}
+
+  <DetailStickyBar locale={locale} entry={entry} goHref={goHref} />
+
+  <div class="relative isolate">
+    <div
+      aria-hidden="true"
+      class="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[26rem] bg-[radial-gradient(60%_70%_at_50%_0%,color-mix(in_oklch,var(--primary-accent)_14%,transparent),transparent_70%)]"
+    ></div>
+
+    <div class="mx-auto max-w-[800px] space-y-10 px-4 pt-5 pb-16 sm:pt-8">
+      <a
+        href={categoryHref ?? kindHref}
+        class="group inline-flex items-center gap-1.5 rounded-full py-1 pr-2 text-sm font-semibold text-primary-accent outline-none focus-visible:ring-3 focus-visible:ring-outline/40"
+      >
+        <ArrowLeft
+          class="size-4 transition-transform group-hover:-translate-x-0.5"
+          aria-hidden="true"
+        />
+        {fill(text.back, { kind: kindTitle })}
+      </a>
+
+      <article
+        data-pagefind-body
+        class="-mt-5 rounded-3xl border border-border bg-card p-5 shadow-card sm:p-8"
+      >
+        <span hidden data-pagefind-filter={`kind:${entry.kind}`}></span>
+        <span hidden data-pagefind-meta={`url:/detail/${entry.username}/`}></span>
+        <span hidden data-pagefind-meta={`image:${entry.avatarUrl ?? defaultAvatar}`}></span>
+
+        <header class="flex flex-col gap-5 sm:flex-row sm:items-center">
+          <div class="flex min-w-0 flex-1 items-center gap-4 sm:gap-5">
+            <div
+              class="shrink-0 rounded-full bg-[conic-gradient(from_210deg,var(--primary-accent),#7dd3fc,#34d399,var(--primary-accent))] p-[3px] shadow-[0_10px_30px_-12px_color-mix(in_oklch,var(--primary-accent)_60%,transparent)]"
+            >
+              <div class="rounded-full bg-card p-[3px]">
+                <Avatar title={entry.title} src={entry.avatarUrl} size={96} eager />
+              </div>
+            </div>
+            <div class="min-w-0">
+              <h1
+                class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xl leading-tight font-bold tracking-tight text-balance sm:text-[1.7rem]"
+              >
+                <span data-pagefind-meta="title" dir="auto">{entry.title}</span>
+                {entry.verified && (
+                    <RosetteCheck class="size-6 shrink-0 text-primary" aria-label={strings.entry.verified} role="img" />
+                  )}
+              </h1>
+              <p class="mt-1 font-mono text-sm text-muted-foreground" data-pagefind-ignore>
+                @{entry.username}
+              </p>
+              <ul class="mt-2.5 flex flex-wrap items-center gap-1.5">
+                <li class:list={[badge, "bg-primary-soft text-primary-soft-foreground"]}>
+                  {entry.kind === "group" ? (
+                    <UsersGroup class="size-3.5" aria-hidden="true" />
+                  ) : (
+                    <Speakerphone class="size-3.5" aria-hidden="true" />
+                  )}
+                  {kindLabel}
+                </li>
+                <li>
+                  {categoryHref ? (
+                    <a href={categoryHref} class:list={[badge, "bg-primary-soft text-primary-soft-foreground hover:brightness-95"]}>
+                      {categoryName}
+                    </a>
+                  ) : (
+                    <span class:list={[badge, "bg-muted"]}>{categoryName}</span>
+                  )}
+                </li>
+                {entry.lang && (
+                    <li class:list={[badge, "bg-muted text-muted-foreground"]} data-pagefind-ignore>
+                      <span class="sr-only">{detail.lang}:</span>
+                      {languageName(entry.lang)}
+                    </li>
+                  )}
+                {tierLabel && (
+                    <li class:list={[badge, "bg-success/12 text-success-foreground"]} data-pagefind-ignore>
+                      <span class="size-1.5 rounded-full bg-current" aria-hidden="true"></span>
+                      <span class="sr-only">{detail.activity}:</span>
+                      {tierLabel}
+                    </li>
+                  )}
+                {entry.isPromoted && (
+                    <li class:list={[badge, "bg-warning text-warning-foreground"]}>{strings.entry.promoted}</li>
+                  )}
+              </ul>
+            </div>
+          </div>
+
+          <div
+            data-share
+            data-detail-actions
+            data-pagefind-ignore
+            class="flex items-center gap-2 sm:flex-col sm:items-end md:flex-row md:items-center"
+          >
+            <a
+              href={goHref}
+              data-press
+              class="inline-flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full bg-primary px-5 font-semibold text-primary-foreground shadow-[0_8px_20px_-8px_color-mix(in_oklch,var(--primary)_70%,transparent)] transition-colors outline-none hover:bg-primary-hover focus-visible:ring-3 focus-visible:ring-primary/50 sm:flex-none"
+            >
+              {text.go}
+              <Send class="size-4" aria-hidden="true" />
+            </a>
+            <div class="flex items-center gap-2">
+              <ShareButton
+                locale={locale}
+                url={pageUrl}
+                title={entry.title}
+                triggerClass="inline-flex h-10 items-center gap-1.5 rounded-full bg-muted px-4 text-sm font-medium text-foreground/80 transition-colors outline-none hover:bg-primary-soft hover:text-primary-soft-foreground focus-visible:ring-3 focus-visible:ring-outline/40 [&_svg]:size-4"
+              />
+              <button
+                type="button"
+                data-press
+                data-copy={pageUrl}
+                data-copy-done={text.linkCopied}
+                aria-label={text.copyLink}
+                title={text.copyLink}
+                class={iconButton}
+              >
+                <LinkIcon class="size-[1.1rem]" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                data-press
+                data-share-open
+                aria-label={text.qr}
+                title={text.qr}
+                class={iconButton}
+              >
+                <Qrcode class="size-[1.1rem]" aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <dl
+          class="mt-6 grid grid-cols-2 border-y border-border sm:grid-cols-4"
+          data-pagefind-ignore
+        >
+          <div class={statCell}>
+            <dt class="text-xs text-muted-foreground">{membersLabel}</dt>
+            <dd class="font-mono text-xl font-bold text-primary-accent tabular-nums">
+              {entry.members === null ? (
+                <span class="text-muted-foreground">—</span>
+              ) : (
+                <span data-count-up={entry.members}>{formatNumber(entry.members, locale)}</span>
+              )}
+            </dd>
+            {entry.kind === "group" && entry.online !== null && (
+                <dd class="inline-flex items-center gap-1 text-[0.7rem] text-muted-foreground">
+                  <span class="size-1.5 rounded-full bg-success" aria-hidden="true"></span>
+                  {fill(text.onlineNow, { n: formatNumber(entry.online, locale) })}
+                </dd>
+              )}
+          </div>
+          <div class={statCell}>
+            <dt class="text-xs text-muted-foreground">{detail.tgCreated}</dt>
+            <dd class="text-[0.95rem] font-semibold tabular-nums">
+              {entry.tgCreatedAt ? (
+                <time datetime={entry.tgCreatedAt}>{formatDate(entry.tgCreatedAt, locale)}</time>
+              ) : (
+                <span class="text-muted-foreground">{detail.unknown}</span>
+              )}
+            </dd>
+          </div>
+          <div class={statCell}>
+            <dt class="text-xs text-muted-foreground">{detail.listed}</dt>
+            <dd class="text-[0.95rem] font-semibold tabular-nums">
+              <time datetime={entry.listedAt}>{formatDate(entry.listedAt, locale)}</time>
+            </dd>
+          </div>
+          <div class={statCell}>
+            <dt class="text-xs text-muted-foreground">{detail.activity}</dt>
+            {tierLabel ? (
+                <dd class="flex flex-col items-center gap-1.5">
+                  <span class="text-[0.95rem] font-semibold">{tierLabel}</span>
+                  <span class="flex gap-1" aria-hidden="true">
+                    {segments.map((filled) => (
+                      <span
+                        class:list={[
+                          "h-1.5 w-5 rounded-full",
+                          filled ? "bg-primary-accent" : "bg-muted-foreground/20",
+                        ]}
+                      ></span>
+                    ))}
+                  </span>
+                </dd>
+              ) : (
+                <dd class="text-[0.95rem] font-semibold text-muted-foreground">{text.noActivity}</dd>
+              )}
+          </div>
+        </dl>
+
+        <DetailPromos locale={locale} />
+
+        <section class="mt-7" aria-labelledby="detail-about-title">
+          <h2
+            id="detail-about-title"
+            class="flex items-center gap-2 border-b border-border pb-2.5 text-base font-semibold text-primary-accent"
+          >
+            <FileDescription class="size-5" aria-hidden="true" />
+            {fill(text.about, { kind: kindLabel.toLowerCase() })}
+          </h2>
+          <p
+            class="mt-4 text-[0.95rem] leading-relaxed break-words whitespace-pre-line text-foreground/85 [&_a]:text-primary-accent [&_a]:underline [&_a]:underline-offset-4"
+            dir="auto"
+            lang={entry.lang ?? undefined}
+            set:html={entry.description ? linkify(entry.description) : strings.entry.noDescription}
+          />
+          {tags.length > 0 && (
+              <ul class="mt-5 flex flex-wrap gap-1.5 text-sm" aria-label={detail.tags}>
+                {tags.map((tag) => (
+                  <li>
+                    <a
+                      href={localizePath(`/tag/${tag.slug}/`, locale)}
+                      class="inline-flex h-7 items-center rounded-full border border-border px-2.5 text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary-accent"
+                    >
+                      #{tag.name}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
+          <p
+            class="mt-6 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-dashed border-border pt-4 text-sm text-muted-foreground"
+            data-pagefind-ignore
+          >
+            <a
+              href={`tg://resolve?domain=${entry.username}`}
+              class="inline-flex items-center gap-1 hover:text-primary-accent"
+            >
+              <BrandTelegram class="size-4" aria-hidden="true" />
+              {detail.openApp}
+            </a>
+            <a
+              href={tmeUrl}
+              rel="noopener nofollow"
+              target="_blank"
+              class="inline-flex items-center gap-1 hover:text-primary-accent"
+            >
+              <World class="size-4" aria-hidden="true" />
+              {detail.openWeb}
+            </a>
+          </p>
+        </section>
+      </article>
+
+      <div data-pagefind-ignore>
+        <DetailTrend locale={locale} history={entry.memberHistory} />
+      </div>
+
+      {entry.kind === "channel" && entry.posts.length > 0 && (
+          <DetailPosts locale={locale} username={entry.username} posts={entry.posts} />
+        )}
+
+      {[
+          { id: "channels", title: text.relatedChannels, entries: relatedChannels, icon: Speakerphone },
+          { id: "groups", title: text.relatedGroups, entries: relatedGroups, icon: UsersGroup },
+        ]
+          .filter((group) => group.entries.length > 0)
+          .map((group) => (
+            <section data-pagefind-ignore aria-labelledby={`detail-related-${group.id}`}>
+              <h2 id={`detail-related-${group.id}`} class="flex items-center gap-2 text-base font-semibold">
+                <group.icon class="size-5 text-primary-accent" aria-hidden="true" />
+                {group.title}
+              </h2>
+              <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
+                {group.entries.map((related) => (
+                  <EntryCardCompact entry={related} locale={locale} />
+                ))}
+              </div>
+            </section>
+          ))}
+    </div>
+  </div>
+  {/* Filled and shown by src/scripts/overlays.ts when a [data-copy] button succeeds. */}
+  <div data-toast role="status" class="site-toast"></div>
+</BaseLayout>

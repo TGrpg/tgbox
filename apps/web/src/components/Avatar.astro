@@ -1,0 +1,49 @@
+---
+interface Props {
+  title: string;
+  src: string | null | undefined;
+  /** Rendered size in px. */
+  size: number;
+  eager?: boolean | undefined;
+  class?: string | undefined;
+}
+
+const { title, src, size, eager = false, class: className } = Astro.props;
+const initial = Array.from(title.trim())[0]?.toUpperCase() ?? "@";
+// Telegram-style placeholder colors, picked deterministically from the title.
+const tints = [
+  "from-[#ff885e] to-[#ff516a]",
+  "from-[#ffcd6a] to-[#ffa85c]",
+  "from-[#82b1ff] to-[#665fff]",
+  "from-[#a0de7e] to-[#54cb68]",
+  "from-[#53edd6] to-[#28c9b7]",
+  "from-[#72d5fd] to-[#2a9ef1]",
+  "from-[#e0a2f3] to-[#d669ed]",
+];
+const tint =
+  tints[[...title].reduce((sum, char) => sum + (char.codePointAt(0) ?? 0), 0) % tints.length];
+---
+
+<span
+  class:list={[
+    "relative grid shrink-0 place-items-center overflow-hidden rounded-full bg-linear-to-br font-semibold text-white select-none",
+    tint,
+    className,
+  ]}
+  style={`width:${size}px;height:${size}px;font-size:${Math.round(size * 0.42)}px`}
+  aria-hidden="true"
+>
+  <span>{initial}</span>
+  {src && (
+      <img
+        src={src}
+        alt=""
+        width={size}
+        height={size}
+        loading={eager ? "eager" : "lazy"}
+        decoding="async"
+        class="absolute inset-0 size-full bg-card object-cover"
+        onerror="this.remove()"
+      />
+    )}
+</span>

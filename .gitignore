@@ -1,0 +1,15 @@
+node_modules/
+.scratch/
+dist/
+.astro/
+.wrangler/
+.dev.vars*
+.env*
+.turbo/
+.DS_Store
+playwright-report/
+test-results/
+!.dev.vars.example
+.fallow/
+.data/
+*.tmp.mjs

@@ -1,0 +1,74 @@
+---
+import ChevronLeft from "@tabler/icons/outline/chevron-left.svg";
+import ChevronRight from "@tabler/icons/outline/chevron-right.svg";
+import type { Locale } from "@tgbox/shared";
+import { ui } from "@/i18n/ui.ts";
+import { pageWindow } from "@/lib/pagination.ts";
+
+interface Props {
+  locale: Locale;
+  current: number;
+  total: number;
+  /** URL of a given page (1-based); the listing route decides the URL scheme. */
+  href: (page: number) => string;
+}
+
+const { locale, current, total, href } = Astro.props;
+const strings = ui(locale).pagination;
+const pageLabel = (page: number) => strings.page.replace("{n}", String(page));
+const item =
+  "flex h-10 min-w-10 items-center justify-center gap-1 rounded-full px-3 text-sm tabular-nums transition-colors outline-none focus-visible:ring-3 focus-visible:ring-outline/40";
+const idle = "text-muted-foreground hover:bg-muted hover:text-foreground";
+---
+
+{total > 1 && (
+    <nav aria-label={strings.label} class="mt-10 flex justify-center">
+      <ul
+        class="inline-flex items-center gap-0.5 rounded-full border border-border bg-card p-1 shadow-card"
+      >
+        <li>
+          {current > 1 ? (
+            <a href={href(current - 1)} rel="prev" aria-label={strings.previous} data-press class={`${item} ${idle}`}>
+              <ChevronLeft class="size-4" aria-hidden="true" />
+              <span class="hidden sm:inline">{strings.previous}</span>
+            </a>
+          ) : (
+            <span aria-disabled="true" class={`${item} text-muted-foreground/40`}>
+              <ChevronLeft class="size-4" aria-hidden="true" />
+              <span class="hidden sm:inline">{strings.previous}</span>
+            </span>
+          )}
+        </li>
+        {pageWindow(current, total).map((page) =>
+          page === null ? (
+            <li class="px-1 text-muted-foreground" aria-hidden="true">…</li>
+          ) : (
+            <li>
+              <a
+                href={href(page)}
+                aria-label={pageLabel(page)}
+                aria-current={page === current ? "page" : undefined}
+                data-press
+                class={`${item} ${page === current ? "bg-primary font-semibold text-primary-foreground shadow-card" : idle}`}
+              >
+                {page}
+              </a>
+            </li>
+          ),
+        )}
+        <li>
+          {current < total ? (
+            <a href={href(current + 1)} rel="next" aria-label={strings.next} data-press class={`${item} ${idle}`}>
+              <span class="hidden sm:inline">{strings.next}</span>
+              <ChevronRight class="size-4" aria-hidden="true" />
+            </a>
+          ) : (
+            <span aria-disabled="true" class={`${item} text-muted-foreground/40`}>
+              <span class="hidden sm:inline">{strings.next}</span>
+              <ChevronRight class="size-4" aria-hidden="true" />
+            </span>
+          )}
+        </li>
+      </ul>
+    </nav>
+  )}

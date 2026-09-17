@@ -1,0 +1,108 @@
+---
+import Refresh from "@tabler/icons/outline/refresh.svg";
+import BotIcon from "@tabler/icons/outline/robot.svg";
+import ChannelIcon from "@tabler/icons/outline/speakerphone.svg";
+import GroupIcon from "@tabler/icons/outline/users.svg";
+import type { EntryKind, Locale } from "@tgbox/shared";
+import EntryListRow from "@/components/EntryListRow.astro";
+import { localizePath } from "@/i18n/locale.ts";
+import { homeUi } from "@/i18n/ui-home.ts";
+import { hotPool } from "@/lib/home.ts";
+import { HOT_PAGE_SIZE } from "@/lib/home-hot.ts";
+import { byMembers, getSiteData } from "@/lib/site-data.ts";
+
+interface Props {
+  locale: Locale;
+  kind: EntryKind;
+}
+const { locale, kind } = Astro.props;
+const strings = homeUi(locale);
+const icons = { channel: ChannelIcon, group: GroupIcon, bot: BotIcon } satisfies Record<
+  EntryKind,
+  unknown
+>;
+const Icon = icons[kind];
+const entries = getSiteData().entries;
+const rows = byMembers(entries.filter((entry) => entry.kind === kind)).slice(0, HOT_PAGE_SIZE);
+const canShuffle = hotPool(entries, kind).length > HOT_PAGE_SIZE;
+// Row skeleton the shuffle script clones and fills in (verified badge and members present; removed per item).
+const skeleton = {
+  username: "_",
+  kind,
+  title: "_",
+  verified: true,
+  avatarUrl: "/favicon.svg",
+  members: 1,
+};
+---
+
+<section
+  data-home-hot={kind}
+  data-reveal
+  class="flex flex-col rounded-2xl border border-border bg-card p-4 shadow-card sm:p-5"
+>
+  <div class="flex items-center justify-between gap-3 border-b border-border/70 pb-3">
+    <h2 class="flex items-center gap-2 text-lg font-bold tracking-tight">
+      <span
+        class="inline-grid size-8 place-items-center rounded-xl bg-primary-soft text-primary-soft-foreground"
+      >
+        <Icon class="size-[1.1rem]" aria-hidden="true" />
+      </span>
+      <a
+        href={localizePath(`/${kind}/`, locale)}
+        class="transition-colors hover:text-primary-accent"
+      >
+        {strings.hot[kind]}
+      </a>
+    </h2>
+    {canShuffle && (
+        <button
+          type="button"
+          data-hot-shuffle
+          data-press
+          class="inline-flex items-center gap-1 rounded-full border border-border bg-muted/60 px-3 py-1 text-[0.8rem] font-medium text-muted-foreground transition-colors outline-none hover:border-primary/40 hover:text-primary-accent focus-visible:ring-3 focus-visible:ring-outline/40 aria-busy:pointer-events-none"
+        >
+          <Refresh data-hot-shuffle-icon class="size-3.5" aria-hidden="true" />
+          {strings.shuffle}
+        </button>
+      )}
+  </div>
+  <ol data-hot-list aria-live="polite" class="mt-2 flex flex-col">
+    {rows.map((entry, index) => (
+      <li class="flex items-center gap-1">
+        <span data-hot-rank class="home-rank" data-top={index < 3 ? "" : undefined}>{index + 1}</span>
+        <div class="min-w-0 flex-1"><EntryListRow entry={entry} locale={locale} /></div>
+      </li>
+    ))}
+  </ol>
+  {canShuffle && (
+      <template data-hot-template>
+        <li class="flex items-center gap-1">
+          <span data-hot-rank class="home-rank">0</span>
+          <div class="min-w-0 flex-1"><EntryListRow entry={skeleton} locale={locale} /></div>
+        </li>
+      </template>
+    )}
+</section>
+
+<script>
+import "@/scripts/home-hot.ts";
+</script>
+
+<style>
+.home-rank {
+  display: inline-grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 1.5rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted-foreground);
+  opacity: 0.7;
+}
+.home-rank[data-top] {
+  color: var(--brand-dot);
+  opacity: 1;
+}
+</style>

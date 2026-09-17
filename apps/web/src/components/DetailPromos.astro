@@ -1,0 +1,56 @@
+---
+import Ad from "@tabler/icons/outline/ad-2.svg";
+import Bottle from "@tabler/icons/outline/bottle.svg";
+import Category from "@tabler/icons/outline/category.svg";
+import Heart from "@tabler/icons/outline/heart.svg";
+import Info from "@tabler/icons/outline/info-circle.svg";
+import Robot from "@tabler/icons/outline/robot.svg";
+import type { Locale } from "@tgbox/shared";
+import { promos } from "@/data/promos.ts";
+import { localizePath } from "@/i18n/locale.ts";
+import { detailUi } from "@/i18n/ui-detail.ts";
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const icons = { robot: Robot, bottle: Bottle, category: Category, info: Info, heart: Heart };
+const items = promos.slice(0, 3);
+const href = (target: string) => (target.startsWith("/") ? localizePath(target, locale) : target);
+---
+
+{items.length > 0 && (
+    <aside data-pagefind-ignore aria-label={detailUi(locale).promo} class="mt-6">
+      <p class="flex items-center gap-1.5 text-xs font-semibold text-primary-accent">
+        <Ad class="size-4" aria-hidden="true" />
+        {detailUi(locale).promo}
+      </p>
+      <ul class="mt-2.5 grid grid-cols-3 gap-2.5">
+        {items.map((promo) => {
+          const Icon = icons[promo.icon];
+          return (
+            <li>
+              <a
+                href={href(promo.href)}
+                data-press
+                class="group relative flex h-20 flex-col justify-end overflow-hidden rounded-xl p-2.5 text-white outline-none focus-visible:ring-3 focus-visible:ring-outline/50 sm:h-24 sm:p-3"
+                style={`background:${promo.background}`}
+              >
+                <Icon
+                  class="absolute -top-2 -right-2 size-16 opacity-25 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6 sm:size-20"
+                  aria-hidden="true"
+                />
+                <span class="absolute top-2 left-2 rounded-md bg-black/25 px-1.5 text-[0.65rem] font-medium backdrop-blur-sm">
+                  {promo.badge[locale]}
+                </span>
+                <span class="relative truncate text-sm leading-tight font-semibold">{promo.title[locale]}</span>
+                <span class="relative hidden truncate text-[0.7rem] opacity-85 sm:block">
+                  {promo.subtitle[locale]}
+                </span>
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    </aside>
+  )}

@@ -1,0 +1,41 @@
+---
+import RosetteCheck from "@tabler/icons/filled/rosette-discount-check.svg";
+import type { EntryView, Locale } from "@tgbox/shared";
+import Avatar from "@/components/Avatar.astro";
+import { localizePath } from "@/i18n/locale.ts";
+import { ui } from "@/i18n/ui.ts";
+
+interface Props {
+  entry: Pick<EntryView, "username" | "title" | "description" | "verified" | "avatarUrl">;
+  locale: Locale;
+  eagerAvatar?: boolean | undefined;
+}
+
+const { entry, locale, eagerAvatar = false } = Astro.props;
+const strings = ui(locale).entry;
+---
+
+<article
+  data-entry-card={entry.username}
+  data-reveal
+  data-hover-lift
+  class="group relative rounded-2xl border border-border bg-card p-3.5 shadow-card hover:border-primary/30"
+>
+  <div class="flex items-center gap-2.5">
+    <Avatar title={entry.title} src={entry.avatarUrl} size={40} eager={eagerAvatar} />
+    <h3 class="flex min-w-0 items-center gap-1 text-[0.95rem] leading-snug font-semibold">
+      <a
+        href={localizePath(`/detail/${entry.username}/`, locale)}
+        class="truncate outline-none after:absolute after:inset-0 after:rounded-2xl group-hover:text-primary-accent focus-visible:after:ring-3 focus-visible:after:ring-outline/40"
+      >
+        {entry.title}
+      </a>
+      {entry.verified && (
+          <RosetteCheck class="size-4 shrink-0 text-primary" aria-label={strings.verified} role="img" />
+        )}
+    </h3>
+  </div>
+  <p class="mt-2 truncate text-[0.825rem] text-muted-foreground" dir="auto">
+    {entry.description || strings.noDescription}
+  </p>
+</article>

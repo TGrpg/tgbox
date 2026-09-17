@@ -1,0 +1,49 @@
+---
+import { type EntryKind, type Locale, t } from "@tgbox/shared";
+import KindListingShell from "@/components/kind/KindListingShell.astro";
+import KindPageHeader from "@/components/kind/KindPageHeader.astro";
+import KindSection from "@/components/kind/KindSection.astro";
+import { localizePath } from "@/i18n/locale.ts";
+import { kindTitles, ui } from "@/i18n/ui.ts";
+import { kindUi } from "@/i18n/ui-kind.ts";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { fill } from "@/lib/format.ts";
+import { kindSections } from "@/lib/kind-listing.ts";
+import { getSiteData } from "@/lib/site-data.ts";
+
+interface Props {
+  locale: Locale;
+  kind: EntryKind;
+}
+const { locale, kind } = Astro.props;
+const title = kindTitles(locale)[kind];
+const description = fill(ui(locale).listing.kindDescription, { kind: title });
+const sections = kindSections(getSiteData(), kind);
+---
+
+<BaseLayout locale={locale} title={title} description={description}>
+  <KindListingShell locale={locale} kind={kind}>
+    <KindPageHeader
+      locale={locale}
+      title={fill(kindUi(locale).directory, { kind: title })}
+      description={description}
+      breadcrumbs={[{ label: t(locale, "site.home"), href: localizePath("/", locale) }, { label: title }]}
+    />
+    <div class="mt-8 space-y-10">
+      {sections.length === 0 ? (
+          <p class="rounded-2xl border border-dashed border-border p-10 text-center text-muted-foreground">
+            {ui(locale).listing.empty}
+          </p>
+        ) : (
+          sections.map((section, index) => (
+            <KindSection
+              locale={locale}
+              category={section.category}
+              entries={section.entries}
+              eager={index === 0 ? 10 : 0}
+            />
+          ))
+        )}
+    </div>
+  </KindListingShell>
+</BaseLayout>

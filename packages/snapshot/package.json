@@ -1,0 +1,27 @@
+{
+  "name": "@tgbox/snapshot",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "snapshot": "node src/cli.ts",
+    "typecheck": "tsc",
+    "test": "vitest run --passWithNoTests"
+  },
+  "devDependencies": {
+    "@tgbox/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "dependencies": {
+    "@tgbox/db": "workspace:*",
+    "@tgbox/shared": "workspace:*"
+  },
+  "bin": {
+    "tgbox-snapshot": "./src/cli.ts"
+  }
+}

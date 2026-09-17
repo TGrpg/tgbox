@@ -1,0 +1,12 @@
+---
+import type { InferGetStaticPropsType } from "astro";
+import { categoryListingPaths } from "@/lib/kind-listing.ts";
+import { getSiteData } from "@/lib/site-data.ts";
+import CategoryPage from "@/views/CategoryPage.astro";
+
+export const getStaticPaths = () => categoryListingPaths(getSiteData());
+type Props = InferGetStaticPropsType<typeof getStaticPaths>;
+const { category, sort, page }: Props = Astro.props;
+---
+
+<CategoryPage locale="en" category={category} sort={sort} page={page} />

@@ -1,0 +1,55 @@
+---
+import ArrowRight from "@tabler/icons/outline/arrow-right.svg";
+import type { CategoryView, EntryView, Locale } from "@tgbox/shared";
+import CategoryIcon from "@/components/CategoryIcon.astro";
+import KindGrid from "@/components/kind/KindGrid.astro";
+import { localizePath } from "@/i18n/locale.ts";
+import { kindUi } from "@/i18n/ui-kind.ts";
+import { fill } from "@/lib/format.ts";
+import { localName } from "@/lib/site-data.ts";
+
+interface Props {
+  locale: Locale;
+  category: CategoryView;
+  entries: EntryView[];
+  eager?: number | undefined;
+}
+
+const { locale, category, entries, eager } = Astro.props;
+const strings = kindUi(locale);
+const href = localizePath(`/${category.kind}/${category.slug}/`, locale);
+const headingId = `section-${category.slug}`;
+---
+
+<section aria-labelledby={headingId} class="scroll-mt-24">
+  <div class="mb-3.5 flex items-center gap-2.5">
+    <span
+      class="grid size-8 place-items-center rounded-xl bg-primary-soft text-primary-soft-foreground"
+    >
+      <CategoryIcon slug={category.slug} icon={category.icon} class="size-[1.1rem]" />
+    </span>
+    <h2 id={headingId} class="text-lg font-semibold tracking-tight">
+      <a href={href} class="outline-none hover:text-primary-accent focus-visible:underline">
+        {localName(category, locale)}
+      </a>
+    </h2>
+    <span class="text-sm text-muted-foreground tabular-nums">{category.count}</span>
+    <span class="h-px flex-1 bg-gradient-to-r from-border to-transparent" aria-hidden="true"></span>
+  </div>
+  <KindGrid locale={locale} entries={entries} eager={eager} />
+  {category.count > entries.length && (
+      <div class="mt-3.5 flex justify-end">
+        <a
+          href={href}
+          data-press
+          class="group inline-flex h-9 items-center gap-1.5 rounded-full bg-primary-soft px-4 text-sm font-medium text-primary-soft-foreground transition-colors outline-none hover:bg-primary hover:text-primary-foreground focus-visible:ring-3 focus-visible:ring-outline/40"
+        >
+          {fill(strings.viewAll, { n: category.count })}
+          <ArrowRight
+            class="size-4 transition-transform duration-200 group-hover:translate-x-0.5"
+            aria-hidden="true"
+          />
+        </a>
+      </div>
+    )}
+</section>

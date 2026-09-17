@@ -1,0 +1,140 @@
+---
+import ChartArea from "@tabler/icons/outline/chart-area-line.svg";
+import type { EntryView, Locale } from "@tgbox/shared";
+import { ui } from "@/i18n/ui.ts";
+import { detailUi } from "@/i18n/ui-detail.ts";
+import { areaChart, memberDelta } from "@/lib/detail-trend.ts";
+import { fill, formatDate, formatNumber } from "@/lib/format.ts";
+
+interface Props {
+  locale: Locale;
+  history: EntryView["memberHistory"];
+}
+const { locale, history } = Astro.props;
+const strings = ui(locale).detail;
+const text = detailUi(locale);
+
+const width = 720;
+const height = 180;
+const values = history.map((point) => point.members);
+const chart = areaChart(values, width, height);
+const first = history[0];
+const last = history.at(-1);
+const min = values.length ? Math.min(...values) : 0;
+const max = values.length ? Math.max(...values) : 0;
+const deltas = [7, 30].map((days) => ({ days, value: memberDelta(history, days) }));
+const signed = (value: number) =>
+  `${value > 0 ? "+" : value < 0 ? "−" : "±"}${formatNumber(Math.abs(value), locale)}`;
+---
+
+<section
+  data-reveal
+  class="rounded-2xl border border-border bg-card p-5 shadow-card sm:p-6"
+  aria-labelledby="detail-trend-title"
+>
+  <div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h2 id="detail-trend-title" class="flex items-center gap-2 text-base font-semibold">
+        <ChartArea class="size-5 text-primary-accent" aria-hidden="true" />
+        {strings.history}
+      </h2>
+      {chart && first && last && (
+          <p class="mt-1 text-xs text-muted-foreground">
+            <time datetime={first.t}>{formatDate(first.t, locale)}</time>
+            {" – "}
+            <time datetime={last.t}>{formatDate(last.t, locale)}</time>
+            <span class="mx-1.5 opacity-50">·</span>
+            {fill(text.trendPoints, { n: history.length })}
+          </p>
+        )}
+    </div>
+    <dl class="flex gap-2">
+      {deltas.map((delta) => (
+          <div class="min-w-24 rounded-xl bg-muted/60 px-3 py-2 text-right">
+            <dt class="text-[0.7rem] text-muted-foreground">{fill(text.trendDays, { n: delta.days })}</dt>
+            <dd
+              class:list={[
+                "font-mono text-base font-semibold tabular-nums",
+                delta.value === null && "text-muted-foreground",
+                delta.value !== null && delta.value > 0 && "text-success-foreground",
+                delta.value !== null && delta.value < 0 && "text-error-foreground",
+              ]}
+            >
+              {delta.value === null ? "—" : signed(delta.value)}
+            </dd>
+          </div>
+        ))}
+    </dl>
+  </div>
+
+  {chart && first && last ? (
+      <figure class="mt-5">
+        <div class="relative ml-12">
+          <svg
+            data-sparkline
+            viewBox={`0 -8 ${width} ${height + 16}`}
+            preserveAspectRatio="none"
+            class="h-44 w-full overflow-visible text-primary-accent sm:h-52"
+            role="img"
+            aria-label={`${strings.history}: ${formatNumber(first.members, locale)} → ${formatNumber(last.members, locale)}`}
+          >
+            <defs>
+              <linearGradient id="detail-trend-fill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="currentColor" stop-opacity="0.32" />
+                <stop offset="100%" stop-color="currentColor" stop-opacity="0" />
+              </linearGradient>
+            </defs>
+            {[0, 0.5, 1].map((ratio) => (
+              <line
+                x1="0"
+                x2={width}
+                y1={height * ratio}
+                y2={height * ratio}
+                class="stroke-border"
+                stroke-dasharray="4 6"
+                vector-effect="non-scaling-stroke"
+              />
+            ))}
+            <path d={chart.area} fill="url(#detail-trend-fill)" />
+            <path
+              d={chart.line}
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linejoin="round"
+              stroke-linecap="round"
+              vector-effect="non-scaling-stroke"
+            />
+          </svg>
+          {/* HTML dot so it stays round under the stretched viewBox. */}
+          <span
+            aria-hidden="true"
+            class="pointer-events-none absolute size-3 -translate-1/2 rounded-full border-2 border-card bg-primary-accent shadow-[0_0_0_4px_color-mix(in_oklch,var(--primary-accent)_22%,transparent)]"
+            style={`left:${(chart.end.x / width) * 100}%;top:${((chart.end.y + 8) / (height + 16)) * 100}%`}
+          ></span>
+          <span
+            aria-hidden="true"
+            class="absolute top-[4%] -left-12 w-10 -translate-y-1/2 text-right font-mono text-[0.68rem] text-muted-foreground tabular-nums"
+          >
+            {formatNumber(max, locale, { compact: true })}
+          </span>
+          <span
+            aria-hidden="true"
+            class="absolute bottom-[4%] -left-12 w-10 translate-y-1/2 text-right font-mono text-[0.68rem] text-muted-foreground tabular-nums"
+          >
+            {formatNumber(min, locale, { compact: true })}
+          </span>
+        </div>
+        <figcaption class="mt-2 ml-12 flex justify-between font-mono text-[0.7rem] text-muted-foreground">
+          <span>{formatNumber(first.members, locale)}</span>
+          <span class="font-semibold text-foreground">{formatNumber(last.members, locale)}</span>
+        </figcaption>
+      </figure>
+    ) : (
+      <p
+        class="mt-5 grid h-28 place-items-center rounded-xl border border-dashed border-border text-center text-sm text-muted-foreground"
+      >
+        {text.trendEmpty}
+      </p>
+    )}
+</section>

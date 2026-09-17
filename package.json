@@ -1,0 +1,35 @@
+{
+  "name": "tgbox",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "lint": "biome lint .",
+    "format": "biome format --write .",
+    "check": "biome check . && turbo run typecheck",
+    "deps": "pnpm dlx taze@latest -Ilwr --maturity-period 3",
+    "fallow": "pnpm dlx fallow@latest --skip health",
+    "prepare": "simple-git-hooks"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm exec lint-staged"
+  },
+  "lint-staged": {
+    "*.{js,mjs,cjs,ts,tsx,jsx,json,jsonc,css,astro}": "biome check --write --no-errors-on-unmatched --files-ignore-unknown=true"
+  },
+  "engines": {
+    "node": ">=22.18"
+  },
+  "packageManager": "pnpm@11.11.0",
+  "devDependencies": {
+    "@biomejs/biome": "catalog:",
+    "lint-staged": "catalog:",
+    "simple-git-hooks": "catalog:",
+    "turbo": "catalog:",
+    "typescript": "catalog:"
+  }
+}

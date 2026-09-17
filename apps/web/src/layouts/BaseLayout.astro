@@ -1,0 +1,119 @@
+---
+import "@/styles/starwind.css";
+import type { Locale } from "@tgbox/shared";
+import Announcement from "@/components/layout/Announcement.astro";
+import BackToTop from "@/components/layout/BackToTop.astro";
+import Footer from "@/components/layout/Footer.astro";
+import MobileTabBar from "@/components/layout/MobileTabBar.astro";
+import Seo from "@/components/layout/Seo.astro";
+import SiteHeader from "@/components/layout/SiteHeader.astro";
+import SearchDialog from "@/components/search/SearchDialog.tsx";
+import { htmlLang } from "@/i18n/locale.ts";
+import { ui } from "@/i18n/ui.ts";
+import { siteUrl } from "@/lib/site.ts";
+import { byMembers, getSiteData } from "@/lib/site-data.ts";
+
+interface Props {
+  locale: Locale;
+  title?: string | undefined;
+  description?: string | undefined;
+  image?: string | undefined;
+  type?: "website" | "article" | undefined;
+  noindex?: boolean | undefined;
+  /** Slots: default (page body), "head" (extra head tags, e.g. JSON-LD). */
+  /** Hide the announcement bar (e.g. on the 404 page). */
+  announcement?: boolean | undefined;
+}
+
+const { locale, title, description, image, type, noindex, announcement = true } = Astro.props;
+const path = Astro.url.pathname;
+const strings = ui(locale);
+// Titles of the largest entries always hit the (zh-built) index, unlike localized tag names.
+const hotKeywords = byMembers(getSiteData().entries)
+  .slice(0, 6)
+  .map((entry) => entry.title);
+// A new announcement text gets a new key, so earlier dismissals don't hide it.
+const announcementKey = `announcement:${[...ui("zh").announcement.text].reduce((hash, char) => (hash * 31 + (char.codePointAt(0) ?? 0)) >>> 0, 7).toString(36)}`;
+const pagefindUrl = (import.meta.env.PUBLIC_PAGEFIND_URL ?? "/pagefind").replace(/\/$/, "");
+---
+
+<!doctype html>
+<html lang={htmlLang[locale]}>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <Seo
+      locale={locale}
+      title={title}
+      description={description}
+      path={path}
+      image={image}
+      type={type}
+      noindex={noindex}
+    />
+    <meta name="theme-color" content="#f5f8fb" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0e1621" media="(prefers-color-scheme: dark)">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/icons/icon-180.png">
+    <link rel="manifest" href="/manifest.webmanifest">
+    {/* Runs before first paint so the stored theme never flashes. */}
+    <script is:inline define:vars={{ announcementKey }}>
+    (() => {
+      const root = document.documentElement;
+      root.classList.add("js");
+      try {
+        const stored = localStorage.getItem("theme");
+        const dark = stored
+          ? stored === "dark"
+          : matchMedia("(prefers-color-scheme: dark)").matches;
+        root.classList.toggle("dark", dark);
+        if (localStorage.getItem(announcementKey)) root.dataset.announcementDismissed = "";
+      } catch {}
+      root.dataset.announcementKey = announcementKey;
+    })();
+    </script>
+    <slot name="head" />
+  </head>
+  <body class="flex min-h-dvh flex-col">
+    <a
+      href="#main"
+      class="sr-only z-50 rounded-md bg-primary px-3 py-2 text-primary-foreground focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
+    >
+      {ui(locale).nav.skipToContent}
+    </a>
+    <SiteHeader locale={locale} path={path} />
+    {announcement && <Announcement locale={locale} />}
+    <main id="main" class="flex-1">
+      <slot />
+    </main>
+    <Footer locale={locale} path={path} />
+    <MobileTabBar locale={locale} path={path} />
+    <BackToTop locale={locale} />
+    <SearchDialog
+      client:idle
+      locale={locale}
+      pagefindUrl={pagefindUrl}
+      siteUrl={siteUrl}
+      hotKeywords={hotKeywords}
+      kindLabels={strings.entry.kind}
+      strings={strings.search}
+    />
+    <script is:inline>
+    document.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const root = document.documentElement;
+      if (target.closest("[data-theme-toggle]")) {
+        const dark = root.classList.toggle("dark");
+        localStorage.setItem("theme", dark ? "dark" : "light");
+      } else if (target.closest("[data-announcement-dismiss]")) {
+        root.dataset.announcementDismissed = "";
+        localStorage.setItem(root.dataset.announcementKey, "1");
+      }
+    });
+    </script>
+    <script>
+    import "@/scripts/motion.ts";
+    </script>
+  </body>
+</html>

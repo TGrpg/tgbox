@@ -1,0 +1,72 @@
+---
+import Apps from "@tabler/icons/outline/apps.svg";
+import Article from "@tabler/icons/outline/article.svg";
+import Book from "@tabler/icons/outline/book.svg";
+import BrandApple from "@tabler/icons/outline/brand-apple.svg";
+import Category from "@tabler/icons/outline/category.svg";
+import Code from "@tabler/icons/outline/code.svg";
+import Compass from "@tabler/icons/outline/compass.svg";
+import DeviceGamepad2 from "@tabler/icons/outline/device-gamepad-2.svg";
+import Discount from "@tabler/icons/outline/discount.svg";
+import Dots from "@tabler/icons/outline/dots.svg";
+import Download from "@tabler/icons/outline/download.svg";
+import Heart from "@tabler/icons/outline/heart.svg";
+import MessageCircle from "@tabler/icons/outline/message-circle.svg";
+import MoodHappy from "@tabler/icons/outline/mood-happy.svg";
+import Movie from "@tabler/icons/outline/movie.svg";
+import News from "@tabler/icons/outline/news.svg";
+import Photo from "@tabler/icons/outline/photo.svg";
+import School from "@tabler/icons/outline/school.svg";
+import Search from "@tabler/icons/outline/search.svg";
+import Send from "@tabler/icons/outline/send.svg";
+import Server from "@tabler/icons/outline/server.svg";
+import Share from "@tabler/icons/outline/share.svg";
+import Shield from "@tabler/icons/outline/shield.svg";
+import Sparkles from "@tabler/icons/outline/sparkles.svg";
+import Sticker from "@tabler/icons/outline/sticker.svg";
+import Tool from "@tabler/icons/outline/tool.svg";
+import type { CategoryIcon } from "@tgbox/shared";
+import { categoryIcon } from "@/lib/category-icons.ts";
+
+interface Props {
+  /** Category slug; used when `icon` is unset or unknown. */
+  slug: string;
+  /** Icon key from site data (edited in the admin). */
+  icon: string | null;
+  class?: string | undefined;
+}
+
+const icons = {
+  apps: Apps,
+  article: Article,
+  book: Book,
+  "brand-apple": BrandApple,
+  category: Category,
+  code: Code,
+  compass: Compass,
+  "device-gamepad-2": DeviceGamepad2,
+  discount: Discount,
+  dots: Dots,
+  download: Download,
+  heart: Heart,
+  "message-circle": MessageCircle,
+  "mood-happy": MoodHappy,
+  movie: Movie,
+  news: News,
+  photo: Photo,
+  school: School,
+  search: Search,
+  send: Send,
+  server: Server,
+  share: Share,
+  shield: Shield,
+  sparkles: Sparkles,
+  sticker: Sticker,
+  tool: Tool,
+} satisfies Record<CategoryIcon, unknown>;
+
+const { slug, icon, class: className } = Astro.props;
+const Icon = icons[categoryIcon({ slug, icon })];
+---
+
+<Icon class={className} aria-hidden="true" />

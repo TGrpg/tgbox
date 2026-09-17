@@ -1,0 +1,50 @@
+---
+import { type Locale, t } from "@tgbox/shared";
+import { alternatePaths } from "@/i18n/locale.ts";
+import { ui } from "@/i18n/ui.ts";
+import { absoluteUrl } from "@/lib/site.ts";
+
+interface Props {
+  locale: Locale;
+  /** Page title without the site suffix; omit on the home page. */
+  title?: string | undefined;
+  description?: string | undefined;
+  /** Path of this page in either locale; used for canonical + hreflang. */
+  path: string;
+  image?: string | undefined;
+  type?: "website" | "article" | undefined;
+  noindex?: boolean | undefined;
+}
+
+const { locale, title, description, path, image, type = "website", noindex = false } = Astro.props;
+const siteName = t(locale, "site.title");
+const fullTitle = title ? `${title} · ${siteName}` : `${siteName} — ${t(locale, "site.tagline")}`;
+const metaDescription = description ?? ui(locale).meta.description;
+const alternates = alternatePaths(path);
+const canonical = absoluteUrl(alternates[locale]);
+const ogLocale: Record<Locale, string> = { zh: "zh_CN", en: "en_US" };
+const ogImage = absoluteUrl(image ?? "/og-default.svg");
+---
+
+<title>{fullTitle}</title>
+<meta name="description" content={metaDescription}>
+{noindex ? <meta name="robots" content="noindex, follow"> : <link rel="canonical" href={canonical}>}
+{!noindex && (
+    <>
+      <link rel="alternate" hreflang="zh-CN" href={absoluteUrl(alternates.zh)}>
+      <link rel="alternate" hreflang="en" href={absoluteUrl(alternates.en)}>
+      <link rel="alternate" hreflang="x-default" href={absoluteUrl(alternates.zh)}>
+    </>
+  )}
+<meta property="og:type" content={type}>
+<meta property="og:site_name" content={siteName}>
+<meta property="og:title" content={fullTitle}>
+<meta property="og:description" content={metaDescription}>
+<meta property="og:url" content={canonical}>
+<meta property="og:image" content={ogImage}>
+<meta property="og:locale" content={ogLocale[locale]}>
+<meta property="og:locale:alternate" content={ogLocale[locale === "zh" ? "en" : "zh"]}>
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content={fullTitle}>
+<meta name="twitter:description" content={metaDescription}>
+<meta name="twitter:image" content={ogImage}>

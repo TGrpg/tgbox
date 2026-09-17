@@ -1,0 +1,29 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "tgbox-bot",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-15",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "triggers": { "crons": ["* * * * *"] },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "tgbox",
+      "database_id": "c208e71c-9155-458f-9744-2e20f09e866b",
+      "migrations_dir": "../../packages/db/migrations"
+    }
+  ],
+  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "tgbox-media" }],
+  "vars": {
+    "SITE_URL": "https://tgbox.cc",
+    "R2_PUBLIC_URL": "https://media.tgbox.cc",
+    "ADMIN_CHAT_ID": "",
+    "ADMIN_IDS": "",
+    "GITHUB_REPO": "",
+    "BOT_USERNAME": "tgboxccbot",
+    // Entries refreshed per cron minute; keep under the 50-subrequest budget (see src/refresh).
+    "REFRESH_BATCH_SIZE": "6"
+  }
+  // Secrets (see .dev.vars.example): BOT_TOKEN, WEBHOOK_SECRET, GITHUB_DISPATCH_TOKEN
+}

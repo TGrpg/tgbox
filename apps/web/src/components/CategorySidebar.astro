@@ -1,0 +1,130 @@
+---
+import LayoutGrid from "@tabler/icons/outline/layout-grid.svg";
+import LayoutSidebarExpand from "@tabler/icons/outline/layout-sidebar-left-expand.svg";
+import type { EntryKind, Locale } from "@tgbox/shared";
+import CategoryIcon from "@/components/CategoryIcon.astro";
+import { localizePath } from "@/i18n/locale.ts";
+import { ui } from "@/i18n/ui.ts";
+import { getSiteData, localName } from "@/lib/site-data.ts";
+
+interface Props {
+  locale: Locale;
+  kind: EntryKind;
+  /** Active category slug; omit on the kind overview page ("All" is active). */
+  current?: string | undefined;
+}
+
+const { locale, kind, current } = Astro.props;
+const strings = ui(locale).sidebar;
+const categories = getSiteData().categories.filter((category) => category.kind === kind);
+const items = [
+  {
+    slug: undefined,
+    icon: null,
+    href: localizePath(`/${kind}/`, locale),
+    label: strings.all,
+    count: categories.reduce((sum, category) => sum + category.count, 0),
+  },
+  // Empty categories have no listing page, so they render as muted text instead of a 404 link.
+  ...categories.map((category) => ({
+    slug: category.slug,
+    icon: category.icon,
+    href: category.count > 0 ? localizePath(`/${kind}/${category.slug}/`, locale) : undefined,
+    label: localName(category, locale),
+    count: category.count,
+  })),
+];
+const format = new Intl.NumberFormat(locale === "zh" ? "zh-CN" : "en", { notation: "compact" });
+const toggleId = `sidebar-expand-${kind}`;
+---
+
+{/* Desktop: sticky rail. Tablet: icon rail that expands (CSS-only checkbox). Mobile: chip scroller. */}
+<aside class="category-sidebar hidden shrink-0 md:block" aria-label={strings.label}>
+  <div
+    class="sticky top-20 max-h-[calc(100dvh-6rem)] overflow-y-auto rounded-2xl border border-border bg-card p-2 shadow-card no-scrollbar"
+  >
+    <input id={toggleId} type="checkbox" class="toggle peer sr-only lg:hidden">
+    <label
+      for={toggleId}
+      title={strings.expand}
+      class="mb-1 flex size-10 cursor-pointer items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground peer-focus-visible:ring-3 peer-focus-visible:ring-outline/40 lg:hidden"
+    >
+      <LayoutSidebarExpand class="size-5" aria-hidden="true" />
+      <span class="sr-only">{strings.expand}</span>
+    </label>
+    <ul class="list space-y-0.5">
+      {items.map((item) => {
+        const Tag = item.href ? "a" : "span";
+        return (
+          <li>
+            <Tag
+              href={item.href}
+              title={item.label}
+              aria-current={item.href && item.slug === current ? "page" : undefined}
+              aria-disabled={item.href ? undefined : "true"}
+              data-sidebar-empty={item.href ? undefined : ""}
+              data-press={item.href ? "" : undefined}
+              class="flex h-10 items-center gap-2.5 rounded-xl px-2.5 text-[0.925rem] whitespace-nowrap text-muted-foreground transition-colors outline-none aria-disabled:cursor-default aria-disabled:opacity-45 [&[href]]:hover:bg-muted [&[href]]:hover:text-foreground focus-visible:ring-3 focus-visible:ring-outline/40 aria-[current=page]:bg-primary-soft aria-[current=page]:font-semibold aria-[current=page]:text-primary-soft-foreground"
+            >
+              {item.slug ? (
+                <CategoryIcon slug={item.slug} icon={item.icon} class="size-[1.15rem] shrink-0" />
+              ) : (
+                <LayoutGrid class="size-[1.15rem] shrink-0" aria-hidden="true" />
+              )}
+              <span class="label min-w-0 flex-1 truncate">{item.label}</span>
+              <span class="label ml-auto font-mono text-[0.7rem] tabular-nums opacity-70">
+                {format.format(item.count)}
+              </span>
+            </Tag>
+          </li>
+        );
+      })}
+    </ul>
+  </div>
+</aside>
+
+<nav aria-label={strings.label} class="-mx-4 md:hidden">
+  <ul class="flex gap-2 overflow-x-auto px-4 pb-1 no-scrollbar">
+    {items
+      .filter((item) => item.href)
+      .map((item) => (
+        <li class="shrink-0">
+          <a
+            href={item.href}
+            aria-current={item.slug === current ? "page" : undefined}
+            data-press
+            class="flex h-9 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-sm whitespace-nowrap text-muted-foreground shadow-card aria-[current=page]:border-transparent aria-[current=page]:bg-primary aria-[current=page]:font-medium aria-[current=page]:text-primary-foreground"
+          >
+            {item.slug ? (
+              <CategoryIcon slug={item.slug} icon={item.icon} class="size-4 shrink-0" />
+            ) : (
+              <LayoutGrid class="size-4 shrink-0" aria-hidden="true" />
+            )}
+            {item.label}
+          </a>
+        </li>
+      ))}
+  </ul>
+</nav>
+
+<style>
+.category-sidebar > div {
+  width: 13rem;
+}
+@media (min-width: 48rem) and (max-width: 63.98rem) {
+  .category-sidebar > div {
+    width: 3.75rem;
+    transition: width var(--motion-base) var(--ease-out-quint);
+  }
+  .category-sidebar:has(.toggle:checked) > div {
+    width: 13rem;
+  }
+  .category-sidebar:not(:has(.toggle:checked)) .label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+}
+</style>

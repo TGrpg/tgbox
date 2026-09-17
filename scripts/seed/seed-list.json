@@ -1,0 +1,94 @@
+[
+  { "username": "telegram", "kind": "channel", "category": "news", "tags": ["english"] },
+  { "username": "durov", "kind": "channel", "category": "blog", "tags": ["english"] },
+  {
+    "username": "solidot",
+    "kind": "channel",
+    "category": "news",
+    "tags": ["chinese", "science", "daily-news"]
+  },
+  {
+    "username": "newlearnerchannel",
+    "kind": "channel",
+    "category": "software",
+    "tags": ["chinese", "free"]
+  },
+  {
+    "username": "appdopic",
+    "kind": "channel",
+    "category": "software",
+    "tags": ["chinese", "ios", "freebies"]
+  },
+  {
+    "username": "pythontrendingweekly",
+    "kind": "channel",
+    "category": "tech",
+    "tags": ["chinese", "programming", "open-source"]
+  },
+  {
+    "username": "awesomechatgpt",
+    "kind": "channel",
+    "category": "ai",
+    "tags": ["chinese", "chatgpt"]
+  },
+  { "username": "aigc1024", "kind": "channel", "category": "ai", "tags": ["chinese", "chatgpt"] },
+  {
+    "username": "ibeta_channel",
+    "kind": "channel",
+    "category": "software",
+    "tags": ["chinese", "ios"]
+  },
+  {
+    "username": "natgeomedia",
+    "kind": "channel",
+    "category": "wallpaper",
+    "tags": ["chinese", "photography", "science"]
+  },
+  { "username": "playstationnewssss", "kind": "channel", "category": "games", "tags": ["chinese"] },
+  { "username": "elevemberreview", "kind": "channel", "category": "blog", "tags": ["chinese"] },
+  { "username": "hostlocpro", "kind": "channel", "category": "tech", "tags": ["chinese", "linux"] },
+  {
+    "username": "hello_world_1024",
+    "kind": "group",
+    "category": "chat",
+    "tags": ["chinese", "programming"]
+  },
+  {
+    "username": "grammyjs",
+    "kind": "group",
+    "category": "tech",
+    "tags": ["english", "programming", "open-source"]
+  },
+  {
+    "username": "haoruanfenxianggroup",
+    "kind": "group",
+    "category": "software",
+    "tags": ["chinese", "windows", "android"]
+  },
+  {
+    "username": "lossless_yinyue_chat",
+    "kind": "group",
+    "category": "interest",
+    "tags": ["chinese", "music"]
+  },
+  {
+    "username": "beta_legado",
+    "kind": "group",
+    "category": "software",
+    "tags": ["chinese", "android", "ebooks", "open-source"]
+  },
+  { "username": "BotFather", "kind": "bot", "category": "tools", "tags": ["english", "free"] },
+  { "username": "Stickers", "kind": "bot", "category": "tools", "tags": ["english", "memes"] },
+  { "username": "QuizBot", "kind": "bot", "category": "tools", "tags": ["english", "free"] },
+  { "username": "GmailBot", "kind": "bot", "category": "messaging", "tags": ["english"] },
+  { "username": "SpamBot", "kind": "bot", "category": "tools", "tags": ["english", "free"] },
+  {
+    "username": "missrose_bot",
+    "kind": "bot",
+    "category": "group-admin",
+    "tags": ["english", "free"]
+  },
+  { "username": "fanyi_bot", "kind": "bot", "category": "tools", "tags": ["chinese", "free"] },
+  { "username": "daohangbot", "kind": "bot", "category": "search", "tags": ["chinese"] },
+  { "username": "fangzhang_bot", "kind": "bot", "category": "group-admin", "tags": ["chinese"] }
+]

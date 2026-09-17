@@ -1,0 +1,29 @@
+{
+  "name": "@tgbox/bot",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local",
+    "build": "wrangler deploy --dry-run --outdir dist",
+    "types": "wrangler types --env-file .dev.vars.example",
+    "typecheck": "tsc",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@tgbox/core": "workspace:*",
+    "@tgbox/db": "workspace:*",
+    "@tgbox/shared": "workspace:*",
+    "@tgbox/telegram": "workspace:*",
+    "drizzle-orm": "catalog:",
+    "grammy": "catalog:"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "catalog:",
+    "@tgbox/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "wrangler": "catalog:"
+  }
+}

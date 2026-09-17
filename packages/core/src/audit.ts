@@ -1,0 +1,34 @@
+import { insertAuditLog } from "@tgbox/db";
+import type { Actor, CoreContext } from "./context.ts";
+
+export const auditActions = [
+  "submission.approve",
+  "submission.reject",
+  "entry.list",
+  "entry.status",
+  "entry.category",
+  "entry.tags",
+  "entry.promote",
+  "entry.refresh",
+  "build.trigger",
+  "blacklist.add",
+  "blacklist.remove",
+  "category.create",
+  "category.update",
+  "category.delete",
+  "category.reorder",
+  "tag.create",
+  "tag.update",
+  "tag.delete",
+] as const;
+export type AuditAction = (typeof auditActions)[number];
+
+export function audit(
+  ctx: CoreContext,
+  actor: Actor,
+  action: AuditAction,
+  target: string | null,
+  payload: unknown = null,
+) {
+  return insertAuditLog(ctx.db, { actor, action, target, payload, createdAt: ctx.now() });
+}

@@ -1,0 +1,85 @@
+---
+import { type Locale, t } from "@tgbox/shared";
+import { localizePath } from "@/i18n/locale.ts";
+import { ui } from "@/i18n/ui.ts";
+import { botUrl, botUsername } from "@/lib/site.ts";
+import LangSwitch from "./LangSwitch.astro";
+import Logo from "./Logo.astro";
+
+interface Props {
+  locale: Locale;
+  path: string;
+}
+const { locale, path } = Astro.props;
+const strings = ui(locale);
+const columns = [
+  {
+    title: strings.footer.sections,
+    links: [
+      { href: localizePath("/", locale), label: t(locale, "site.home") },
+      { href: localizePath("/channel/", locale), label: t(locale, "site.channels") },
+      { href: localizePath("/group/", locale), label: t(locale, "site.groups") },
+      { href: localizePath("/bot/", locale), label: t(locale, "site.bots") },
+    ],
+  },
+  {
+    title: strings.footer.explore,
+    links: [
+      { href: localizePath("/random/", locale), label: t(locale, "site.random") },
+      { href: localizePath("/enroll/", locale), label: strings.footer.enroll },
+      { href: botUrl, label: `${strings.footer.bot} @${botUsername}`, external: true },
+    ],
+  },
+  {
+    title: strings.footer.more,
+    links: [
+      { href: localizePath("/about/", locale), label: strings.page.about },
+      { href: localizePath("/privacy-policy/", locale), label: strings.page.privacy },
+      { href: localizePath("/donate/", locale), label: strings.page.donate },
+      { href: localizePath("/links/", locale), label: strings.page.links },
+    ],
+  },
+];
+const year = new Date().getUTCFullYear();
+---
+
+<footer class="mt-20 border-t border-border bg-card pb-24 md:pb-0">
+  <div class="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.5fr_repeat(3,1fr)]">
+    <div class="space-y-4">
+      <a href={localizePath("/", locale)} class="inline-flex items-center gap-2">
+        <Logo class="size-8" />
+        <span class="text-[1.05rem] font-bold tracking-tight">{t(locale, "site.title")}</span>
+      </a>
+      <p class="max-w-xs text-sm leading-relaxed text-muted-foreground">
+        {t(locale, "site.tagline")}
+      </p>
+      <LangSwitch locale={locale} path={path} class="-ml-2.5" />
+    </div>
+    {columns.map((column) => (
+        <div>
+          <h2 class="mb-3 text-sm font-semibold text-foreground">{column.title}</h2>
+          <ul class="space-y-2 text-sm">
+            {column.links.map((link) => (
+              <li>
+                <a
+                  href={link.href}
+                  class="text-muted-foreground transition-colors hover:text-primary"
+                  {...("external" in link ? { rel: "noopener", target: "_blank" } : {})}
+                >
+                  {link.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+  </div>
+  <div class="border-t border-border">
+    <div
+      class="mx-auto max-w-7xl space-y-2 px-4 py-6 text-xs leading-relaxed text-muted-foreground sm:px-6"
+    >
+      <p class="max-w-4xl">{strings.footer.disclaimer}</p>
+      <p>© {year} {t(locale, "site.title")}. {strings.footer.rights}</p>
+    </div>
+  </div>
+</footer>

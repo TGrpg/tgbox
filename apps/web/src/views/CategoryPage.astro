@@ -1,0 +1,78 @@
+---
+import { type CategoryView, type Locale, t } from "@tgbox/shared";
+import CategoryIcon from "@/components/CategoryIcon.astro";
+import KindGrid from "@/components/kind/KindGrid.astro";
+import KindListingShell from "@/components/kind/KindListingShell.astro";
+import KindPageHeader from "@/components/kind/KindPageHeader.astro";
+import KindSortTabs from "@/components/kind/KindSortTabs.astro";
+import Pagination from "@/components/Pagination.astro";
+import { localizePath } from "@/i18n/locale.ts";
+import { kindTitles, ui } from "@/i18n/ui.ts";
+import { kindUi } from "@/i18n/ui-kind.ts";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { fill } from "@/lib/format.ts";
+import { categoryListingBase, type ListingSort, sortEntries } from "@/lib/kind-listing.ts";
+import { getSiteData, localName, PAGE_SIZE, pageHref, pageSlice } from "@/lib/site-data.ts";
+
+interface Props {
+  locale: Locale;
+  category: CategoryView;
+  sort: ListingSort;
+  page: number;
+}
+const { locale, category, sort, page } = Astro.props;
+const strings = ui(locale);
+const kindStrings = kindUi(locale);
+const kindTitle = kindTitles(locale)[category.kind];
+const name = localName(category, locale);
+const entries = sortEntries(
+  getSiteData().entries.filter(
+    (entry) => entry.kind === category.kind && entry.category === category.slug,
+  ),
+  sort,
+);
+const totalPages = Math.max(1, Math.ceil(entries.length / PAGE_SIZE));
+const base = localizePath(categoryListingBase(category.kind, category.slug, sort), locale);
+const sortSuffix = sort === "latest" ? ` · ${kindStrings.latestTitle}` : "";
+const pageSuffix = page > 1 ? ` · ${fill(strings.pagination.page, { n: page })}` : "";
+const title = `${name} · ${kindTitle}${sortSuffix}${pageSuffix}`;
+const description = fill(strings.listing.categoryDescription, {
+  category: name,
+  kind: kindTitle,
+  n: entries.length,
+});
+---
+
+{/* The "latest" order duplicates the members order, so only the latter is indexed. */}
+<BaseLayout locale={locale} title={title} description={description} noindex={sort === "latest"}>
+  <KindListingShell locale={locale} kind={category.kind} current={category.slug}>
+    <KindPageHeader
+      locale={locale}
+      title={`${name}${pageSuffix}`}
+      description={description}
+      count={{ n: entries.length, template: kindStrings.entries }}
+      breadcrumbs={[
+          { label: t(locale, "site.home"), href: localizePath("/", locale) },
+          { label: kindTitle, href: localizePath(`/${category.kind}/`, locale) },
+          { label: name },
+        ]}
+    >
+      <CategoryIcon
+        slug={category.slug}
+        icon={category.icon}
+        slot="icon"
+        class="size-7 sm:size-8"
+      />
+      <div class="mt-5 border-t border-border pt-4">
+        <KindSortTabs locale={locale} kind={category.kind} slug={category.slug} sort={sort} />
+      </div>
+    </KindPageHeader>
+    <KindGrid locale={locale} entries={pageSlice(entries, page)} eager={10} class="mt-6" />
+    <Pagination
+      locale={locale}
+      current={page}
+      total={totalPages}
+      href={(target) => pageHref(base, target)}
+    />
+  </KindListingShell>
+</BaseLayout>

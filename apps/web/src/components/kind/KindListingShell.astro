@@ -1,0 +1,23 @@
+---
+import type { EntryKind, Locale } from "@tgbox/shared";
+import CategorySidebar from "@/components/CategorySidebar.astro";
+
+interface Props {
+  locale: Locale;
+  kind: EntryKind;
+  /** Active category slug; omit on the kind index. */
+  current?: string | undefined;
+}
+
+const { locale, kind, current } = Astro.props;
+---
+
+{/* CategorySidebar renders a rail (md+) and a chip scroller (mobile): row on desktop, stacked on mobile. */}
+<div
+  class="mx-auto flex max-w-7xl flex-col gap-5 px-4 pt-5 sm:px-6 md:flex-row md:gap-6 md:pt-8 lg:gap-8"
+>
+  <CategorySidebar locale={locale} kind={kind} current={current} />
+  <div class="min-w-0 flex-1">
+    <slot />
+  </div>
+</div>

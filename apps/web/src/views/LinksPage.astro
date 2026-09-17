@@ -1,0 +1,81 @@
+---
+import type { Locale } from "@tgbox/shared";
+import { ui } from "@/i18n/ui.ts";
+import PageLayout from "@/layouts/PageLayout.astro";
+import { botUrl, botUsername } from "@/lib/site.ts";
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const zh = locale === "zh";
+const bot = `@${botUsername}`;
+
+/** Static list; edit here to add friend links. */
+const links = [
+  {
+    name: "Telegram",
+    url: "https://telegram.org/",
+    zh: "Telegram 官方网站，下载客户端和查看最新功能。",
+    en: "Official Telegram website: download apps and read about new features.",
+  },
+  {
+    name: "Telegram FAQ",
+    url: "https://telegram.org/faq",
+    zh: "官方常见问题，涵盖频道、群组、隐私和账号安全。",
+    en: "Official FAQ covering channels, groups, privacy and account security.",
+  },
+  {
+    name: "Telegram Bot Platform",
+    url: "https://core.telegram.org/bots",
+    zh: "官方机器人开发文档，适合想自己做机器人的开发者。",
+    en: "Official bot platform docs for developers building their own bots.",
+  },
+];
+---
+
+<PageLayout
+  locale={locale}
+  title={ui(locale).page.links}
+  eyebrow="Links"
+  description={zh
+      ? "与 Telegram 相关的实用网站，以及友情链接交换说明。"
+      : "Useful Telegram-related websites, and how to exchange links with us."}
+>
+  <ul
+    class="!mt-0 !list-none !space-y-0 !pl-0 divide-y divide-border rounded-xl border border-border bg-card"
+  >
+    {links.map((link) => (
+        <li class="!mt-0 flex flex-col gap-1 p-4 sm:flex-row sm:items-baseline sm:gap-6">
+          <a href={link.url} rel="noopener" target="_blank" class="shrink-0 font-medium sm:w-56">
+            {link.name}
+          </a>
+          <span class="text-sm text-muted-foreground">{zh ? link.zh : link.en}</span>
+        </li>
+      ))}
+  </ul>
+
+  {zh ? (
+      <>
+        <h2>交换友链</h2>
+        <p>欢迎与 Telegram、效率工具、开源资源相关的网站交换友情链接。申请条件：</p>
+        <ul>
+          <li>网站可以正常访问，有持续更新的原创或整理内容；</li>
+          <li>内容合法合规，不涉及色情、赌博、诈骗等灰黑产；</li>
+          <li>已在你的网站上添加本站链接。</li>
+        </ul>
+        <p>请私聊 <a href={botUrl} rel="noopener" target="_blank">{bot}</a> 并发送 <code>/help</code> 获取联系方式，附上网站名称、地址和一句话简介。</p>
+      </>
+    ) : (
+      <>
+        <h2>Exchange links</h2>
+        <p>We welcome link exchanges with sites about Telegram, productivity tools and open resources. Requirements:</p>
+        <ul>
+          <li>The site is reachable and regularly updated with original or curated content;</li>
+          <li>Its content is lawful, with no adult, gambling, scam or other grey-market material;</li>
+          <li>You have already added a link to this site.</li>
+        </ul>
+        <p>Message <a href={botUrl} rel="noopener" target="_blank">{bot}</a> and send <code>/help</code> for contact details, including your site name, URL and a one-line description.</p>
+      </>
+    )}
+</PageLayout>

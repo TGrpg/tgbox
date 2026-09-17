@@ -1,0 +1,81 @@
+---
+import type { Locale } from "@tgbox/shared";
+import { ui } from "@/i18n/ui.ts";
+import PageLayout from "@/layouts/PageLayout.astro";
+import { botUrl, botUsername } from "@/lib/site.ts";
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const zh = locale === "zh";
+const bot = `@${botUsername}`;
+---
+
+<PageLayout
+  locale={locale}
+  title={ui(locale).page.privacy}
+  eyebrow="Privacy"
+  updated="2026-09-17"
+  description={zh
+      ? "我们收集哪些数据、为什么收集、存放在哪里，以及你如何要求删除。"
+      : "What data we collect, why, where it is stored, and how to ask for removal."}
+>
+  {zh ? (
+      <>
+        <p>我们尽量少收集数据。浏览网站不需要注册或登录，本站不使用广告跟踪 Cookie。</p>
+
+        <h2>浏览网站时</h2>
+        <ul>
+          <li>网站由 Cloudflare 以静态页面的形式提供。和所有网站一样，Cloudflare 会为了安全和防滥用处理 IP 地址等请求信息。</li>
+          <li>我们可能使用不设置 Cookie 的访问统计（如 Cloudflare Web Analytics）了解页面访问量，这些统计不识别个人身份。</li>
+          <li>你的主题偏好（亮色/暗色）只保存在你自己浏览器的 localStorage 里，不会发送给我们。</li>
+          <li>站内搜索在你的浏览器里完成，搜索词不会记录到我们的服务器。</li>
+        </ul>
+
+        <h2>使用收录机器人时</h2>
+        <ul>
+          <li>为了处理提交和通知审核结果，我们会保存你的 Telegram 用户 ID、用户名、界面语言，以及你提交的链接、分类和标签。</li>
+          <li>这些信息用于审核、每日提交次数限制和防止滥用（例如拉黑恶意提交者），不会出售或分享给第三方。</li>
+          <li>通过 inline 模式搜索时，查询词只用于返回结果，不与你的身份一起保存。</li>
+        </ul>
+
+        <h2>收录条目的数据</h2>
+        <p>条目资料（名称、简介、头像、成员数、最近的公开消息）来自 Telegram 公开网页，并定期刷新。频道或群组转为私有、被删除或被封禁后，相关页面会被自动隐藏。</p>
+
+        <h2>数据存放与删除</h2>
+        <p>数据存放在 Cloudflare 的 D1 数据库和 R2 存储中。如果你希望删除你的提交记录，或者删除你拥有的条目，请私聊 <a href={botUrl} rel="noopener" target="_blank">{bot}</a> 并发送 <code>/help</code> 获取联系方式，我们会尽快处理。</p>
+
+        <h2>政策更新</h2>
+        <p>本政策如有调整，会更新本页顶部的“最后更新”日期。</p>
+      </>
+    ) : (
+      <>
+        <p>We collect as little as possible. Browsing needs no account or sign-in, and we use no advertising or tracking cookies.</p>
+
+        <h2>When you browse the site</h2>
+        <ul>
+          <li>The site is served as static pages by Cloudflare. Like any website, Cloudflare processes request data such as IP addresses for security and abuse prevention.</li>
+          <li>We may use cookieless analytics (such as Cloudflare Web Analytics) to count page views. It does not identify individuals.</li>
+          <li>Your theme preference (light/dark) is kept only in your own browser’s localStorage and is never sent to us.</li>
+          <li>Site search runs in your browser; your queries are not logged on our servers.</li>
+        </ul>
+
+        <h2>When you use the submission bot</h2>
+        <ul>
+          <li>To process submissions and notify you of review results, we store your Telegram user ID, username, interface language, and the links, categories and tags you submit.</li>
+          <li>This is used for review, the daily submission limit and abuse prevention (for example blocking malicious submitters). It is never sold or shared with third parties.</li>
+          <li>Inline-mode search queries are only used to return results and are not stored with your identity.</li>
+        </ul>
+
+        <h2>Data about listed entries</h2>
+        <p>Entry details (name, description, avatar, member count, recent public posts) come from public Telegram web pages and are refreshed regularly. When a channel or group goes private, is deleted or is banned, its page is hidden automatically.</p>
+
+        <h2>Storage and removal</h2>
+        <p>Data is stored in Cloudflare D1 and R2. To delete your submission history or an entry you own, message <a href={botUrl} rel="noopener" target="_blank">{bot}</a> and send <code>/help</code> for contact details; we will handle it promptly.</p>
+
+        <h2>Changes</h2>
+        <p>If this policy changes, the “Last updated” date at the top of this page will change too.</p>
+      </>
+    )}
+</PageLayout>

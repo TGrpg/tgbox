@@ -1,0 +1,84 @@
+---
+import CopyIcon from "@tabler/icons/outline/copy.svg";
+import QrcodeIcon from "@tabler/icons/outline/qrcode.svg";
+import ShareIcon from "@tabler/icons/outline/share.svg";
+import XIcon from "@tabler/icons/outline/x.svg";
+import type { Locale } from "@tgbox/shared";
+import QRCode from "qrcode";
+import { ButtonVariants } from "@/components/starwind/button";
+import { ui } from "@/i18n/ui.ts";
+
+interface Props {
+  locale: Locale;
+  url: string;
+  title: string;
+  /** Classes for the trigger button (defaults to a full-width ghost button). */
+  triggerClass?: string | undefined;
+}
+const { locale, url, title, triggerClass } = Astro.props;
+const strings = ui(locale);
+const { button } = ButtonVariants;
+// Rendered at build time so sharing needs no QR library in the browser.
+const qrSvg = await QRCode.toString(url, { type: "svg", margin: 1, errorCorrectionLevel: "M" });
+const telegramShare = `https://t.me/share/url?${new URLSearchParams({ url, text: title }).toString()}`;
+---
+
+<div data-share>
+  <button
+    type="button"
+    data-share-open
+    data-press
+    class={triggerClass ?? button({ variant: "ghost", size: "sm", class: "w-full" })}
+  >
+    <ShareIcon aria-hidden="true" />
+    {strings.detail.share}
+  </button>
+  <dialog
+    data-share-dialog
+    aria-label={strings.detail.share}
+    class="share-dialog m-auto w-[min(22rem,calc(100vw-2rem))] rounded-3xl border border-border bg-popover p-5 text-popover-foreground shadow-float"
+  >
+    <div class="flex items-center justify-between">
+      <h2 class="font-semibold">{strings.detail.share}</h2>
+      <button
+        type="button"
+        data-share-close
+        aria-label={strings.share.close}
+        class={button({ variant: "ghost", size: "icon-sm" })}
+      >
+        <XIcon aria-hidden="true" />
+      </button>
+    </div>
+    <figure class="mx-auto mt-4 w-48">
+      <div
+        class="rounded-2xl bg-white p-2.5 shadow-card [&_svg]:h-auto [&_svg]:w-full"
+        set:html={qrSvg}
+      />
+      <figcaption class="mt-2 flex items-center justify-center gap-1 text-xs text-muted-foreground">
+        <QrcodeIcon class="size-4" aria-hidden="true" />
+        {strings.share.qr}
+      </figcaption>
+    </figure>
+    <p class="mt-4 truncate rounded-xl bg-muted px-3 py-2 font-mono text-xs" title={url}>{url}</p>
+    <div class="mt-4 grid grid-cols-2 gap-2">
+      <button
+        type="button"
+        data-copy={url}
+        data-copy-done={strings.share.copied}
+        data-press
+        class={button({ variant: "outline", size: "sm" })}
+      >
+        <CopyIcon aria-hidden="true" />
+        {strings.share.copy}
+      </button>
+      <a
+        href={telegramShare}
+        target="_blank"
+        rel="noopener nofollow"
+        class={button({ variant: "primary", size: "sm" })}
+      >
+        {strings.share.telegram}
+      </a>
+    </div>
+  </dialog>
+</div>

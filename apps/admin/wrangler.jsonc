@@ -1,0 +1,34 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "tgbox-admin",
+  "main": "@tanstack/react-start/server-entry",
+  "compatibility_date": "2026-09-15",
+  "compatibility_flags": ["nodejs_compat"],
+  "routes": [{ "pattern": "admin.tgbox.cc", "custom_domain": true }],
+  "observability": { "enabled": true },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "tgbox",
+      "database_id": "c208e71c-9155-458f-9744-2e20f09e866b",
+      "migrations_dir": "../../packages/db/migrations"
+    }
+  ],
+  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "tgbox-media" }],
+  "vars": {
+    // Comma-separated Cloudflare Access emails allowed in the web admin.
+    "ADMIN_EMAILS": "",
+    // Comma-separated Telegram user ids allowed in the Mini App (same list as the bot).
+    "ADMIN_IDS": "",
+    // e.g. "myteam.cloudflareaccess.com"
+    "CF_ACCESS_TEAM_DOMAIN": "",
+    // Application Audience (AUD) tag of the Access application.
+    "CF_ACCESS_AUD": "",
+    // "1" skips auth, but only for requests to localhost / 127.0.0.1. Set in .dev.vars, never here.
+    "ADMIN_DEV_BYPASS": "",
+    "GITHUB_REPO": "",
+    "SITE_URL": "https://tgbox.cc",
+    "R2_PUBLIC_URL": "https://media.tgbox.cc"
+  }
+  // Secrets (see .dev.vars.example): BOT_TOKEN, GITHUB_DISPATCH_TOKEN
+}

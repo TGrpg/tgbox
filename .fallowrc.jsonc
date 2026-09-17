@@ -1,0 +1,58 @@
+{
+  // https://docs.fallow.tools/configuration/overview
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  "entry": [
+    "apps/bot/src/index.ts",
+    "apps/bot/test/**/*.ts",
+    "apps/web/src/pages/**/*.{astro,ts}",
+    "packages/snapshot/src/cli.ts",
+    // CLIs run directly with `node` (docs/deploy.md, CI, package scripts).
+    "scripts/**/*.ts",
+    "{apps,packages}/*/scripts/**/*.ts",
+    // TanStack Start: file routes, router/start entries and the Vite config are loaded by convention.
+    "apps/admin/src/routes/**/*.tsx",
+    "apps/admin/src/{router.tsx,start.ts}",
+    "apps/admin/vite.config.ts",
+    "packages/*/drizzle.config.ts",
+    "**/vitest.config.ts",
+    "**/*.test.ts",
+    // Vendored Starwind / coss ui registry components: not all are used yet.
+    "apps/web/src/components/{starwind,coss}/**/*.{astro,ts,tsx}",
+    "apps/admin/src/components/coss/**/*.{ts,tsx}"
+  ],
+  "workspaces": {
+    "packages": ["apps/*", "packages/*", "tools/*"]
+  },
+  "ignorePatterns": ["**/*.d.ts", ".scratch/**"],
+  "ignoreDependencies": [
+    // apps/admin: installed for A2–A4 (entries table) and the Cloudflare Workers pool.
+    "@tanstack/react-table",
+    "@cloudflare/vitest-pool-workers",
+    // Installed up front for later issues; see CLAUDE.md.
+    "@tabler/icons",
+    "@tailwindcss/forms",
+    "tw-animate-css",
+    "tailwindcss",
+    "pagefind",
+    "qrcode",
+    "@types/qrcode",
+    "@playwright/test",
+    "drizzle-orm",
+    "franc-min",
+    "zod",
+    "@types/node",
+    // Workspace packages wired up for later issues.
+    "@tgbox/db",
+    "@tgbox/shared",
+    "@tgbox/telegram"
+  ],
+  "rules": {
+    "unused-files": "error",
+    "unused-exports": "warn",
+    "unresolved-imports": "error"
+  },
+  "duplicates": {
+    "minOccurrences": 3,
+    "mode": "mild"
+  }
+}

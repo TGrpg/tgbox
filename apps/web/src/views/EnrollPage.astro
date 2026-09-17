@@ -1,0 +1,124 @@
+---
+import { entryKinds, type Locale, t } from "@tgbox/shared";
+import { ui } from "@/i18n/ui.ts";
+import PageLayout from "@/layouts/PageLayout.astro";
+import { botUrl, botUsername } from "@/lib/site.ts";
+import { getSiteData } from "@/lib/site-data.ts";
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const zh = locale === "zh";
+const { categories } = getSiteData();
+const bot = `@${botUsername}`;
+const kindTitle = {
+  channel: t(locale, "site.channels"),
+  group: t(locale, "site.groups"),
+  bot: t(locale, "site.bots"),
+};
+---
+
+<PageLayout
+  locale={locale}
+  title={ui(locale).page.enroll}
+  eyebrow="Guide"
+  updated="2026-09-17"
+  description={zh
+      ? `通过 Telegram 机器人 ${bot} 免费提交频道、群组或机器人。本页说明收录标准、提交步骤和审核规则。`
+      : `List your channel, group or bot for free through ${bot} on Telegram. This page explains our listing criteria, the submission steps and how reviews work.`}
+>
+  {zh ? (
+      <>
+        <p>
+          本站所有条目都通过收录机器人
+          <a href={botUrl} rel="noopener" target="_blank">{bot}</a>
+          提交，不需要注册账号，也不收取任何费用。机器人会自动抓取资料，管理员审核通过后，条目通常在几分钟内出现在网站上。
+        </p>
+
+        <h2>收录标准</h2>
+        <ul>
+          <li><strong>公开可访问</strong>：必须是带公开用户名（t.me/用户名）的频道、群组或机器人。私有邀请链接和个人账号不收录。</li>
+          <li><strong>状态正常</strong>：没有被 Telegram 封禁或限制，资料页可以正常打开。</li>
+          <li><strong>内容合规</strong>：不收录违法违规、色情、诈骗、赌博等灰黑产内容。</li>
+          <li><strong>真实活跃</strong>：频道需要持续更新；成员数明显注水（僵尸粉）或长期停更的会被拒绝。</li>
+          <li><strong>不重复</strong>：同一个条目只收录一次；已收录或正在审核中的条目无需重复提交。</li>
+        </ul>
+
+        <h2>提交步骤</h2>
+        <ol>
+          <li>在 Telegram 里打开 <a href={botUrl} rel="noopener" target="_blank">{bot}</a>，发送 <code>/start</code>，点击“提交收录”。</li>
+          <li>发送链接，以下格式都可以识别：<code>https://t.me/username</code>、<code>t.me/username</code> 或 <code>@username</code>。</li>
+          <li>机器人会自动识别这是频道、群组还是机器人，并显示抓取到的名称、简介和成员数，请确认信息无误。</li>
+          <li>从与类型匹配的子分类中选择一个分类，再按需点选若干标签（可选，标签能提高被搜到的几率）。</li>
+          <li>在确认页检查汇总信息，可以返回修改分类或标签，确认后点击“确认提交”。</li>
+          <li>管理员审核后，机器人会私信通知你结果；如被拒绝，会附带原因。</li>
+        </ol>
+
+        <h2>审核与后续</h2>
+        <ul>
+          <li>常见拒绝原因：内容违规、灰黑产、僵尸粉、长期停更、重复提交。</li>
+          <li>为防止刷屏，每个 Telegram 用户每天最多提交 5 次。</li>
+          <li>收录后，系统会定时刷新成员数、头像、简介和最近消息，无需手动更新。</li>
+          <li>如果条目被封禁、不存在、转为私有或类型发生变化，并且多次检测确认，会被自动隐藏；恢复正常后会自动重新展示。</li>
+          <li>中途放弃提交也没关系，下次发送 <code>/start</code> 即可重新开始。发送 <code>/help</code> 可以随时查看收录标准和联系方式。</li>
+        </ul>
+
+        <h2>分类一览</h2>
+        <p>提交时需要选择以下分类之一：</p>
+      </>
+    ) : (
+      <>
+        <p>
+          Every entry on this site is submitted through our bot
+          <a href={botUrl} rel="noopener" target="_blank">{bot}</a>.
+          No account is needed and listing is free. The bot fetches the details automatically, and once an admin approves the submission the entry usually appears on the site within a few minutes.
+        </p>
+
+        <h2>Listing criteria</h2>
+        <ul>
+          <li><strong>Public</strong>: it must be a channel, group or bot with a public username (t.me/username). Private invite links and personal accounts are not listed.</li>
+          <li><strong>In good standing</strong>: not banned or restricted by Telegram, and its public page loads normally.</li>
+          <li><strong>Lawful content</strong>: no illegal, adult, scam, gambling or other grey-market content.</li>
+          <li><strong>Genuinely active</strong>: channels should post regularly. Inflated member counts (fake members) or long-abandoned channels are rejected.</li>
+          <li><strong>No duplicates</strong>: each entry is listed once. There is no need to resubmit something already listed or under review.</li>
+        </ul>
+
+        <h2>How to submit</h2>
+        <ol>
+          <li>Open <a href={botUrl} rel="noopener" target="_blank">{bot}</a> in Telegram, send <code>/start</code> and tap “Submit”.</li>
+          <li>Send the link in any of these formats: <code>https://t.me/username</code>, <code>t.me/username</code> or <code>@username</code>.</li>
+          <li>The bot detects whether it is a channel, group or bot and shows the fetched name, description and member count. Check that they are correct.</li>
+          <li>Pick one sub-category that matches the type, then optionally tap a few tags — tags help people find you.</li>
+          <li>Review the summary; you can go back to change the category or tags. Tap “Confirm” when ready.</li>
+          <li>After review, the bot messages you with the result, including the reason if it was rejected.</li>
+        </ol>
+
+        <h2>Review and afterwards</h2>
+        <ul>
+          <li>Common rejection reasons: policy violation, grey-market content, fake members, inactive for a long time, duplicate.</li>
+          <li>To prevent spam, each Telegram user can submit up to 5 times per day.</li>
+          <li>Once listed, member counts, avatar, description and recent posts are refreshed automatically.</li>
+          <li>Entries that are confirmed banned, deleted, made private or changed type across repeated checks are hidden automatically, and shown again once they recover.</li>
+          <li>Abandoned a submission halfway? Just send <code>/start</code> to begin again. Send <code>/help</code> any time for the criteria and contact details.</li>
+        </ul>
+
+        <h2>Categories</h2>
+        <p>Each submission picks one of these categories:</p>
+      </>
+    )}
+  <div class="not-prose mt-6 grid gap-4 sm:grid-cols-3">
+    {entryKinds.map((kind) => (
+        <section class="rounded-xl border border-border bg-card p-4">
+          <h3 class="!mt-0 text-sm font-semibold">{kindTitle[kind]}</h3>
+          <ul class="!mt-3 !list-none !space-y-1 !pl-0 text-sm text-muted-foreground">
+            {categories
+              .filter((category) => category.kind === kind)
+              .map((category) => (
+                <li>{zh ? category.nameZh : category.nameEn}</li>
+              ))}
+          </ul>
+        </section>
+      ))}
+  </div>
+</PageLayout>
