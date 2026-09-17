@@ -2,8 +2,11 @@ import type { Db } from "@tgbox/db";
 
 type Fetch = (input: string, init?: RequestInit) => Promise<Response>;
 
-/** Who performed an action: a Telegram admin (bot, Mini App) or a Cloudflare Access email. */
-export type Actor = `tg:${number}` | `email:${string}`;
+/**
+ * Who performed an action: a Telegram user (admin via bot/Mini App, or a buyer), a Cloudflare
+ * Access email, or `system` for scheduled jobs.
+ */
+export type Actor = `tg:${number}` | `email:${string}` | "system";
 
 export const tgActor = (userId: number): Actor => `tg:${userId}`;
 export const emailActor = (email: string): Actor => `email:${email.toLowerCase()}`;
@@ -17,6 +20,10 @@ export type CoreContext = {
     /** `owner/repo`; empty disables build dispatch (local dev). */
     GITHUB_REPO: string;
     GITHUB_DISPATCH_TOKEN: string;
+    /** Needed for Bot API calls made by core (Stars refunds). */
+    BOT_TOKEN?: string;
+    /** Encrypts credentials entered in the admin; empty/absent makes them unavailable. */
+    SETTINGS_KEY?: string;
   };
   /** `ctx.waitUntil` of the current request; without it background work is awaited inline. */
   waitUntil?: (promise: Promise<unknown>) => void;

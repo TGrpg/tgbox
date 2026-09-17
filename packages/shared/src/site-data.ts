@@ -91,6 +91,24 @@ export type TagView = z.infer<typeof TagView>;
 export const RandomShardKey = z.enum([...EntryKind.options, "all"]);
 export type RandomShardKey = z.infer<typeof RandomShardKey>;
 
+/** Site-wide announcement bar (admin setting); both locales always present. */
+export const AnnouncementView = z.object({
+  zh: z.string(),
+  en: z.string(),
+  href: z.string().nullable(),
+});
+export type AnnouncementView = z.infer<typeof AnnouncementView>;
+
+/** A paid home banner that is live at build time. */
+export const PromoView = z.object({
+  id: z.string(),
+  title: z.string(),
+  subtitle: z.string(),
+  href: z.string(),
+  sponsored: z.literal(true),
+});
+export type PromoView = z.infer<typeof PromoView>;
+
 export const SiteData = z.object({
   /** ISO 8601 */
   generatedAt: z.string(),
@@ -99,5 +117,9 @@ export const SiteData = z.object({
   tags: z.array(TagView),
   entries: z.array(EntryView),
   randomShards: z.record(RandomShardKey, z.array(z.string())),
+  /** null when disabled */
+  announcement: AnnouncementView.nullable(),
+  /** Live paid banners, ordered by start time. */
+  promos: z.array(PromoView),
 });
 export type SiteData = z.infer<typeof SiteData>;

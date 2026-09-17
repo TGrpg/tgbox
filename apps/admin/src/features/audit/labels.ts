@@ -19,6 +19,18 @@ export const auditActionLabels: Record<AuditAction, string> = {
   "tag.create": "新增标签",
   "tag.update": "编辑标签",
   "tag.delete": "删除标签",
+  "settings.update": "修改设置",
+  "credential.set": "设置密钥",
+  "product.upsert": "编辑商品",
+  "order.create": "创建订单",
+  "order.paid": "订单支付",
+  "order.reject": "拒绝订单",
+  "order.refund": "订单退款",
+  "order.cleanup": "清理未付订单",
+  "promotion.start": "推广上线",
+  "promotion.end": "结束推广",
+  "promotion.extend": "延长推广",
+  "promotion.expire": "推广到期",
 };
 
 export function isAuditAction(action: string): action is AuditAction {

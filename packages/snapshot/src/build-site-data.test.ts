@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { SiteData } from "@tgbox/shared";
 import { describe, expect, test } from "vitest";
 import {
@@ -187,6 +188,62 @@ describe("buildSiteData", () => {
 
     expect(data.entries.map((e) => e.username)).toEqual(["dumpbot"]);
     expect(data.stats.bots).toBe(1);
+  });
+
+  test("publishes the enabled announcement, live banners and live pins", async () => {
+    const dbPath = fixtureDb();
+    const now = fixtureNow.getTime();
+    const db = new DatabaseSync(dbPath);
+    const banner = (title: string) =>
+      JSON.stringify({ title, subtitle: "副标题", href: "https://t.me/techdaily" });
+    db.prepare("INSERT INTO settings (key, value, updated_at) VALUES ('site', ?, 0)").run(
+      JSON.stringify({ announcement: { enabled: true, zh: "公告", en: "Notice", href: null } }),
+    );
+    const insert = db.prepare(
+      "INSERT INTO promotions (id, kind, entry_username, banner, starts_at, ends_at, created_at) VALUES (?, ?, ?, ?, ?, ?, 0)",
+    );
+    insert.run(1, "banner", null, banner("后开始"), now - 1000, now + 1000);
+    insert.run(2, "banner", null, banner("先开始"), now - 2000, now + 1000);
+    insert.run(3, "banner", null, banner("已过期"), now - 3000, now);
+    insert.run(4, "banner", null, "{broken", now - 3000, now + 1000);
+    insert.run(5, "pin", "devnotes", null, now - 1000, now + 1000);
+    insert.run(6, "pin", "movieshare", null, now - 2000, now);
+    db.close();
+
+    const data = await buildSiteData({ dbPath, mediaDir: tempDir(), now: fixtureNow });
+
+    expect(data.announcement).toEqual({ zh: "公告", en: "Notice", href: null });
+    expect(data.promos).toEqual([
+      {
+        id: "2",
+        title: "先开始",
+        subtitle: "副标题",
+        href: "https://t.me/techdaily",
+        sponsored: true,
+      },
+      {
+        id: "1",
+        title: "后开始",
+        subtitle: "副标题",
+        href: "https://t.me/techdaily",
+        sponsored: true,
+      },
+    ]);
+    expect(entry(data, "devnotes").isPromoted).toBe(true);
+    expect(entry(data, "movieshare").isPromoted).toBe(false);
+    expect(entry(data, "aiwatch").isPromoted).toBe(true);
+  });
+
+  test("an export without settings and promotions tables has no announcement or promos", async () => {
+    const dbPath = fixtureDb();
+    const db = new DatabaseSync(dbPath);
+    db.exec("DROP TABLE settings; DROP TABLE promotions;");
+    db.close();
+
+    const data = await buildSiteData({ dbPath, mediaDir: tempDir(), now: fixtureNow });
+
+    expect(data).toMatchObject({ announcement: null, promos: [] });
+    expect(entry(data, "aiwatch").isPromoted).toBe(true);
   });
 
   test("fails when the media URL returns a server error", async () => {

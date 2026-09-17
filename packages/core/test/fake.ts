@@ -34,20 +34,32 @@ export async function setup(config: Partial<CoreContext["config"]> = {}) {
       "entries_fts",
       "site_state",
       "audit_log",
+      "settings",
+      "credentials",
+      "orders",
+      "promotions",
     ].map((table) => env.DB.prepare(`DELETE FROM ${table}`)),
   );
   await syncTaxonomy(db);
   const dispatches: string[] = [];
   const tme: string[] = [];
+  const telegram: { method: string; body: unknown }[] = [];
   const ctx: CoreContext = {
     db,
     now: () => NOW,
     config: { GITHUB_REPO: "owner/tgbox", GITHUB_DISPATCH_TOKEN: "token", ...config },
-    fetch: async (input) => {
+    fetch: async (input, init) => {
       const url = new URL(input);
       if (url.hostname === "api.github.com") {
         dispatches.push(url.pathname);
         return new Response(null, { status: 204 });
+      }
+      if (url.hostname === "api.telegram.org") {
+        telegram.push({
+          method: url.pathname.split("/").at(-1) ?? "",
+          body: JSON.parse(String(init?.body ?? "null")),
+        });
+        return Response.json({ ok: true, result: true });
       }
       if (url.hostname === "t.me") {
         tme.push(url.pathname);
@@ -63,7 +75,7 @@ export async function setup(config: Partial<CoreContext["config"]> = {}) {
       throw new Error(`unexpected fetch ${url.href}`);
     },
   };
-  return { ctx, dispatches, tme };
+  return { ctx, dispatches, tme, telegram };
 }
 
 export async function auditRows() {

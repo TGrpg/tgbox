@@ -9,8 +9,17 @@ import { parseArgs } from "node:util";
 import { repoRoot, run, wrangler } from "./lib/run.ts";
 
 // Only what the snapshot reads. D1 export refuses databases with virtual tables (entries_fts),
-// and leaving out submissions/blacklist keeps user data out of CI artifacts.
-const SNAPSHOT_TABLES = ["entries", "entry_stats", "entry_tags", "categories", "tags"];
+// and leaving out submissions/blacklist/orders/credentials/bot_chats keeps private data out of CI
+// artifacts. `settings` is whole-table (export can't filter rows); the snapshot reads only `site`.
+const SNAPSHOT_TABLES = [
+  "entries",
+  "entry_stats",
+  "entry_tags",
+  "categories",
+  "tags",
+  "settings",
+  "promotions",
+];
 
 const { values } = parseArgs({
   options: {

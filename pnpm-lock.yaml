@@ -410,6 +410,9 @@ importers:
       '@tgbox/telegram':
         specifier: workspace:*
         version: link:../telegram
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.5
     devDependencies:
       '@cloudflare/vitest-pool-workers':
         specifier: 'catalog:'

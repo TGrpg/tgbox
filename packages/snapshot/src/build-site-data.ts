@@ -1,7 +1,14 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { EntryKind, MemberPoint, PostView, SiteData } from "@tgbox/shared";
+import {
+  BannerContent,
+  EntryKind,
+  MemberPoint,
+  PostView,
+  SiteData,
+  SiteSettings,
+} from "@tgbox/shared";
 
 export type BuildSiteDataOptions = {
   /** Exported D1 database: a SQLite file, or a `.sql` dump as produced by `wrangler d1 export`. */
@@ -30,6 +37,15 @@ function int(value: unknown): number {
 
 function intOrNull(value: unknown): number | null {
   return value === null ? null : int(value);
+}
+
+function jsonOrNull(value: unknown): unknown {
+  if (typeof value !== "string") return null;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
 }
 
 function isoOrNull(ms: unknown): string | null {
@@ -64,6 +80,24 @@ export async function buildSiteData(options: BuildSiteDataOptions): Promise<Site
          ORDER BY e.listed_at DESC, e.username`,
       )
       .all();
+
+    const nowMs = now.getTime();
+    // Exports taken before migration 0005 have no settings/promotions tables.
+    const hasTable = (name: string) =>
+      db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(name) !==
+      undefined;
+    const hasPromotions = hasTable("promotions");
+
+    const pinned = new Set(
+      hasPromotions
+        ? db
+            .prepare(
+              "SELECT DISTINCT entry_username FROM promotions WHERE kind = 'pin' AND ends_at > ? AND entry_username IS NOT NULL",
+            )
+            .all(nowMs)
+            .map((row) => text(row.entry_username))
+        : [],
+    );
 
     const tagsByEntry = new Map<number, string[]>();
     for (const row of db
@@ -103,7 +137,7 @@ export async function buildSiteData(options: BuildSiteDataOptions): Promise<Site
         activityTier: intOrNull(row.activity_tier),
         tgCreatedAt: isoOrNull(row.tg_created_at),
         listedAt: new Date(int(row.listed_at)).toISOString(),
-        isPromoted: int(row.is_promoted) === 1,
+        isPromoted: int(row.is_promoted) === 1 || pinned.has(username),
       };
     });
 
@@ -124,6 +158,33 @@ export async function buildSiteData(options: BuildSiteDataOptions): Promise<Site
          FROM tags t ORDER BY t.slug`,
       )
       .all();
+
+    const promos = hasPromotions
+      ? db
+          .prepare(
+            "SELECT id, banner FROM promotions WHERE kind = 'banner' AND ends_at > ? ORDER BY starts_at, id",
+          )
+          .all(nowMs)
+          .flatMap((row) => {
+            const banner = BannerContent.safeParse(jsonOrNull(row.banner));
+            return banner.success
+              ? [{ id: String(int(row.id)), ...banner.data, sponsored: true }]
+              : [];
+          })
+      : [];
+
+    const siteRow = hasTable("settings")
+      ? db.prepare("SELECT value FROM settings WHERE key = 'site'").get()
+      : undefined;
+    const site = SiteSettings.safeParse(jsonOrNull(siteRow?.value ?? null));
+    const announcement =
+      site.success && site.data.announcement.enabled
+        ? {
+            zh: site.data.announcement.zh,
+            en: site.data.announcement.en,
+            href: site.data.announcement.href,
+          }
+        : null;
 
     const usernamesOf = (kind: EntryKind) =>
       entries.filter((e) => e.kind === kind).map((e) => e.username);
@@ -167,6 +228,8 @@ export async function buildSiteData(options: BuildSiteDataOptions): Promise<Site
         bot: usernamesOf("bot"),
         all: entries.map((e) => e.username),
       },
+      announcement,
+      promos,
     });
 
     function related(self: (typeof entries)[number], kind: EntryKind): string[] {

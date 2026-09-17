@@ -11,8 +11,36 @@ export {
   setEntryCategoryAndTags,
   setPromoted,
 } from "./entries.ts";
+export {
+  createCryptoPayInvoice,
+  parseCryptoPayUpdate,
+  verifyCryptoPaySignature,
+} from "./payments/cryptopay.ts";
+export { refundStars } from "./payments/stars.ts";
+export {
+  approveBannerOrder,
+  checkSlots,
+  createManualPromotion,
+  createOrder,
+  endPromotion,
+  extendPromotion,
+  markOrderPaid,
+  type PromotionContentError,
+  rejectOrder,
+  runPromotionMaintenance,
+  upsertProduct,
+} from "./promotions.ts";
 export { type MediaBucket, runRefresh } from "./refresh.ts";
 export { approveSubmissions, previewSubmission, rejectSubmissions } from "./review.ts";
+export {
+  getCredential,
+  getSettings,
+  hasCredential,
+  SettingsKeyMissingError,
+  type SettingsUpdate,
+  setCredential,
+  updateSettings,
+} from "./settings.ts";
 export {
   approveSubmission,
   listApprovedSubmission,

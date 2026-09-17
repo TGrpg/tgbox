@@ -157,4 +157,6 @@ export const devSiteData: SiteData = {
     bot: usernamesOf("bot"),
     all: entries.map((entry) => entry.username),
   },
+  announcement: null,
+  promos: [],
 };

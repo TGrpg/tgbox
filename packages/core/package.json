@@ -14,7 +14,8 @@
   "dependencies": {
     "@tgbox/db": "workspace:*",
     "@tgbox/shared": "workspace:*",
-    "@tgbox/telegram": "workspace:*"
+    "@tgbox/telegram": "workspace:*",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "catalog:",

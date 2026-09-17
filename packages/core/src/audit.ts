@@ -20,6 +20,18 @@ export const auditActions = [
   "tag.create",
   "tag.update",
   "tag.delete",
+  "settings.update",
+  "credential.set",
+  "product.upsert",
+  "order.create",
+  "order.paid",
+  "order.reject",
+  "order.refund",
+  "order.cleanup",
+  "promotion.start",
+  "promotion.end",
+  "promotion.extend",
+  "promotion.expire",
 ] as const;
 export type AuditAction = (typeof auditActions)[number];
 
