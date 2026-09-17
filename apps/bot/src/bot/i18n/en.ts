@@ -92,7 +92,8 @@ export const en: typeof zh = {
       "📣 Promotions\n\nPin: a listed entry is pinned to the top of the site's lists.\nHome banner: a promo card on the site's home page (reviewed).\n\nChoose a product:",
     unavailable:
       "Promotions can't be bought right now. Try again later or contact support (/support).",
-    product: (p: ProductLabel) => `${p.name} · ⭐${p.stars} / ${p.usdt} USDT`,
+    product: (p: ProductLabel) =>
+      `${p.name} · ${[p.stars === null ? "" : `⭐${p.stars}`, p.usdt === null ? "" : `${p.usdt} USDT`].filter(Boolean).join(" / ")}`,
     askTarget:
       "Send the channel, group or bot to pin (@username or t.me link). It must already be listed.",
     askTitle: "Send the banner title (1–20 characters):",
@@ -117,7 +118,7 @@ export const en: typeof zh = {
         `Order #${o.id}`,
         `Product: ${o.product}`,
         `Content: ${enTarget(o)}`,
-        `Price: ⭐${o.stars} or ${o.usdt} USDT`,
+        `Price: ${[o.stars === null ? "" : `⭐${o.stars}`, o.usdt === null ? "" : `${o.usdt} USDT`].filter(Boolean).join(" or ")}`,
       ].join("\n"),
     choosePayment: "Choose a payment method:",
     noPaymentMethod: "Online payment isn't available right now. Please contact support (/support).",

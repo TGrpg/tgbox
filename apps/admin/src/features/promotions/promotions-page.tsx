@@ -15,7 +15,7 @@ const tabLabels: Record<PromotionTab, string> = {
   orders: "订单",
   active: "投放中",
   new: "新建",
-  products: "价格",
+  products: "档位价格",
 };
 
 export function PromotionsPage({

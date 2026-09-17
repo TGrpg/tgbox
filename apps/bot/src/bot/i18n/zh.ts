@@ -14,7 +14,13 @@ export type SubmissionSummary = {
   submitterId: number;
 };
 
-export type ProductLabel = { name: string; days: number; stars: number; usdt: string };
+/** A price is null when its payment method is switched off, and then it isn't shown at all. */
+export type ProductLabel = {
+  name: string;
+  days: number;
+  stars: number | null;
+  usdt: string | null;
+};
 
 /** What a promotion shows: a pinned entry or a banner. */
 export type PromotionTarget = { username: string | null; bannerTitle: string | null };
@@ -22,8 +28,8 @@ export type PromotionTarget = { username: string | null; bannerTitle: string | n
 export type OrderSummary = PromotionTarget & {
   id: number;
   product: string;
-  stars: number;
-  usdt: string;
+  stars: number | null;
+  usdt: string | null;
 };
 
 export type BannerOrderSummary = {
@@ -139,7 +145,8 @@ export const zh = {
     intro:
       "📣 推广位\n\n置顶：已收录的条目在网站列表中置顶展示。\n首页横幅：网站首页的推广卡片（需审核）。\n\n请选择商品：",
     unavailable: "暂时无法购买推广，请稍后再试或联系客服（/support）。",
-    product: (p: ProductLabel) => `${p.name} · ⭐${p.stars} / ${p.usdt} USDT`,
+    product: (p: ProductLabel) =>
+      `${p.name} · ${[p.stars === null ? "" : `⭐${p.stars}`, p.usdt === null ? "" : `${p.usdt} USDT`].filter(Boolean).join(" / ")}`,
     askTarget: "请发送要置顶的频道、群组或机器人（@用户名或 t.me 链接），必须是已收录的条目。",
     askTitle: "请发送横幅标题（1–20 字）：",
     askSubtitle: "请发送横幅副标题（1–40 字）：",
@@ -163,7 +170,7 @@ export const zh = {
         `订单 #${o.id}`,
         `商品：${o.product}`,
         `内容：${zhTarget(o)}`,
-        `价格：⭐${o.stars} 或 ${o.usdt} USDT`,
+        `价格：${[o.stars === null ? "" : `⭐${o.stars}`, o.usdt === null ? "" : `${o.usdt} USDT`].filter(Boolean).join(" 或 ")}`,
       ].join("\n"),
     choosePayment: "请选择支付方式：",
     noPaymentMethod: "暂时无法在线支付，请联系客服（/support）。",

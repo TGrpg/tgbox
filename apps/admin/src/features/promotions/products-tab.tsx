@@ -57,7 +57,8 @@ export function ProductsTab() {
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
         <p className="text-muted-foreground text-sm">
-          改价只影响之后的订单。同一类型的名额取该类型商品中最大的「名额」。
+          机器人 /promote 里的推广档位就在这里配置：置顶和横幅各自的天数、Stars 价、USDT
+          价和名额。改价只影响之后的订单；同一类型的名额取该类型档位中最大的「名额」。
         </p>
         <Button className="ml-auto" size="sm" disabled={adding} onClick={() => setAdding(true)}>
           <PlusIcon aria-hidden />

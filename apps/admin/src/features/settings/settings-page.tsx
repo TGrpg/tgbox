@@ -475,7 +475,7 @@ function PaymentsSection({ initial, view }: { initial: PaymentSettings; view: Se
     <Section
       icon={CreditCardIcon}
       title="支付"
-      description="推广位的付款方式。Stars 由 Telegram 结算；自建 USDT 直接转入你自己的 TRC20 钱包，不经过任何第三方。"
+      description="推广位的付款方式。Stars 由 Telegram 结算；自建 USDT 直接转入你自己的 TRC20 钱包，不经过任何第三方。价格和档位在「推广 → 档位价格」里配置。"
       onSubmit={() => save.mutate({ key: "payments", value })}
       footer={
         <SaveButton dirty={dirty} pending={save.isPending} disabled={badAddress || badExpiry} />

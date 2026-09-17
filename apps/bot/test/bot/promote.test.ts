@@ -18,8 +18,11 @@ import {
   db,
   enableCryptoPay,
   type Harness,
+  setPaymentSettings,
   startHarness,
 } from "./harness.ts";
+
+const ADDRESS = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
 
 const DAY = 24 * 60 * 60 * 1000;
 const HOURLY = "0 * * * *";
@@ -97,6 +100,49 @@ const invoicePaid = (orderId: number, amount = "20") =>
       payload: `order:${orderId}`,
     },
   });
+
+describe("prices follow the enabled payment methods", () => {
+  /** The keyboard labels plus the message text of everything the bot said. */
+  const said = () =>
+    h
+      .calls("sendMessage")
+      .flatMap((call) => [
+        String(call.payload.text ?? ""),
+        JSON.stringify(call.payload.reply_markup ?? ""),
+      ])
+      .join("\n");
+
+  test("with Stars off, no Stars price is quoted anywhere in the flow", async () => {
+    // An operator who turned Stars off was still shown "⭐800" on every product button and in the
+    // order summary, quoting a price nobody could pay.
+    await setPaymentSettings({ starsEnabled: false, usdtSelfEnabled: true, usdtAddress: ADDRESS });
+    await h.message(buyer, "/promote");
+    expect(said()).not.toContain("⭐");
+    expect(said()).toContain("USDT");
+  });
+
+  test("with only Stars on, no USDT price is quoted", async () => {
+    await setPaymentSettings({ starsEnabled: true });
+    await h.message(buyer, "/promote");
+    expect(said()).toContain("⭐");
+    expect(said()).not.toContain("USDT");
+  });
+
+  test("both on quotes both", async () => {
+    await setPaymentSettings({ starsEnabled: true, usdtSelfEnabled: true, usdtAddress: ADDRESS });
+    await h.message(buyer, "/promote");
+    expect(said()).toContain("⭐");
+    expect(said()).toContain("USDT");
+  });
+
+  test("the order summary drops the price of a method turned off mid-purchase", async () => {
+    await setPaymentSettings({ starsEnabled: false, usdtSelfEnabled: true, usdtAddress: ADDRESS });
+    await h.message(buyer, "/promote");
+    await h.callback(buyer, "pp:1");
+    await h.message(buyer, "@pin_me");
+    expect(said()).not.toContain("⭐");
+  });
+});
 
 describe("buying a home banner", () => {
   const photo = (fileSize: number) => ({

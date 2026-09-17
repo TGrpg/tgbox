@@ -121,11 +121,13 @@ export function promote(app: App) {
     }
     const keyboard = new InlineKeyboard();
     for (const product of products) {
+      // Only quote a price the buyer can actually pay: an operator who turned Stars off should
+      // not have Stars prices advertised anywhere in the flow.
       const label = m.product({
         name: productName(locale, product),
         days: product.days,
-        stars: product.priceStars,
-        usdt: product.priceUsdt,
+        stars: methods.stars ? product.priceStars : null,
+        usdt: methods.usdtSelf || methods.cryptoPay ? product.priceUsdt : null,
       });
       keyboard.text(label, `pp:${product.id}`).row();
     }
@@ -333,8 +335,8 @@ export function promote(app: App) {
     const summary = m.order({
       id: order.id,
       product: productName(locale, product),
-      stars: product.priceStars,
-      usdt: product.priceUsdt,
+      stars: methods.stars ? product.priceStars : null,
+      usdt: methods.usdtSelf || methods.cryptoPay ? product.priceUsdt : null,
       ...orderTarget(order),
     });
     if (!(methods.stars || methods.cryptoPay || methods.usdtSelf)) {
