@@ -12,7 +12,7 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
 import { fill } from "@/lib/format.ts";
 import { itemListJsonLd } from "@/lib/json-ld.ts";
 import { relatedTags } from "@/lib/kind-listing.ts";
-import { MIN_INDEXED_TAG_ENTRIES, tagSeo } from "@/lib/seo.ts";
+import { MIN_INDEXED_LISTING_ENTRIES, tagSeo } from "@/lib/seo.ts";
 import { absoluteUrl } from "@/lib/site.ts";
 import {
   byMembers,
@@ -66,7 +66,7 @@ const jsonLd = [
   title={seo.title}
   description={description}
   keywords={seo.keywords}
-  noindex={entries.length < MIN_INDEXED_TAG_ENTRIES}
+  noindex={entries.length < MIN_INDEXED_LISTING_ENTRIES}
 >
   <JsonLd slot="head" data={jsonLd} />
   <div class="mx-auto max-w-7xl px-4 pt-5 sm:px-6 md:pt-8">

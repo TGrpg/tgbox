@@ -24,6 +24,7 @@ function entry(username: string, overrides: Partial<EntryView> = {}): EntryView 
     activityTier: null,
     tgCreatedAt: null,
     listedAt: daysAgo(60),
+    updatedAt: daysAgo(60),
     isPromoted: false,
     posts: [],
     memberHistory: [],

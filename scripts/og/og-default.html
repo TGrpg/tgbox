@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    html,
+    body {
+      width: 1200px;
+      height: 630px;
+    }
+    body {
+      font-family: "PingFang SC", "Helvetica Neue", Helvetica, "Noto Sans SC", sans-serif;
+      background: linear-gradient(135deg, #f5f8fb 0%, #e3f2fb 100%);
+      color: #0f1b2a;
+      position: relative;
+      overflow: hidden;
+    }
+    .glow {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(90px);
+      opacity: 0.55;
+    }
+    .g1 {
+      width: 520px;
+      height: 520px;
+      right: -140px;
+      top: -180px;
+      background: #0088cc33;
+    }
+    .g2 {
+      width: 420px;
+      height: 420px;
+      left: -160px;
+      bottom: -200px;
+      background: #0088cc26;
+    }
+    .wrap {
+      position: relative;
+      height: 100%;
+      padding: 78px 88px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+    .mark {
+      width: 104px;
+      height: 104px;
+    }
+    .name {
+      font-size: 78px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1;
+    }
+    h1 {
+      font-size: 54px;
+      font-weight: 700;
+      line-height: 1.28;
+      letter-spacing: -0.01em;
+      max-width: 960px;
+    }
+    h1 em {
+      font-style: normal;
+      color: #0088cc;
+    }
+    .sub {
+      margin-top: 18px;
+      font-size: 30px;
+      font-weight: 500;
+      color: #4a5a6e;
+      letter-spacing: 0.005em;
+    }
+    .pills {
+      display: flex;
+      gap: 14px;
+      margin-top: 34px;
+    }
+    .pill {
+      font-size: 26px;
+      font-weight: 600;
+      color: #0074ad;
+      background: #ffffffcc;
+      border: 1px solid #0088cc2e;
+      border-radius: 999px;
+      padding: 11px 26px;
+    }
+    .foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 28px;
+      color: #4a5a6e;
+    }
+    .foot b {
+      color: #0f1b2a;
+      font-weight: 700;
+    }
+    .bar {
+      height: 8px;
+      background: linear-gradient(90deg, #0088cc, #38b6f0 55%, #0088cc00);
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+    }
+    </style>
+  </head>
+  <body>
+    <div class="glow g1"></div>
+    <div class="glow g2"></div>
+    <div class="wrap">
+      <div class="brand">
+        <svg class="mark" viewBox="0 0 32 32">
+          <title>TGbox</title>
+          <rect width="32" height="32" rx="8" fill="#0088cc" />
+          <path
+            d="M7.4 15.3 23.1 9.2c.8-.3 1.5.2 1.2 1.4l-2.7 12.6c-.2.9-.7 1.1-1.5.7l-4.1-3-2 1.9c-.2.2-.4.4-.9.4l.3-4.2 7.6-6.9c.3-.3-.1-.5-.5-.2l-9.4 5.9-4-1.3c-.9-.3-.9-.9.3-1.2Z"
+            fill="#fff"
+          />
+        </svg>
+        <div class="name">TGbox</div>
+      </div>
+      <div>
+        <h1>发现优质的 <em>Telegram</em> 频道、群组和机器人</h1>
+        <div class="sub">Discover great Telegram channels, groups &amp; bots</div>
+        <div class="pills">
+          <span class="pill">频道 Channels</span><span class="pill">群组 Groups</span
+          ><span class="pill">机器人 Bots</span>
+        </div>
+      </div>
+      <div class="foot">
+        <span><b>tgbox.cc</b></span><span>@tgboxccbot</span>
+      </div>
+    </div>
+    <div class="bar"></div>
+  </body>
+</html>

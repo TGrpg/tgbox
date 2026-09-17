@@ -99,6 +99,48 @@ export function itemListJsonLd(input: {
   };
 }
 
+/**
+ * A guide article. `Article` rather than `HowTo`: Google retired HowTo rich results in 2023, and
+ * the guides are prose with sections, not a numbered procedure with tools and steps. The publisher
+ * Organization is written out in full because a guide page doesn't carry the home page's entity.
+ */
+export function articleJsonLd(input: {
+  siteUrl: string;
+  url: string;
+  headline: string;
+  description: string;
+  /** ISO 8601 */
+  datePublished: string;
+  /** ISO 8601 */
+  dateModified: string;
+  inLanguage: string;
+  organizationName: string;
+  logo: string;
+  keywords: string[];
+}): JsonLd {
+  const publisher = {
+    "@type": "Organization",
+    "@id": organizationId(input.siteUrl),
+    name: input.organizationName,
+    url: `${input.siteUrl}/`,
+    logo: input.logo,
+  };
+  return {
+    "@context": CONTEXT,
+    "@type": "Article",
+    headline: input.headline,
+    description: input.description,
+    url: input.url,
+    mainEntityOfPage: { "@type": "WebPage", "@id": input.url },
+    datePublished: input.datePublished,
+    dateModified: input.dateModified,
+    inLanguage: input.inLanguage,
+    author: publisher,
+    publisher,
+    ...(input.keywords.length > 0 ? { keywords: input.keywords.join(", ") } : {}),
+  };
+}
+
 export function faqJsonLd(items: { question: string; answer: string }[]): JsonLd {
   return {
     "@context": CONTEXT,

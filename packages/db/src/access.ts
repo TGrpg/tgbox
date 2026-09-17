@@ -45,6 +45,16 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // Telegram usernames are case-insensitive; store and look them up lowercased so the unique index holds.
 const canonical = (username: string) => username.toLowerCase();
 
+/**
+ * LIMIT/OFFSET for an admin list. D1 bills rows scanned, so every list query runs through this:
+ * at most 100 rows per page, whatever the caller asks for.
+ */
+export const pageOf = (page: number, pageSize: number) => {
+  const size = Math.max(1, Math.min(Math.trunc(pageSize) || 1, 100));
+  const index = Math.max(1, Math.trunc(page) || 1);
+  return { limit: size, offset: (index - 1) * size };
+};
+
 type RunResult = { meta: { rows_written: number } };
 export const written = (results: RunResult[]) =>
   results.reduce((sum, result) => sum + result.meta.rows_written, 0);

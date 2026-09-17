@@ -67,7 +67,7 @@
 ```mermaid
 flowchart LR
   U([访客和爬虫]) -->|静态 HTML，免费| WEB[tgbox-web<br/>静态资源]
-  U -->|头像、搜索索引| R2[(R2 媒体)]
+  U -->|头像，缓存一年| R2[(R2 媒体)]
   TG([Telegram]) -->|webhook| BOT[tgbox-bot<br/>grammY Worker]
   BOT -->|定时刷新| TME([t.me 公开页面])
   BOT --> D1[(D1)]
@@ -82,7 +82,7 @@ flowchart LR
 |---|---|
 | 仓库 | pnpm workspace + Turborepo、Biome、TypeScript |
 | 网站 | Astro 7（静态输出）、Tailwind CSS 4、Starwind UI、coss ui、Motion |
-| 搜索 | Pagefind，索引放在 R2 |
+| 搜索 | Pagefind，索引随网站一起发布 |
 | 机器人 | grammY + Cloudflare Workers（webhook + Cron Trigger） |
 | 后台 | TanStack Start + Router / Query / Table，Cloudflare Access 或 Telegram Mini App 登录 |
 | 数据 | Cloudflare D1 + Drizzle ORM；头像、消息和成员趋势存 R2 |
@@ -121,12 +121,15 @@ pnpm --filter @tgbox/admin dev         # 后台 → http://localhost:8789（本�
    pnpm exec wrangler r2 bucket create tgbox-media
    ```
    给 R2 桶绑定自定义域名（如 `media.example.com`）。
-2. **配置** `apps/bot/wrangler.jsonc` 和 `apps/admin/wrangler.jsonc` 的 `vars`（`SITE_URL`、`R2_PUBLIC_URL`、`BOT_USERNAME`、`ADMIN_IDS`、`ADMIN_CHAT_ID`、`GITHUB_REPO`），以及 `apps/web`、`apps/admin` 里 `routes` 的域名。
+2. **配置** `apps/bot/wrangler.jsonc` 和 `apps/admin/wrangler.jsonc` 的 `vars`（`SITE_URL`、`R2_PUBLIC_URL`、`BOT_USERNAME`、`GITHUB_REPO`），以及 `apps/web`、`apps/admin` 里 `routes` 的域名。`ADMIN_IDS` 和 `ADMIN_CHAT_ID` 是 Telegram 的 ID，不要写进仓库，用 `wrangler secret put` 设置。
 3. **写入密钥**
    ```bash
    pnpm exec wrangler secret put BOT_TOKEN              # @BotFather 给的 token
    pnpm exec wrangler secret put WEBHOOK_SECRET         # openssl rand -hex 32
    pnpm exec wrangler secret put GITHUB_DISPATCH_TOKEN  # 细粒度 PAT，Contents 读写
+   pnpm exec wrangler secret put ADMIN_IDS              # 逗号分隔的 Telegram 用户 ID
+   pnpm exec wrangler secret put ADMIN_CHAT_ID          # 兜底审核群 ID
+   pnpm exec wrangler secret put SETTINGS_KEY           # openssl rand -hex 32，加密后台填写的第三方 token
    ```
 4. **部署**：在 `apps/bot` 和 `apps/admin` 下执行 `pnpm exec wrangler deploy`（后台先 `pnpm build`），然后设置 webhook：
    ```bash
@@ -156,8 +159,9 @@ pnpm --filter @tgbox/admin dev         # 后台 → http://localhost:8789（本�
 - [x] 管理后台（Cloudflare Access + Telegram Mini App 登录）
 - [x] 后台设置（机器人 / 网站 / 支付）、机器人内自助购买推广位（Telegram Stars 或 USDT），到期自动下架
 - [x] 涨粉排行榜页面、每日频道日报
-- [ ] 推广点击统计、横幅图片上传
-- [ ] AI 翻译简介、语义搜索
+- [x] 推广点击统计、横幅图片上传、AI 翻译简介
+- [x] 指南文章、涨粉排行榜、面向搜索的结构化数据
+- [ ] 语义搜索、排行榜历史归档
 
 ## 参与贡献
 

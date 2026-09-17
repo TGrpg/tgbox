@@ -193,9 +193,10 @@ describe("buying a home banner", () => {
       document: { file_id: "png", file_unique_id: "p", mime_type: "image/png", file_size: 50_000 },
     });
     const orderId = Number(String(h.lastButtons()[0]?.callback_data).slice(3));
-    expect((await env.MEDIA.get(`promos/${orderId}.jpg`))?.httpMetadata?.contentType).toBe(
-      "image/png",
-    );
+    const stored = await env.MEDIA.get(`promos/${orderId}.jpg`);
+    expect(stored?.httpMetadata?.contentType).toBe("image/png");
+    // Browsers load banners straight from R2, so the object has to be cacheable.
+    expect(stored?.httpMetadata?.cacheControl).toBe("public, max-age=86400");
   });
 
   test("a failed download leaves a working banner without an image", async () => {

@@ -200,7 +200,15 @@ describe("entry changes", () => {
     const entry = await getEntryByUsername(db, "stale_channel");
     expect(entry).toMatchObject({ title: "Telegram News" });
     expect(entry?.avatarVersion).not.toBeNull();
-    expect(await media.head("avatars/stale_channel.jpg")).not.toBeNull();
+    // Cache-busted by `?v=<avatarVersion>` on the site, so browsers may keep it forever: without
+    // this header every avatar view is an R2 read instead of a CDN hit.
+    expect((await media.head("avatars/stale_channel.jpg"))?.httpMetadata?.cacheControl).toBe(
+      "public, max-age=31536000, immutable",
+    );
+    // Posts are downloaded by the build from the public R2 URL; they must not be cached long.
+    expect(
+      (await media.head("posts/stale_channel.json"))?.httpMetadata?.cacheControl,
+    ).toBeUndefined();
     const posts = PostView.array().parse(
       await (await media.get("posts/stale_channel.json"))?.json(),
     );
@@ -341,6 +349,30 @@ describe("build and blacklist", () => {
     expect(await dispatchStaleBuild(at)).toBe(true);
     expect(dispatches).toHaveLength(2);
     expect(await getSiteState(db, "build_dispatched_at")).toBe(String(NOW + 31 * MINUTE));
+  });
+
+  test("the net retries at once when no dispatch was ever recorded", async () => {
+    const { ctx, dispatches, github } = await setup();
+    let clock = NOW;
+    const at = { ...ctx, now: () => clock };
+    // A proxy error page, not JSON: the refusal is logged with the raw body.
+    github.status = 502;
+    github.body = "<html>bad gateway</html>";
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await markDirtyAndDispatch(at);
+    expect(dispatches).toHaveLength(1);
+    expect(logged).toHaveBeenCalledWith("github dispatch failed", 502, "<html>bad gateway</html>");
+    expect(await getSiteState(db, "build_dispatched_at")).toBeUndefined();
+
+    // Dirty with nothing ever dispatched: the net must not wait out the stale window.
+    github.status = 204;
+    github.body = "";
+    clock = NOW + MINUTE;
+    expect(await dispatchStaleBuild(at)).toBe(true);
+    expect(dispatches).toHaveLength(2);
+    expect(await getSiteState(db, "build_dispatched_at")).toBe(String(NOW + MINUTE));
+    logged.mockRestore();
   });
 
   test("blacklist add/remove are audited only when they change something", async () => {

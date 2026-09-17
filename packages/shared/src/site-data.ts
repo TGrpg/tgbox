@@ -59,6 +59,11 @@ export const EntryView = z.object({
   tgCreatedAt: z.string().nullable(),
   /** ISO 8601 */
   listedAt: z.string(),
+  /**
+   * ISO 8601; last time the entry's own content changed (title, description, avatar, …). Stat
+   * refreshes don't touch it, which is what makes it usable as a sitemap `<lastmod>`.
+   */
+  updatedAt: z.string(),
   isPromoted: z.boolean(),
   posts: z.array(PostView),
   memberHistory: z.array(MemberPoint),

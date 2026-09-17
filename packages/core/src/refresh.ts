@@ -336,7 +336,12 @@ async function storeAvatar(io: RefreshIo, username: string, url: string, result:
   } catch {
     return false;
   }
-  await io.media.put(`avatars/${username}.jpg`, body, { httpMetadata: { contentType } });
+  // Immutable is only safe because the site never links this key directly: the snapshot builds
+  // `avatars/<username>.jpg?v=<avatarVersion>`, so a new avatar changes the URL browsers request.
+  // Without the cache header every avatar view would be an R2 Class B read instead of a CDN hit.
+  await io.media.put(`avatars/${username}.jpg`, body, {
+    httpMetadata: { contentType, cacheControl: "public, max-age=31536000, immutable" },
+  });
   result.subrequests++;
   result.r2Writes++;
   return true;
@@ -366,6 +371,9 @@ async function storePosts(
     stored?.fullHash !== fullHash &&
     (manual || !Number.isFinite(writtenAt) || now - writtenAt >= POSTS_VIEWS_REFRESH_MS);
   if (!contentChanged && !viewsStale) return;
+  // No `cacheControl` on purpose: `posts/` and `history/` are read from the public R2 URL by the
+  // GitHub Actions build (`scripts/build-site.ts --media-base-url`), and the keys are not
+  // version-busted, so a long CDN cache would publish a site built from stale data.
   await media.put(key, json, {
     httpMetadata: { contentType: "application/json" },
     customMetadata: { hash, fullHash, writtenAt: String(now) },

@@ -126,7 +126,7 @@ describe("loadSettingsView", () => {
   test("reports secrets and the Crypto Pay token as booleans, never their values", async () => {
     core.getSettings.mockResolvedValue(settingsDefaults);
     core.hasCredential.mockResolvedValue(true);
-    db.listBotChats.mockResolvedValue([]);
+    db.listBotChats.mockResolvedValue({ rows: [], total: 0 });
 
     const view = await loadSettingsView(ctx(), env);
 
@@ -155,14 +155,17 @@ describe("loadSettingsView", () => {
       username: null,
       updatedAt: 1,
     });
-    db.listBotChats.mockResolvedValue([
-      chat("-1", "supergroup", "administrator"),
-      chat("-2", "group", "member"),
-      chat("-3", "group", "left"),
-      chat("-4", "channel", "administrator"),
-      chat("-5", "channel", "member"),
-      chat("6", "private", "member"),
-    ]);
+    db.listBotChats.mockResolvedValue({
+      rows: [
+        chat("-1", "supergroup", "administrator"),
+        chat("-2", "group", "member"),
+        chat("-3", "group", "left"),
+        chat("-4", "channel", "administrator"),
+        chat("-5", "channel", "member"),
+        chat("6", "private", "member"),
+      ],
+      total: 6,
+    });
 
     const view = await loadSettingsView(ctx(), { ...env, SETTINGS_KEY: "" });
 

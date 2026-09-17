@@ -1,6 +1,6 @@
 import type { EntryKind, EntrySort, EntryStatus, Liveness, SubmissionStatus } from "@tgbox/shared";
 import { and, asc, count, desc, eq, gte, inArray, lt, or, type SQL, sql } from "drizzle-orm";
-import type { Db } from "./access.ts";
+import { type Db, pageOf } from "./access.ts";
 import { auditLog, entries, entryStats, siteState, submissions } from "./schema.ts";
 
 // Admin reads run on live D1 and are billed by rows scanned. Traffic is a handful of admins, so
@@ -104,12 +104,6 @@ export type EntriesAdminQuery = {
 };
 
 const likePattern = (q: string) => `%${q.replace(/[\\%_]/g, "\\$&")}%`;
-
-const pageOf = (page: number, pageSize: number) => {
-  const size = Math.max(1, Math.min(Math.trunc(pageSize) || 1, 100));
-  const index = Math.max(1, Math.trunc(page) || 1);
-  return { limit: size, offset: (index - 1) * size };
-};
 
 export async function listEntriesAdmin(db: Db, query: EntriesAdminQuery) {
   const conditions: (SQL | undefined)[] = [

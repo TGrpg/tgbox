@@ -1,6 +1,6 @@
 import type { SettingsKey } from "@tgbox/shared";
-import { desc, eq, sql } from "drizzle-orm";
-import type { Db } from "./access.ts";
+import { count, desc, eq, sql } from "drizzle-orm";
+import { type Db, pageOf } from "./access.ts";
 import { botChats, credentials, settings } from "./schema.ts";
 
 export type SettingsRow = typeof settings.$inferSelect;
@@ -76,7 +76,15 @@ export async function upsertBotChat(db: Db, chat: BotChat) {
   return { rowsWritten: result.meta.rows_written };
 }
 
-/** Most recently changed first. */
-export function listBotChats(db: Db) {
-  return db.select().from(botChats).orderBy(desc(botChats.updatedAt));
+/**
+ * Most recently changed first, one page at a time: the bot can be added to any number of chats
+ * and D1 bills rows scanned, so the settings pickers read a bounded window, not the whole table.
+ */
+export async function listBotChats(db: Db, query: { page: number; pageSize?: number }) {
+  const { limit, offset } = pageOf(query.page, query.pageSize ?? 100);
+  const [rows, totals] = await db.batch([
+    db.select().from(botChats).orderBy(desc(botChats.updatedAt)).limit(limit).offset(offset),
+    db.select({ count: count() }).from(botChats),
+  ]);
+  return { rows, total: totals[0]?.count ?? 0 };
 }

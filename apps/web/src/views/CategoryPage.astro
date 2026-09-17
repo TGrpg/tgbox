@@ -14,7 +14,7 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
 import { fill } from "@/lib/format.ts";
 import { itemListJsonLd } from "@/lib/json-ld.ts";
 import { categoryListingBase, type ListingSort, sortEntries } from "@/lib/kind-listing.ts";
-import { categorySeo } from "@/lib/seo.ts";
+import { categorySeo, MIN_INDEXED_LISTING_ENTRIES } from "@/lib/seo.ts";
 import { absoluteUrl } from "@/lib/site.ts";
 import { getSiteData, localName, PAGE_SIZE, pageHref, pageSlice } from "@/lib/site-data.ts";
 
@@ -66,13 +66,16 @@ const jsonLd = [
 ];
 ---
 
-{/* The "latest" order duplicates the members order, so only the latter is indexed. */}
+{/*
+  The "latest" order duplicates the members order, so only the latter is indexed, and a category
+  holding one or two entries says nothing the detail pages it links to don't already say.
+*/}
 <BaseLayout
   locale={locale}
   title={title}
   description={description}
   keywords={seo.keywords}
-  noindex={sort === "latest"}
+  noindex={sort === "latest" || entries.length < MIN_INDEXED_LISTING_ENTRIES}
 >
   <JsonLd slot="head" data={jsonLd} />
   <KindListingShell locale={locale} kind={category.kind} current={category.slug}>

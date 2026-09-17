@@ -1,0 +1,242 @@
+---
+import { render } from "astro:content";
+import { type Locale, t } from "@tgbox/shared";
+import Breadcrumbs from "@/components/Breadcrumbs.astro";
+import JsonLd from "@/components/layout/JsonLd.astro";
+import { htmlLang, localizePath } from "@/i18n/locale.ts";
+import { ui } from "@/i18n/ui.ts";
+import { seoUi } from "@/i18n/ui-seo.ts";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { formatDate } from "@/lib/format.ts";
+import { GUIDES_PATH, type Guide, guidePath, listGuides, tableOfContents } from "@/lib/guides.ts";
+import { articleJsonLd, faqJsonLd } from "@/lib/json-ld.ts";
+import { keywords } from "@/lib/seo.ts";
+import { absoluteUrl, siteUrl } from "@/lib/site.ts";
+
+interface Props {
+  locale: Locale;
+  guide: Guide;
+}
+const { locale, guide } = Astro.props;
+const strings = ui(locale);
+const { Content, headings } = await render(guide);
+const { title, description, publishedAt, updatedAt, faq } = guide.data;
+// The FAQ section is rendered by this component, so it isn't among the markdown headings.
+const toc = [
+  ...tableOfContents(headings),
+  ...(faq && faq.length > 0 ? [{ slug: "faq", text: seoUi(locale).faqHeading, children: [] }] : []),
+];
+const url = absoluteUrl(localizePath(guidePath(guide.data.slug), locale));
+const others = (await listGuides(locale)).filter((item) => item.data.slug !== guide.data.slug);
+
+// Where a reader should go next: the directory pages the article actually talks about.
+const next = [
+  { href: "/channel/", label: t(locale, "site.channels") },
+  { href: "/group/", label: t(locale, "site.groups") },
+  { href: "/bot/", label: t(locale, "site.bots") },
+  { href: "/rank/", label: strings.nav.rank },
+  { href: "/random/", label: t(locale, "site.random") },
+  { href: "/enroll/", label: strings.footer.enroll },
+];
+
+// Google retired FAQ rich results in 2026; the markup is kept for answer engines (as on /about/).
+const jsonLd = [
+  articleJsonLd({
+    siteUrl,
+    url,
+    headline: title,
+    description,
+    datePublished: publishedAt.toISOString(),
+    dateModified: updatedAt.toISOString(),
+    inLanguage: htmlLang[locale],
+    organizationName: t(locale, "site.title"),
+    logo: absoluteUrl("/icons/icon-512.png"),
+    keywords: guide.data.keywords,
+  }),
+  ...(faq && faq.length > 0
+    ? [faqJsonLd(faq.map((item) => ({ question: item.q, answer: item.a })))]
+    : []),
+];
+---
+
+<BaseLayout
+  locale={locale}
+  title={title}
+  description={description}
+  keywords={keywords(guide.data.keywords, seoUi(locale).keywords.base)}
+  type="article"
+>
+  <JsonLd slot="head" data={jsonLd} />
+  <div class="mx-auto max-w-7xl px-4 pt-5 pb-20 sm:px-6 md:pt-8">
+    <Breadcrumbs
+      locale={locale}
+      items={[
+          { label: t(locale, "site.home"), href: localizePath("/", locale) },
+          { label: strings.page.guides, href: localizePath(GUIDES_PATH, locale) },
+          { label: title },
+        ]}
+    />
+    <div class="mt-6 gap-10 lg:grid lg:grid-cols-[minmax(0,1fr)_16rem] lg:items-start">
+      <div class="min-w-0">
+        <header>
+          <p class="font-mono text-xs tracking-[0.2em] text-brand uppercase">
+            {strings.guides.eyebrow}
+          </p>
+          <h1
+            class="mt-3 max-w-3xl text-[1.9rem] leading-tight font-bold tracking-tight text-balance text-primary-accent sm:text-[2.35rem]"
+          >
+            {title}
+          </h1>
+          <p
+            class="mt-4 max-w-2xl text-base leading-relaxed text-pretty text-muted-foreground sm:text-lg"
+          >
+            {description}
+          </p>
+          <p
+            class="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-xs text-muted-foreground"
+          >
+            <span>{strings.guides.published}</span>
+            <time datetime={publishedAt.toISOString()}>
+              {formatDate(publishedAt.toISOString(), locale)}
+            </time>
+            <span aria-hidden="true">·</span>
+            <span>{strings.page.updated}</span>
+            <time datetime={updatedAt.toISOString()}>
+              {formatDate(updatedAt.toISOString(), locale)}
+            </time>
+          </p>
+        </header>
+
+        {toc.length > 0 && (
+            <nav
+              aria-label={strings.guides.toc}
+              data-guide-toc
+              class="mt-8 rounded-2xl border border-border bg-card p-5 shadow-card lg:hidden"
+            >
+              <h2 class="mb-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                {strings.guides.toc}
+              </h2>
+              <ol class="space-y-2 text-sm">
+                {toc.map((item) => (
+                  <li>
+                    <a href={`#${item.slug}`} class="transition-colors hover:text-primary">
+                      {item.text}
+                    </a>
+                    {item.children.length > 0 && (
+                      <ul class="mt-1.5 space-y-1.5 pl-4 text-[0.825rem] text-muted-foreground">
+                        {item.children.map((child) => (
+                          <li>
+                            <a href={`#${child.slug}`} class="transition-colors hover:text-primary">
+                              {child.text}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            </nav>
+          )}
+
+        <article data-reveal class="prose-tg mt-10 max-w-none">
+          <Content />
+
+          {faq && faq.length > 0 && (
+              <>
+                <h2 id="faq">{seoUi(locale).faqHeading}</h2>
+                {faq.map((item) => (
+                  <>
+                    <h3>{item.q}</h3>
+                    <p>{item.a}</p>
+                  </>
+                ))}
+              </>
+            )}
+        </article>
+
+        <section
+          data-guide-next
+          class="mt-14 rounded-2xl border border-border bg-card p-6 shadow-card"
+        >
+          <h2 class="text-base font-semibold tracking-tight">{strings.guides.nextHeading}</h2>
+          <p class="mt-1 text-sm text-muted-foreground">{strings.guides.nextLead}</p>
+          <ul class="mt-4 flex flex-wrap gap-2">
+            {next.map((link) => (
+              <li>
+                <a
+                  href={localizePath(link.href, locale)}
+                  data-press
+                  class="inline-flex h-9 items-center rounded-full border border-border bg-background px-3.5 text-sm transition-colors outline-none hover:border-primary/40 hover:text-primary-accent focus-visible:ring-3 focus-visible:ring-outline/40"
+                >
+                  {link.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+          {others.length > 0 && (
+              <>
+                <h3 class="mt-6 text-sm font-semibold">{strings.guides.more}</h3>
+                <ul class="mt-2 space-y-1.5 text-sm">
+                  {others.map((item) => (
+                    <li>
+                      <a
+                        href={localizePath(guidePath(item.data.slug), locale)}
+                        class="text-primary underline decoration-primary/30 underline-offset-4 transition-colors hover:decoration-primary"
+                      >
+                        {item.data.title}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          <p class="mt-6 text-sm">
+            <a
+              href={localizePath(GUIDES_PATH, locale)}
+              class="text-primary underline decoration-primary/30 underline-offset-4 transition-colors hover:decoration-primary"
+            >
+              {strings.guides.index}
+            </a>
+          </p>
+        </section>
+      </div>
+
+      {toc.length > 0 && (
+          <aside class="hidden lg:sticky lg:top-24 lg:block" data-pagefind-ignore>
+            <nav aria-label={strings.guides.toc}>
+              <h2 class="mb-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                {strings.guides.toc}
+              </h2>
+              <ol class="space-y-2 border-l border-border pl-4 text-sm">
+                {toc.map((item) => (
+                  <li>
+                    <a
+                      href={`#${item.slug}`}
+                      class="text-muted-foreground transition-colors hover:text-primary"
+                    >
+                      {item.text}
+                    </a>
+                    {item.children.length > 0 && (
+                      <ul class="mt-1.5 space-y-1.5 pl-3 text-[0.8rem]">
+                        {item.children.map((child) => (
+                          <li>
+                            <a
+                              href={`#${child.slug}`}
+                              class="text-muted-foreground transition-colors hover:text-primary"
+                            >
+                              {child.text}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            </nav>
+          </aside>
+        )}
+    </div>
+  </div>
+</BaseLayout>

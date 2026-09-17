@@ -10,6 +10,7 @@ export const zh = {
     random: "随机漂流瓶",
     submit: "提交收录",
     notFound: "页面不存在",
+    source: "开源代码",
   },
   bot: {
     welcome: "欢迎使用 TGbox收录机器人。",

@@ -1,5 +1,5 @@
 import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
-import type { Db } from "./access.ts";
+import { type Db, pageOf } from "./access.ts";
 import { entries, entryTags, hiddenPosts } from "./schema.ts";
 
 /** Tag ids per entry for one admin list page (entries without tags are absent). */
@@ -68,8 +68,7 @@ export async function setPostHidden(
 
 /** Newest first, with the entry's username for the admin table. */
 export async function listHiddenPosts(db: Db, query: { page: number; pageSize: number }) {
-  const size = Math.max(1, Math.min(Math.trunc(query.pageSize) || 1, 100));
-  const offset = (Math.max(1, Math.trunc(query.page) || 1) - 1) * size;
+  const { limit, offset } = pageOf(query.page, query.pageSize);
   const [rows, totals] = await db.batch([
     db
       .select({
@@ -81,7 +80,7 @@ export async function listHiddenPosts(db: Db, query: { page: number; pageSize: n
       .from(hiddenPosts)
       .leftJoin(entries, eq(entries.id, hiddenPosts.entryId))
       .orderBy(desc(hiddenPosts.createdAt), desc(hiddenPosts.postId))
-      .limit(size)
+      .limit(limit)
       .offset(offset),
     db.select({ count: count() }).from(hiddenPosts),
   ]);

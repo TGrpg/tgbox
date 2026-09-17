@@ -82,7 +82,7 @@ describe("settings-driven bot", () => {
     await h.update(memberUpdate({ id: owner.id, type: "private", first_name: "Owner" }, "kicked"));
     await h.update(memberUpdate(group, "administrator"));
 
-    const chats = await listBotChats(db);
+    const { rows: chats } = await listBotChats(db, { page: 1 });
     expect(chats.map(({ updatedAt: _t, ...chat }) => chat)).toEqual(
       expect.arrayContaining([
         {

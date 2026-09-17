@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BanIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { BanIcon, ChevronLeftIcon, ChevronRightIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { Badge } from "@/components/coss/ui/badge.tsx";
 import { Button } from "@/components/coss/ui/button.tsx";
 import { Card } from "@/components/coss/ui/card.tsx";
@@ -26,6 +26,8 @@ import { toastManager } from "@/components/coss/ui/toast.tsx";
 import {
   $addBlacklist,
   $removeBlacklist,
+  BLACKLIST_PAGE_SIZE,
+  type BlacklistPageData,
   type BlacklistRow,
   blacklistQueryOptions,
 } from "@/functions/blacklist.ts";
@@ -46,9 +48,18 @@ const rowKey = (row: Pick<BlacklistRow, "type" | "value">) => `${row.type}:${row
 
 export function BlacklistPage() {
   const queryClient = useQueryClient();
-  const list = useQuery(blacklistQueryOptions());
-  const { queryKey } = blacklistQueryOptions();
+  const [page, setPage] = useState(1);
+  const list = useQuery(blacklistQueryOptions(page));
+  const { queryKey } = blacklistQueryOptions(page);
   const settle = () => invalidate(queryClient, "blacklist", "audit", "dashboardActivity");
+
+  const total = list.data?.total ?? 0;
+  const pages = Math.max(1, Math.ceil(total / BLACKLIST_PAGE_SIZE));
+  // Removing the last row of the last page would otherwise strand the admin on an empty page.
+  // Only once the page has loaded: while a page is in flight `total` is 0 and would reset paging.
+  useEffect(() => {
+    if (list.data && page > pages) setPage(pages);
+  }, [list.data, page, pages]);
 
   const add = useMutation({
     mutationFn: (data: { type: BlacklistType; value: string; reason: string }) =>
@@ -76,8 +87,13 @@ export function BlacklistPage() {
     onMutate: async (row) => {
       await queryClient.cancelQueries({ queryKey });
       const previous = queryClient.getQueryData(queryKey);
-      queryClient.setQueryData(queryKey, (old: BlacklistRow[] | undefined) =>
-        old?.filter((item) => rowKey(item) !== rowKey(row)),
+      queryClient.setQueryData(
+        queryKey,
+        (old: BlacklistPageData | undefined) =>
+          old && {
+            rows: old.rows.filter((item) => rowKey(item) !== rowKey(row)),
+            total: Math.max(0, old.total - 1),
+          },
       );
       return { previous };
     },
@@ -100,7 +116,7 @@ export function BlacklistPage() {
         <Skeleton className="h-64 rounded-2xl" />
       ) : list.isError ? (
         <p className="text-destructive-foreground text-sm">加载失败：{list.error.message}</p>
-      ) : list.data.length === 0 ? (
+      ) : list.data.rows.length === 0 ? (
         <Card className="items-center gap-2 p-10 text-center text-muted-foreground text-sm">
           <BanIcon className="size-6" aria-hidden />
           黑名单为空
@@ -120,7 +136,7 @@ export function BlacklistPage() {
               </TableHeader>
               <TableBody>
                 <AnimatePresence initial={false}>
-                  {list.data.map((row) => (
+                  {list.data.rows.map((row) => (
                     <motion.tr
                       key={rowKey(row)}
                       layout="position"
@@ -155,7 +171,7 @@ export function BlacklistPage() {
           </Card>
           <div className="flex flex-col gap-2 md:hidden">
             <AnimatePresence initial={false}>
-              {list.data.map((row) => (
+              {list.data.rows.map((row) => (
                 <motion.div
                   key={rowKey(row)}
                   layout="position"
@@ -188,6 +204,34 @@ export function BlacklistPage() {
                 </motion.div>
               ))}
             </AnimatePresence>
+          </div>
+          <div className="flex items-center justify-between text-muted-foreground text-sm">
+            <span>共 {total.toLocaleString("zh-CN")} 条</span>
+            {pages > 1 && (
+              <div className="flex items-center gap-2">
+                <Button
+                  size="icon-sm"
+                  variant="outline"
+                  aria-label="上一页"
+                  disabled={page <= 1}
+                  onClick={() => setPage(page - 1)}
+                >
+                  <ChevronLeftIcon />
+                </Button>
+                <span className="tabular-nums">
+                  {page} / {pages}
+                </span>
+                <Button
+                  size="icon-sm"
+                  variant="outline"
+                  aria-label="下一页"
+                  disabled={page >= pages}
+                  onClick={() => setPage(page + 1)}
+                >
+                  <ChevronRightIcon />
+                </Button>
+              </div>
+            )}
           </div>
         </>
       )}

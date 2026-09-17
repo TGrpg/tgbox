@@ -1,3 +1,4 @@
+import BookIcon from "@tabler/icons/outline/book.svg";
 import HomeIcon from "@tabler/icons/outline/home.svg";
 import InfoIcon from "@tabler/icons/outline/info-circle.svg";
 import BotIcon from "@tabler/icons/outline/robot.svg";
@@ -20,6 +21,7 @@ export function navItems(locale: Locale, path: string) {
     { href: "/group/", label: t(locale, "site.groups"), icon: GroupIcon, secondary: false },
     { href: "/bot/", label: t(locale, "site.bots"), icon: BotIcon, secondary: false },
     { href: "/rank/", label: ui(locale).nav.rank, icon: TrophyIcon, secondary: false },
+    { href: "/guides/", label: ui(locale).nav.guides, icon: BookIcon, secondary: true },
     { href: "/about/", label: ui(locale).nav.about, icon: InfoIcon, secondary: true },
   ].map((item) => ({
     ...item,

@@ -47,6 +47,11 @@ const zh = {
     description:
       "电报频道排名：按周涨粉、月涨粉、最新收录和活跃度排列的 Telegram 频道、群组和机器人排行榜，数据随站点定期自动更新。",
   },
+  guides: {
+    title: "Telegram 使用指南 · 频道怎么找、怎么运营",
+    description:
+      "TGbox 指南：怎么找到优质的 Telegram 频道、频道群组机器人到底有什么区别、怎么让自己的电报频道被更多人发现，依据 Telegram 官方限制和本站收录数据写成。",
+  },
   about: {
     title: "关于 TGbox · 开源的 Telegram 导航站",
     description:
@@ -73,6 +78,7 @@ const zh = {
       bot: ["电报机器人索引", "tg机器人", "telegram bot", "电报机器人大全"],
     } satisfies Record<EntryKind, string[]>,
     rank: ["电报频道排名", "电报频道排行榜", "telegram频道排名", "电报涨粉排行"],
+    guides: ["telegram 教程", "电报频道怎么找", "电报频道怎么运营", "telegram 频道群组区别"],
     /** "科技频道" / "Tech channels" — how a category and a kind read as one search term. */
     categoryKind: "{category}{kind}",
   },
@@ -146,6 +152,11 @@ const en: typeof zh = {
     description:
       "Telegram channels, groups and bots ranked by weekly and monthly growth, newest listings and activity level — refreshed automatically with the rest of the directory.",
   },
+  guides: {
+    title: "Telegram Guides — Finding, Comparing and Growing Channels",
+    description:
+      "TGbox guides: how to find good Telegram channels, what actually separates channels, groups and bots, and how to get your own channel discovered — based on Telegram's documented limits and this directory's data.",
+  },
   about: {
     title: "About TGbox — Open-source Telegram Directory",
     description:
@@ -185,6 +196,12 @@ const en: typeof zh = {
       "top telegram channels",
       "fastest growing telegram channels",
       "telegram channel ranking",
+    ],
+    guides: [
+      "telegram guide",
+      "how to find telegram channels",
+      "channel vs group vs bot",
+      "how to grow a telegram channel",
     ],
     categoryKind: "{category} {kind}",
   },

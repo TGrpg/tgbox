@@ -59,6 +59,9 @@ const paidPromo = {
   sponsored: true as const,
 };
 const repoUrl = "https://github.com/TGrpg/tgbox";
+// techdaily's own content was last edited well after it was listed, so its sitemap lastmod
+// has to differ from both its listing date and the snapshot's build time.
+const techdailyUpdatedAt = "2026-08-28T00:00:00.000Z";
 
 // devnotes has posts in R2, but the operator turned them off for that entry.
 const hiddenPosts = [{ id: 7, date: "2026-08-29T12:00:00.000Z", text: "被隐藏的消息", views: 9 }];
@@ -106,6 +109,9 @@ beforeAll(async () => {
   writeFileSync(path.join(mediaDir, "posts/devnotes.json"), JSON.stringify(hiddenPosts));
   const db = new DatabaseSync(dbPath);
   db.exec("UPDATE entries SET hide_posts = 1 WHERE username = 'devnotes'");
+  db.exec(
+    `UPDATE entries SET updated_at = ${Date.parse(techdailyUpdatedAt)} WHERE username = 'techdaily'`,
+  );
   db.close();
   const data = await buildSiteData({
     dbPath,
@@ -638,5 +644,190 @@ describe("site build from snapshot data", () => {
     expect(channelsZh).not.toContain("/detail/devchat/");
     const channelsEn = readFileSync(path.join(client, "sitemap-channel-en.xml"), "utf8");
     expect(channelsEn).toContain(`<loc>${siteUrl}/en/detail/techdaily/</loc>`);
+  });
+
+  test("guide articles render in both locales with dates, a table of contents and internal links", () => {
+    for (const [route, heading, tocLabel, next] of [
+      ["guides/find-telegram-channels", "怎么找到优质的 Telegram 频道", "本文目录", "/channel/"],
+      [
+        "en/guides/find-telegram-channels",
+        "How to find good Telegram channels",
+        "On this page",
+        "/en/channel/",
+      ],
+    ] as const) {
+      const page = html(route);
+      expect(page, route).toMatch(new RegExp(`<h1[^>]*>\\s*${heading}`));
+      expect(page, route).toContain(tocLabel);
+      // Published and updated dates are machine-readable and differ, as the frontmatter says.
+      expect(page, route).toContain('<time datetime="2026-09-15T00:00:00.000Z">');
+      expect(page, route).toContain('<time datetime="2026-09-17T00:00:00.000Z">');
+      // Every markdown h2 has an id and a matching entry in the table of contents.
+      const ids = [...page.matchAll(/<h2 id="([^"]+)"/g)].map((match) => match[1] ?? "");
+      expect(ids.length, route).toBeGreaterThanOrEqual(5);
+      for (const id of ids) expect(page, `${route} → #${id}`).toContain(`href="#${id}"`);
+      // The point of the section: links back into the directory.
+      expect(page, route).toContain(`href="${next}"`);
+      expect(page, route).toContain("data-guide-next");
+    }
+    // Inside the prose the zh copy links only zh pages; the language switch in the header is
+    // the sole route across locales.
+    const zh = html("guides/find-telegram-channels");
+    const prose = zh.split('class="prose-tg')[1]?.split("</article>")[0] ?? "";
+    expect(prose).toContain('href="/guides/channels-groups-bots/"');
+    expect(prose).not.toContain('href="/en/');
+    const en = html("en/guides/find-telegram-channels");
+    const enProse = en.split('class="prose-tg')[1]?.split("</article>")[0] ?? "";
+    expect(enProse).toContain('href="/en/guides/channels-groups-bots/"');
+  });
+
+  test("the guides index lists every guide for its locale, newest first", () => {
+    for (const [route, first, last] of [
+      ["guides", "find-telegram-channels", "grow-a-telegram-channel"],
+      ["en/guides", "find-telegram-channels", "grow-a-telegram-channel"],
+    ] as const) {
+      const page = html(route);
+      const slugs = [...page.matchAll(/data-guide-card="([^"]+)"/g)].map((match) => match[1] ?? "");
+      expect(slugs, route).toEqual([first, "channels-groups-bots", last]);
+      expect(types(page), route).toEqual(["ItemList", "BreadcrumbList"]);
+    }
+    expect(html("guides")).toContain("怎么找到优质的 Telegram 频道");
+    expect(html("en/guides")).toContain("How to find good Telegram channels");
+    // Reachable from the footer of every page, and from the guides index breadcrumb.
+    expect(html("")).toContain('href="/guides/"');
+    expect(html("en/")).toContain('href="/en/guides/"');
+  });
+
+  test("guide articles emit Article, FAQPage and BreadcrumbList JSON-LD", () => {
+    const page = html("en/guides/find-telegram-channels");
+    expect(types(page)).toEqual(["Article", "FAQPage", "BreadcrumbList"]);
+    const [article, faq, breadcrumb] = jsonLd(page) as Record<string, unknown>[];
+    expect(article).toMatchObject({
+      "@context": "https://schema.org",
+      "@type": "Article",
+      headline: "How to find good Telegram channels",
+      url: `${siteUrl}/en/guides/find-telegram-channels/`,
+      mainEntityOfPage: {
+        "@type": "WebPage",
+        "@id": `${siteUrl}/en/guides/find-telegram-channels/`,
+      },
+      datePublished: "2026-09-15T00:00:00.000Z",
+      dateModified: "2026-09-17T00:00:00.000Z",
+      inLanguage: "en",
+      author: { "@type": "Organization", "@id": `${siteUrl}/#organization`, name: "TGbox" },
+      publisher: { "@type": "Organization", "@id": `${siteUrl}/#organization` },
+    });
+    expect(Array.isArray(faq?.mainEntity) && faq.mainEntity.length).toBeGreaterThanOrEqual(2);
+    expect(breadcrumb?.itemListElement).toMatchObject([
+      { position: 1, item: `${siteUrl}/en/` },
+      { position: 2, item: `${siteUrl}/en/guides/` },
+      { position: 3, name: "How to find good Telegram channels" },
+    ]);
+  });
+
+  test("each zh guide pairs with the en guide of the same slug through canonical and hreflang", () => {
+    for (const slug of [
+      "find-telegram-channels",
+      "channels-groups-bots",
+      "grow-a-telegram-channel",
+    ]) {
+      const zh = html(`guides/${slug}`);
+      const en = html(`en/guides/${slug}`);
+      expect(zh, slug).toContain(`<link rel="canonical" href="${siteUrl}/guides/${slug}/">`);
+      expect(en, slug).toContain(`<link rel="canonical" href="${siteUrl}/en/guides/${slug}/">`);
+      for (const page of [zh, en]) {
+        expect(page, slug).toContain(
+          `<link rel="alternate" hreflang="zh-CN" href="${siteUrl}/guides/${slug}/">`,
+        );
+        expect(page, slug).toContain(
+          `<link rel="alternate" hreflang="en" href="${siteUrl}/en/guides/${slug}/">`,
+        );
+        expect(page, slug).toContain('<meta property="og:type" content="article">');
+      }
+    }
+    for (const route of ["guides", "en/guides"]) {
+      expect(html(route), route).toContain(
+        `<link rel="alternate" hreflang="en" href="${siteUrl}/en/guides/">`,
+      );
+    }
+  });
+
+  test("the guides sitemap carries both locales with each guide's own lastmod", () => {
+    expect(readFileSync(path.join(client, "sitemap-index.xml"), "utf8")).toContain(
+      `${siteUrl}/sitemap-guides.xml`,
+    );
+    const sitemap = readFileSync(path.join(client, "sitemap-guides.xml"), "utf8");
+    for (const prefix of ["", "en/"]) {
+      expect(sitemap).toContain(`<loc>${siteUrl}/${prefix}guides/</loc>`);
+      // "channels-groups-bots" is the only guide revised on the 16th.
+      expect(sitemap).toContain(
+        `<loc>${siteUrl}/${prefix}guides/channels-groups-bots/</loc><lastmod>2026-09-16T00:00:00.000Z</lastmod>`,
+      );
+      expect(sitemap).toContain(
+        `<loc>${siteUrl}/${prefix}guides/find-telegram-channels/</loc><lastmod>2026-09-17T00:00:00.000Z</lastmod>`,
+      );
+    }
+    expect(sitemap).toContain(
+      `<xhtml:link rel="alternate" hreflang="en" href="${siteUrl}/en/guides/find-telegram-channels/"/>`,
+    );
+  });
+
+  test("every sitemap URL has a lastmod: entries report their own, listings the snapshot", () => {
+    const generatedAt = fixtureNow.toISOString();
+    for (const shard of ["pages", "guides", "channel-zh", "channel-en", "bot-zh"]) {
+      const sitemap = readFileSync(path.join(client, `sitemap-${shard}.xml`), "utf8");
+      const locs = sitemap.match(/<loc>/g)?.length ?? 0;
+      expect(locs, shard).toBeGreaterThan(0);
+      expect(sitemap.match(/<lastmod>/g)?.length, shard).toBe(locs);
+      // W3C datetime, which is what the sitemap protocol asks for.
+      for (const [, value = ""] of sitemap.matchAll(/<lastmod>([^<]*)<\/lastmod>/g)) {
+        expect(new Date(value).toISOString(), `${shard} → ${value}`).toBe(value);
+      }
+    }
+    const pages = readFileSync(path.join(client, "sitemap-pages.xml"), "utf8");
+    expect(pages).toContain(`<loc>${siteUrl}/</loc><lastmod>${generatedAt}</lastmod>`);
+    const channels = readFileSync(path.join(client, "sitemap-channel-zh.xml"), "utf8");
+    expect(channels).toContain(`<loc>${siteUrl}/channel/</loc><lastmod>${generatedAt}</lastmod>`);
+    // techdaily's content changed after it was listed and before the snapshot was built.
+    expect(channels).toContain(
+      `<loc>${siteUrl}/detail/techdaily/</loc><lastmod>${techdailyUpdatedAt}</lastmod>`,
+    );
+  });
+
+  test("thin category listings stay crawlable but are kept out of the index and the sitemap", () => {
+    // "games" has 61 channels, "tech" only 2 and "news" only 1.
+    expect(html("channel/games")).not.toContain('<meta name="robots"');
+    for (const route of ["channel/tech", "en/channel/tech", "channel/news"]) {
+      expect(html(route), route).toContain('<meta name="robots" content="noindex, follow">');
+    }
+    const sitemap = readFileSync(path.join(client, "sitemap-channel-zh.xml"), "utf8");
+    expect(sitemap).toContain(`<loc>${siteUrl}/channel/games/</loc>`);
+    expect(sitemap).not.toContain("/channel/tech/");
+    expect(sitemap).not.toContain("/channel/news/");
+    // The pages keep their place in the site's own navigation.
+    expect(html("channel")).toContain('href="/channel/tech/"');
+    expect(html("channel/games")).toContain('href="/channel/tech/"');
+  });
+
+  test("home, kind indexes, rankings and detail pages are indexed whatever their size", () => {
+    for (const route of ["", "en/", "channel", "group", "bot", "rank", "detail/movieshare"]) {
+      expect(html(route), route).not.toContain('<meta name="robots"');
+    }
+    const sitemap = readFileSync(path.join(client, "sitemap-bot-zh.xml"), "utf8");
+    // Both bot categories hold a single entry, yet the kind index and the detail pages stay listed.
+    expect(sitemap).toContain(`<loc>${siteUrl}/bot/</loc>`);
+    expect(sitemap).toContain(`<loc>${siteUrl}/detail/helperbot/</loc>`);
+    expect(sitemap).not.toContain("/bot/tools/");
+  });
+
+  test("paginated listings canonicalise to themselves so page 2 isn't folded into page 1", () => {
+    for (const prefix of ["", "en/"]) {
+      expect(html(`${prefix}channel/games`)).toContain(
+        `<link rel="canonical" href="${siteUrl}/${prefix}channel/games/">`,
+      );
+      expect(html(`${prefix}channel/games/2`)).toContain(
+        `<link rel="canonical" href="${siteUrl}/${prefix}channel/games/2/">`,
+      );
+    }
   });
 });

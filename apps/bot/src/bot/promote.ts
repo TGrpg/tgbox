@@ -185,8 +185,10 @@ export function promote(app: App) {
       const body = await res.arrayBuffer();
       // Telegram's declared size can be absent; the downloaded bytes are the real check.
       if (body.byteLength === 0 || body.byteLength > IMAGE_MAX_BYTES) return null;
+      // Browsers load this key straight from R2, so it must be cacheable; a day only, because the
+      // key has no version in it and the buyer can replace the image of an existing order.
       await app.env.MEDIA.put(`promos/${orderId}.jpg`, body, {
-        httpMetadata: { contentType: image.contentType },
+        httpMetadata: { contentType: image.contentType, cacheControl: "public, max-age=86400" },
       });
       return `${app.env.R2_PUBLIC_URL}/promos/${orderId}.jpg`;
     } catch (error) {

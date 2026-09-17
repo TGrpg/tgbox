@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import {
+  articleJsonLd,
   breadcrumbJsonLd,
   entryJsonLd,
   faqJsonLd,
@@ -148,6 +149,68 @@ describe("faqJsonLd", () => {
         },
       ],
     });
+  });
+});
+
+describe("articleJsonLd", () => {
+  const article = articleJsonLd({
+    siteUrl,
+    url: `${siteUrl}/guides/find-telegram-channels/`,
+    headline: "How to find good Telegram channels",
+    description: "What search can and cannot do.",
+    datePublished: "2026-09-15T00:00:00.000Z",
+    dateModified: "2026-09-17T00:00:00.000Z",
+    inLanguage: "en",
+    organizationName: "TGbox",
+    logo: `${siteUrl}/icons/icon-512.png`,
+    keywords: ["how to find telegram channels", "telegram channel search"],
+  });
+
+  test("carries the fields Google reads off an article", () => {
+    expect(article).toMatchObject({
+      "@context": "https://schema.org",
+      "@type": "Article",
+      headline: "How to find good Telegram channels",
+      description: "What search can and cannot do.",
+      url: "https://tgbox.cc/guides/find-telegram-channels/",
+      datePublished: "2026-09-15T00:00:00.000Z",
+      dateModified: "2026-09-17T00:00:00.000Z",
+      inLanguage: "en",
+    });
+    expect(article.mainEntityOfPage).toEqual({
+      "@type": "WebPage",
+      "@id": "https://tgbox.cc/guides/find-telegram-channels/",
+    });
+    expect(roundTrip(article)).toEqual(article);
+  });
+
+  test("names TGbox as both author and publisher, reusing the site-wide Organization id", () => {
+    const organization = {
+      "@type": "Organization",
+      "@id": organizationId(siteUrl),
+      name: "TGbox",
+      url: "https://tgbox.cc/",
+      logo: "https://tgbox.cc/icons/icon-512.png",
+    };
+    expect(article.author).toEqual(organization);
+    expect(article.publisher).toEqual(organization);
+  });
+
+  test("joins keywords into one string and omits them when the guide has none", () => {
+    expect(article.keywords).toBe("how to find telegram channels, telegram channel search");
+    const bare = articleJsonLd({
+      siteUrl,
+      url: `${siteUrl}/guides/x/`,
+      headline: "x",
+      description: "d",
+      datePublished: "2026-01-01T00:00:00.000Z",
+      dateModified: "2026-01-01T00:00:00.000Z",
+      inLanguage: "zh-CN",
+      organizationName: "TGbox",
+      logo: `${siteUrl}/icons/icon-512.png`,
+      keywords: [],
+    });
+    expect("keywords" in bare).toBe(false);
   });
 });
 

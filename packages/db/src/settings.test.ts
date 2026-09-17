@@ -42,8 +42,14 @@ test("bot chats are written only when membership details change", async () => {
   expect(await upsertBotChat(db, { ...chat, updatedAt: NOW + 1 })).toEqual({ rowsWritten: 0 });
   await upsertBotChat(db, { ...chat, status: "left", updatedAt: NOW + 2 });
   await upsertBotChat(db, { ...chat, chatId: "-1002", title: "Channel", type: "channel" });
-  expect((await listBotChats(db)).map((row) => [row.chatId, row.status])).toEqual([
+  const page = await listBotChats(db, { page: 1 });
+  expect(page.total).toBe(2);
+  expect(page.rows.map((row) => [row.chatId, row.status])).toEqual([
     ["-1001", "left"],
     ["-1002", "administrator"],
+  ]);
+  // Paging is clamped and offset, so a second page of one row holds the older chat.
+  expect((await listBotChats(db, { page: 2, pageSize: 1 })).rows.map((row) => row.chatId)).toEqual([
+    "-1002",
   ]);
 });

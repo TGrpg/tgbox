@@ -5,6 +5,7 @@ const zh = {
   nav: {
     about: "关于",
     rank: "排行",
+    guides: "指南",
     primary: "主导航",
     skipToContent: "跳到正文",
     backToTop: "回到顶部",
@@ -82,10 +83,23 @@ const zh = {
   page: {
     enroll: "提交收录",
     about: "关于本站",
+    guides: "使用指南",
     privacy: "隐私政策",
     donate: "赞助支持",
     links: "友情链接",
     updated: "最后更新",
+  },
+  guides: {
+    eyebrow: "Guides",
+    lead: "关于怎么找频道、怎么分辨频道质量、怎么把自己的频道做起来的长文，基于 Telegram 的公开限制和本站的收录数据写成，不是凑数的清单。",
+    index: "全部指南",
+    toc: "本文目录",
+    published: "发布于",
+    readingTime: "约 {n} 分钟",
+    empty: "指南正在撰写中，很快就会上线。",
+    nextHeading: "接着看",
+    nextLead: "读完可以直接从这些页面开始找：",
+    more: "更多指南",
   },
   notFound: {
     eyebrow: "404",
@@ -167,6 +181,7 @@ const en: typeof zh = {
   nav: {
     about: "About",
     rank: "Rankings",
+    guides: "Guides",
     primary: "Main navigation",
     skipToContent: "Skip to content",
     backToTop: "Back to top",
@@ -244,10 +259,23 @@ const en: typeof zh = {
   page: {
     enroll: "Submit a listing",
     about: "About",
+    guides: "Guides",
     privacy: "Privacy Policy",
     donate: "Support us",
     links: "Links",
     updated: "Last updated",
+  },
+  guides: {
+    eyebrow: "Guides",
+    lead: "Long-form articles on finding channels, telling a real audience from a bought one, and getting your own channel discovered — written from Telegram's documented limits and this directory's own data.",
+    index: "All guides",
+    toc: "On this page",
+    published: "Published",
+    readingTime: "About {n} min",
+    empty: "Guides are being written and will appear here soon.",
+    nextHeading: "Where to go next",
+    nextLead: "Start browsing from these pages:",
+    more: "More guides",
   },
   notFound: {
     eyebrow: "404",

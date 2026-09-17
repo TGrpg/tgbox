@@ -93,7 +93,8 @@ export async function buildSiteData(options: BuildSiteDataOptions): Promise<Site
       .prepare(
         `SELECT e.id, e.username, e.kind, e.category_id, c.slug AS category, e.title, e.description,
            ${translationColumns},
-           e.lang, e.verified, e.avatar_version, e.tg_created_at, e.listed_at, e.is_promoted,
+           e.lang, e.verified, e.avatar_version, e.tg_created_at, e.listed_at, e.updated_at,
+           e.is_promoted,
            s.members, s.online, s.activity_tier
          FROM entries e
          JOIN categories c ON c.id = e.category_id
@@ -173,6 +174,7 @@ export async function buildSiteData(options: BuildSiteDataOptions): Promise<Site
         activityTier: intOrNull(row.activity_tier),
         tgCreatedAt: isoOrNull(row.tg_created_at),
         listedAt: new Date(int(row.listed_at)).toISOString(),
+        updatedAt: new Date(int(row.updated_at)).toISOString(),
         isPromoted: int(row.is_promoted) === 1 || pinned.has(username),
       };
     });

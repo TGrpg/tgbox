@@ -12,6 +12,7 @@ export const en: Dictionary = {
     random: "Random pick",
     submit: "Submit",
     notFound: "Page not found",
+    source: "Source code",
   },
   bot: {
     welcome: "Welcome to the TGbox submission bot.",

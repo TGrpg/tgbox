@@ -6,11 +6,12 @@ import { fill } from "./format.ts";
 export type PageSeo = { title: string; description: string; keywords: string };
 
 /**
- * A tag page with fewer entries than this is near-duplicate of the pages it links to, which is the
- * classic thin-content liability on a small directory. Such pages stay crawlable but are noindexed
- * and kept out of the sitemap until they fill up.
+ * A tag or category listing with fewer entries than this is a near-duplicate of the pages it links
+ * to, which is the classic thin-content liability on a small directory. Such pages stay crawlable
+ * and stay in the site's own navigation, but are noindexed and kept out of the sitemap until they
+ * fill up. Kind indexes, the home page, `/rank/` and detail pages are never held back this way.
  */
-export const MIN_INDEXED_TAG_ENTRIES = 3;
+export const MIN_INDEXED_LISTING_ENTRIES = 3;
 
 /** Roughly what Google renders before truncating; Chinese glyphs are about twice as wide. */
 export const descriptionBudget: Record<Locale, number> = { zh: 90, en: 170 };
@@ -123,6 +124,15 @@ export function rankSeo(locale: Locale): PageSeo {
     title: strings.rank.title,
     description: strings.rank.description,
     keywords: keywords(strings.keywords.rank, strings.keywords.base),
+  };
+}
+
+export function guidesSeo(locale: Locale): PageSeo {
+  const strings = seoUi(locale);
+  return {
+    title: strings.guides.title,
+    description: strings.guides.description,
+    keywords: keywords(strings.keywords.guides, strings.keywords.base),
   };
 }
 

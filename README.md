@@ -68,7 +68,7 @@ Most Telegram directories are either a static list that goes stale, or a server-
 ```mermaid
 flowchart LR
   U([Visitors & crawlers]) -->|static HTML, free| WEB[tgbox-web<br/>static assets]
-  U -->|avatars, search index| R2[(R2 media)]
+  U -->|avatars, cached a year| R2[(R2 media)]
   TG([Telegram]) -->|webhook| BOT[tgbox-bot<br/>grammY Worker]
   BOT -->|cron: refresh t.me| TME([t.me public pages])
   BOT --> D1[(D1)]
@@ -83,7 +83,7 @@ flowchart LR
 |---|---|
 | Monorepo | pnpm workspace + Turborepo, Biome, TypeScript |
 | Website | Astro 7 (static output), Tailwind CSS 4, Starwind UI, coss ui islands, Motion |
-| Search | Pagefind index served from R2 |
+| Search | Pagefind, index shipped with the site |
 | Bot | grammY on Cloudflare Workers (webhook + cron trigger) |
 | Admin | TanStack Start + Router / Query / Table, Cloudflare Access or Telegram Mini App auth |
 | Data | Cloudflare D1 + Drizzle ORM, R2 for avatars, posts and member history |
@@ -134,12 +134,15 @@ Checks: `pnpm check` (Biome + typecheck), `pnpm test`, `pnpm --filter @tgbox/web
    pnpm exec wrangler r2 bucket create tgbox-media
    ```
    Connect a custom domain to the R2 bucket (for example `media.example.com`).
-2. **Configure** `vars` in `apps/bot/wrangler.jsonc` and `apps/admin/wrangler.jsonc` (`SITE_URL`, `R2_PUBLIC_URL`, `BOT_USERNAME`, `ADMIN_IDS`, `ADMIN_CHAT_ID`, `GITHUB_REPO`), and the `routes` domains in `apps/web` and `apps/admin`.
+2. **Configure** `vars` in `apps/bot/wrangler.jsonc` and `apps/admin/wrangler.jsonc` (`SITE_URL`, `R2_PUBLIC_URL`, `BOT_USERNAME`, `GITHUB_REPO`), and the `routes` domains in `apps/web` and `apps/admin`. `ADMIN_IDS` and `ADMIN_CHAT_ID` are Telegram ids, so keep them out of the committed config and set them with `wrangler secret put`.
 3. **Secrets**
    ```bash
    pnpm exec wrangler secret put BOT_TOKEN              # from @BotFather
    pnpm exec wrangler secret put WEBHOOK_SECRET         # openssl rand -hex 32
    pnpm exec wrangler secret put GITHUB_DISPATCH_TOKEN  # fine-grained PAT, Contents: read & write
+   pnpm exec wrangler secret put ADMIN_IDS              # comma-separated Telegram user ids
+   pnpm exec wrangler secret put ADMIN_CHAT_ID          # fallback review chat id
+   pnpm exec wrangler secret put SETTINGS_KEY           # openssl rand -hex 32; encrypts admin-entered tokens
    ```
 4. **Deploy** the bot and admin with `pnpm exec wrangler deploy` in `apps/bot` and `apps/admin` (run `pnpm build` first for admin), then register the webhook:
    ```bash
@@ -169,8 +172,9 @@ Checks: `pnpm check` (Biome + typecheck), `pnpm test`, `pnpm --filter @tgbox/web
 - [x] Admin panel with Cloudflare Access and Telegram Mini App login
 - [x] Admin settings for bot, site and payments; self-serve promoted listings paid with Telegram Stars or USDT (Crypto Pay), with automatic expiry
 - [x] Growth rankings page and a daily digest posted to a Telegram channel
-- [ ] Promotion click stats, banner image upload
-- [ ] AI-translated descriptions, semantic search
+- [x] Promotion click stats, banner image upload, AI-translated descriptions
+- [x] Guides, growth rankings and structured data tuned for search
+- [ ] Semantic search, monthly ranking archives
 
 ## Contributing
 

@@ -72,11 +72,14 @@ const reviewStatuses = new Set(["member", "administrator"]);
  * is write-only (`hasCryptoPayToken`).
  */
 export async function loadSettingsView(core: CoreContext, env: SettingsEnv) {
-  const [settings, chats, hasCryptoPayToken] = await Promise.all([
+  const [settings, botChats, hasCryptoPayToken] = await Promise.all([
     getSettings(core),
-    listBotChats(core.db),
+    // Pickers, not a browsable list: the 100 most recently changed chats is every chat that
+    // matters in practice, and it keeps the scan bounded.
+    listBotChats(core.db, { page: 1, pageSize: 100 }),
     hasCredential(core, "cryptopay_token"),
   ]);
+  const chats = botChats.rows;
   const chatOption = ({ chatId, title, username }: (typeof chats)[number]) => ({
     chatId,
     title,

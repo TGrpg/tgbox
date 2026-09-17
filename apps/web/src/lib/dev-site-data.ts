@@ -5,6 +5,7 @@ type Optional =
   | "memberHistory"
   | "related"
   | "tgCreatedAt"
+  | "updatedAt"
   | "descriptionZh"
   | "descriptionEn";
 type DevEntry = Omit<EntryView, Optional> & Partial<Pick<EntryView, Optional>>;
@@ -137,6 +138,7 @@ const entries: EntryView[] = devEntries
     memberHistory: [],
     related: { channels: [], groups: [] },
     ...entry,
+    updatedAt: entry.updatedAt ?? entry.listedAt,
   }))
   .sort((a, b) => b.listedAt.localeCompare(a.listedAt));
 
