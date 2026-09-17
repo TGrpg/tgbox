@@ -4,6 +4,7 @@ import {
   createOrder,
   getCredential,
   hasCredential,
+  quoteUsdtOrder,
 } from "@tgbox/core";
 import {
   deleteBotDraft,
@@ -82,14 +83,23 @@ export const orderTarget = (order: Pick<Order, "targetUsername" | "banner">) => 
   bannerTitle: order.banner?.title ?? null,
 });
 
-/** Stars when enabled; USDT when enabled and a Crypto Pay token can be decrypted. */
+/**
+ * The single source of truth for which payment buttons exist. Each method needs its own switch to
+ * be on *and* to actually be usable: Crypto Pay needs a token that can be decrypted, self-hosted
+ * USDT needs a receiving address. Every callback re-checks its own method before acting, so a
+ * stale button can't route a payment to a method the operator has since turned off.
+ */
 async function paymentMethods(app: App) {
   const { payments } = await app.settings();
-  const usdt =
+  const cryptoPay =
     payments.cryptoPayEnabled &&
     Boolean(app.env.SETTINGS_KEY) &&
     (await hasCredential(app.core, "cryptopay_token"));
-  return { stars: payments.starsEnabled, usdt };
+  return {
+    stars: payments.starsEnabled,
+    cryptoPay,
+    usdtSelf: payments.usdtSelfEnabled && payments.usdtAddress !== "",
+  };
 }
 
 export function promote(app: App) {
@@ -105,7 +115,7 @@ export function promote(app: App) {
       listProducts(app.db, { activeOnly: true }),
       paymentMethods(app),
     ]);
-    if (products.length === 0 || !(methods.stars || methods.usdt)) {
+    if (products.length === 0 || !(methods.stars || methods.cryptoPay || methods.usdtSelf)) {
       await ctx.reply(m.unavailable);
       return;
     }
@@ -327,13 +337,14 @@ export function promote(app: App) {
       usdt: product.priceUsdt,
       ...orderTarget(order),
     });
-    if (!(methods.stars || methods.usdt)) {
+    if (!(methods.stars || methods.cryptoPay || methods.usdtSelf)) {
       await ctx.reply(`${summary}\n\n${m.noPaymentMethod}`);
       return;
     }
     const keyboard = new InlineKeyboard();
     if (methods.stars) keyboard.text(m.payStars(product.priceStars), `ps:${order.id}`).row();
-    if (methods.usdt) keyboard.text(m.payUsdt(product.priceUsdt), `pu:${order.id}`);
+    if (methods.usdtSelf) keyboard.text(m.payUsdtSelf(product.priceUsdt), `pv:${order.id}`).row();
+    if (methods.cryptoPay) keyboard.text(m.payUsdt(product.priceUsdt), `pu:${order.id}`);
     await ctx.reply(`${summary}\n\n${m.choosePayment}`, { reply_markup: keyboard });
   }
 
@@ -371,6 +382,35 @@ export function promote(app: App) {
       "XTR",
       [{ label: name, amount: product.priceStars }],
       { provider_token: "" },
+    );
+  });
+
+  // Self-hosted USDT: the buyer transfers an amount unique to their order and the cron settles it.
+  composer.callbackQuery(/^pv:(\d+)$/, async (ctx) => {
+    const locale = await app.locale(ctx);
+    const m = messages(locale).promote;
+    const found = await pendingOrder(ctx, Number(ctx.match[1]));
+    if (!found) return;
+    const { order } = found;
+    const quote = await quoteUsdtOrder(app.core, {
+      orderId: order.id,
+      productId: order.productId,
+    });
+    if (!quote.ok) {
+      // "no_amount" is transient (every tail for this price is reserved); the rest mean the
+      // operator turned the method off between the button being drawn and this tap.
+      const text = quote.error === "no_amount" ? m.usdtNoAmount : m.noPaymentMethod;
+      await ctx.answerCallbackQuery({ text, show_alert: true });
+      return;
+    }
+    await ctx.answerCallbackQuery();
+    await ctx.reply(
+      m.usdtTransfer({
+        address: quote.quote.address,
+        amount: quote.quote.amount,
+        minutes: Math.round((quote.quote.expiresAt - app.now()) / 60_000),
+      }),
+      { parse_mode: "HTML" },
     );
   });
 

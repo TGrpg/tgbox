@@ -33,6 +33,7 @@ export const auditActionLabels: Record<AuditAction, string> = {
   "promotion.end": "结束推广",
   "promotion.extend": "延长推广",
   "promotion.expire": "推广到期",
+  "usdt.unmatched": "USDT 无主入账",
 };
 
 export function isAuditAction(action: string): action is AuditAction {

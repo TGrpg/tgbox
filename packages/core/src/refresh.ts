@@ -135,6 +135,12 @@ export async function runRefresh(
   scheduledTime: number,
   // Wrapped: workerd throws "Illegal invocation" when fetch is called as a method of another object.
   deps: RefreshDeps = { fetch: (input, init) => fetch(input, init) },
+  /**
+   * Subrequests already spent by other work sharing this cron invocation. The budget guard below
+   * simply processes fewer entries, which is why a second job can ride this tick without its own
+   * trigger (see .agents/cloudflare.md).
+   */
+  spent = 0,
 ): Promise<RefreshResult> {
   const db = createDb(env.DB);
   const now = scheduledTime;
@@ -147,7 +153,7 @@ export async function runRefresh(
     restored: [],
     rowsWritten: 0,
     r2Writes: 0,
-    subrequests: 0,
+    subrequests: spent,
     dirty: false,
   };
 

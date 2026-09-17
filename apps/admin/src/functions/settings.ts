@@ -9,6 +9,7 @@ import {
   loadSettingsView,
   SettingsInput,
   saveCryptoPayToken,
+  saveTronGridKey,
 } from "@/server/settings.ts";
 
 const $getSettings = createServerFn({ method: "GET" })
@@ -34,4 +35,11 @@ export const $setCryptoPayToken = createServerFn({ method: "POST" })
   .inputValidator(CryptoPayTokenInput)
   .handler(({ data, context }) =>
     saveCryptoPayToken(context.core, { token: data.token, actor: context.auth.actor }),
+  );
+
+export const $setTronGridKey = createServerFn({ method: "POST" })
+  .middleware([adminMiddleware])
+  .inputValidator(CryptoPayTokenInput)
+  .handler(({ data, context }) =>
+    saveTronGridKey(context.core, { token: data.token, actor: context.auth.actor }),
   );

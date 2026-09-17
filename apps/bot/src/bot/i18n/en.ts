@@ -123,6 +123,22 @@ export const en: typeof zh = {
     noPaymentMethod: "Online payment isn't available right now. Please contact support (/support).",
     payStars: (stars: number) => `⭐ Telegram Stars (${stars})`,
     payUsdt: (usdt: string) => `💵 USDT (${usdt})`,
+    payUsdtSelf: (usdt: string) => `💵 USDT·TRC20 (${usdt})`,
+    usdtTransfer: (o: { address: string; amount: string; minutes: number }) =>
+      [
+        "💵 <b>USDT (TRC20) transfer</b>",
+        "",
+        "Send to (tap to copy):",
+        `<code>${o.address}</code>`,
+        "",
+        "Exact amount (tap to copy):",
+        `<code>${o.amount}</code>`,
+        "",
+        "⚠️ <b>Send exactly this amount.</b> The last decimals identify your order. Paying more or less cannot be confirmed automatically and needs support to sort out by hand.",
+        "",
+        `Transfer within ${o.minutes} minutes; it is confirmed automatically within about 5 minutes of arriving.`,
+      ].join("\n"),
+    usdtNoAmount: "A lot of orders are open right now — please try again shortly.",
     orderExpired: "This order is no longer valid. Send /promote to order again.",
     invoiceDescription: (t: PromotionTarget, days: number) => `${enTarget(t)}, ${days} days`,
     usdtInvoice: (amount: string) =>

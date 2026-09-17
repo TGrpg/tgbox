@@ -57,10 +57,19 @@ export const SiteSettings = z.object({
 });
 export type SiteSettings = z.infer<typeof SiteSettings>;
 
+/** Base58 without the ambiguous characters, which is what a TRON address is. */
+export const TRON_ADDRESS_RE = /^T[1-9A-HJ-NP-Za-km-z]{33}$/;
+
 export const PaymentSettings = z.object({
   starsEnabled: z.boolean(),
   cryptoPayEnabled: z.boolean(),
   cryptoPayNetwork: z.enum(["mainnet", "testnet"]),
+  /** Self-hosted USDT: funds go straight to `usdtAddress`, with no third party in between. */
+  usdtSelfEnabled: z.boolean(),
+  /** TRC20 receiving address. Empty disables the method however the flag is set. */
+  usdtAddress: z.string().regex(TRON_ADDRESS_RE).or(z.literal("")),
+  /** How long a quoted amount stays reserved for one order. */
+  usdtExpiryMinutes: z.number().int().min(10).max(120),
 });
 export type PaymentSettings = z.infer<typeof PaymentSettings>;
 
@@ -89,7 +98,14 @@ export const settingsDefaults: Settings = {
     hidePostMedia: false,
     showAdSlots: false,
   },
-  payments: { starsEnabled: true, cryptoPayEnabled: false, cryptoPayNetwork: "mainnet" },
+  payments: {
+    starsEnabled: true,
+    cryptoPayEnabled: false,
+    cryptoPayNetwork: "mainnet",
+    usdtSelfEnabled: false,
+    usdtAddress: "",
+    usdtExpiryMinutes: 30,
+  },
 };
 
 /** True when a post preview contains one of the blocked substrings (case-insensitive). */
@@ -145,7 +161,7 @@ export const OrderStatus = z.enum([
 ]);
 export type OrderStatus = z.infer<typeof OrderStatus>;
 
-export const PaymentProvider = z.enum(["stars", "cryptopay", "manual"]);
+export const PaymentProvider = z.enum(["stars", "cryptopay", "usdt", "manual"]);
 export type PaymentProvider = z.infer<typeof PaymentProvider>;
 
 export const PaymentCurrency = z.enum(["XTR", "USDT"]);

@@ -157,7 +157,7 @@ export const settings = sqliteTable("settings", {
 
 /** Third-party secrets entered in the admin, AES-GCM encrypted with SETTINGS_KEY. Write-only. */
 export const credentials = sqliteTable("credentials", {
-  key: text().$type<"cryptopay_token">().primaryKey(),
+  key: text().$type<"cryptopay_token" | "trongrid_key">().primaryKey(),
   ciphertext: text().notNull(),
   updatedAt: integer("updated_at").notNull(),
 });
@@ -232,6 +232,28 @@ export const promotions = sqliteTable("promotions", {
   startsAt: integer("starts_at").notNull(),
   endsAt: integer("ends_at").notNull(),
   createdAt: integer("created_at").notNull(),
+});
+
+/**
+ * One order awaiting an on-chain USDT transfer. `amount_micro` is the order's fingerprint: the
+ * watcher matches an incoming transfer to an order by its exact integer amount, so no two unpaid
+ * orders may hold the same value. Only the receiving address is ever stored — never a key.
+ *
+ * Migration 0010 puts a partial index on `amount_micro WHERE status = 'pending'` (drizzle-kit
+ * can't express the predicate), so a row only pays for the index while it is actually waiting.
+ */
+export const usdtPayments = sqliteTable("usdt_payments", {
+  orderId: integer("order_id").primaryKey(),
+  chain: text().$type<"trc20">().notNull().default("trc20"),
+  /** USDT x 1e6, compared as an integer so no rounding can decide whether an order was paid. */
+  amountMicro: integer("amount_micro").notNull(),
+  /** The receiving address as configured when the order was placed, not as configured now. */
+  address: text().notNull(),
+  status: text().$type<"pending" | "paid" | "expired">().notNull().default("pending"),
+  txHash: text("tx_hash"),
+  createdAt: integer("created_at").notNull(),
+  expiresAt: integer("expires_at").notNull(),
+  paidAt: integer("paid_at"),
 });
 
 /** Bot language chosen with /lang; absent = follow the Telegram client language. */

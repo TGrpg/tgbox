@@ -39,6 +39,7 @@ export async function setup(config: Partial<CoreContext["config"]> = {}) {
       "orders",
       "promotions",
       "hidden_posts",
+      "usdt_payments",
     ].map((table) => env.DB.prepare(`DELETE FROM ${table}`)),
   );
   await syncTaxonomy(db);
@@ -47,6 +48,18 @@ export async function setup(config: Partial<CoreContext["config"]> = {}) {
   const github = { status: 204, body: "" };
   const tme: string[] = [];
   const telegram: { method: string; body: unknown }[] = [];
+  // Tests drive the chain: which transfers the address has received, and how TronGrid misbehaves.
+  const tron = {
+    transfers: [] as {
+      transaction_id: string;
+      block_timestamp: number;
+      value: string;
+      token_info?: { address: string };
+    }[],
+    status: 200,
+    throws: false,
+    calls: [] as string[],
+  };
   const ctx: CoreContext = {
     db,
     now: () => NOW,
@@ -70,6 +83,12 @@ export async function setup(config: Partial<CoreContext["config"]> = {}) {
         if (first === "s") return new Response(third ? firstPostHtml : postsHtml);
         return new Response(profiles[first.toLowerCase()] ?? channelHtml);
       }
+      if (url.hostname === "api.trongrid.io") {
+        tron.calls.push(url.href);
+        if (tron.status !== 200) return new Response("nope", { status: tron.status });
+        if (tron.throws) throw new Error("network down");
+        return Response.json({ data: tron.transfers });
+      }
       if (url.hostname.endsWith("telesco.pe")) {
         return new Response(new Uint8Array([0xff, 0xd8, 0xff, 1, 2, 3]), {
           headers: { "content-type": "image/jpeg" },
@@ -78,7 +97,7 @@ export async function setup(config: Partial<CoreContext["config"]> = {}) {
       throw new Error(`unexpected fetch ${url.href}`);
     },
   };
-  return { ctx, dispatches, github, tme, telegram };
+  return { ctx, dispatches, github, tme, telegram, tron };
 }
 
 export async function auditRows() {

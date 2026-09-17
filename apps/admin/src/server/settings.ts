@@ -69,15 +69,16 @@ const reviewStatuses = new Set(["member", "administrator"]);
 
 /**
  * Everything the settings page shows. Secrets are reported as booleans only; the Crypto Pay token
- * is write-only (`hasCryptoPayToken`).
+ * and the TronGrid key are write-only (`hasCryptoPayToken`, `hasTronGridKey`).
  */
 export async function loadSettingsView(core: CoreContext, env: SettingsEnv) {
-  const [settings, botChats, hasCryptoPayToken] = await Promise.all([
+  const [settings, botChats, hasCryptoPayToken, hasTronGridKey] = await Promise.all([
     getSettings(core),
     // Pickers, not a browsable list: the 100 most recently changed chats is every chat that
     // matters in practice, and it keeps the scan bounded.
     listBotChats(core.db, { page: 1, pageSize: 100 }),
     hasCredential(core, "cryptopay_token"),
+    hasCredential(core, "trongrid_key"),
   ]);
   const chats = botChats.rows;
   const chatOption = ({ chatId, title, username }: (typeof chats)[number]) => ({
@@ -102,6 +103,7 @@ export async function loadSettingsView(core: CoreContext, env: SettingsEnv) {
       .map((id) => id.trim())
       .filter((id) => /^\d+$/.test(id)),
     hasCryptoPayToken,
+    hasTronGridKey,
     configured: {
       BOT_TOKEN: Boolean(env.BOT_TOKEN),
       GITHUB_DISPATCH_TOKEN: Boolean(env.GITHUB_DISPATCH_TOKEN),
@@ -122,5 +124,18 @@ export async function saveCryptoPayToken(
 ): Promise<{ ok: true } | { ok: false; error: "settings_key_missing" }> {
   if (!core.config.SETTINGS_KEY) return { ok: false, error: "settings_key_missing" };
   await setCredential(core, { key: "cryptopay_token", value: input.token, actor: input.actor });
+  return { ok: true };
+}
+
+/**
+ * Encrypts and stores the TronGrid API key. Optional — without it the watcher uses TronGrid's
+ * free rate limit, which one query every five minutes is nowhere near.
+ */
+export async function saveTronGridKey(
+  core: CoreContext,
+  input: { token: string; actor: Actor },
+): Promise<{ ok: true } | { ok: false; error: "settings_key_missing" }> {
+  if (!core.config.SETTINGS_KEY) return { ok: false, error: "settings_key_missing" };
+  await setCredential(core, { key: "trongrid_key", value: input.token, actor: input.actor });
   return { ok: true };
 }

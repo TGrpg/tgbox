@@ -4,6 +4,7 @@ import { createApp, createBot } from "./bot/index.ts";
 import { handleCryptoPayWebhook } from "./cryptopay.ts";
 import { DIGEST_UTC_HOUR, runDailyDigest } from "./digest.ts";
 import { runHourlyMaintenance } from "./maintenance.ts";
+import { runUsdtWatch } from "./usdt-watch.ts";
 
 /** Second cron trigger in wrangler.jsonc; a separate invocation with its own subrequest budget. */
 const HOURLY_CRON = "0 * * * *";
@@ -52,11 +53,23 @@ export default {
       }
       return;
     }
+    // The 5-minute tick carries two jobs. USDT first: it is a single D1 read when no order is
+    // awaiting a transfer, and whatever it spends is handed to the refresh batch so the shared
+    // 50-subrequest budget is respected by processing one entry fewer, not by overrunning.
     ctx.waitUntil(
-      runRefresh(env, controller.scheduledTime).then((result) =>
+      (async () => {
+        const app = createApp(
+          env,
+          deps(ctx, () => controller.scheduledTime),
+        );
+        const spent = await runUsdtWatch(app).catch((error: unknown) => {
+          console.error("usdt watch failed", error);
+          return 0;
+        });
+        const result = await runRefresh(env, controller.scheduledTime, undefined, spent);
         // One line per run in Workers Logs: the only record of what the cron did.
-        console.log("refresh", JSON.stringify(result)),
-      ),
+        console.log("refresh", JSON.stringify(result));
+      })(),
     );
   },
 } satisfies ExportedHandler<Env>;

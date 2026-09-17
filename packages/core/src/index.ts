@@ -30,6 +30,21 @@ export {
 } from "./payments/cryptopay.ts";
 export { refundStars } from "./payments/stars.ts";
 export {
+  isTronAddress,
+  matchTransfer,
+  microToUsdt,
+  pickUniqueMicro,
+  USDT_TRC20_CONTRACT,
+  usdtToMicro,
+} from "./payments/usdt.ts";
+export {
+  quoteUsdtOrder,
+  type UsdtQuote,
+  type UsdtQuoteError,
+  type UsdtWatchResult,
+  watchUsdtPayments,
+} from "./payments/usdt-watch.ts";
+export {
   approveBannerOrder,
   checkSlots,
   createManualPromotion,

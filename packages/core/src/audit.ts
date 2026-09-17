@@ -34,6 +34,8 @@ export const auditActions = [
   "promotion.end",
   "promotion.extend",
   "promotion.expire",
+  /** An incoming USDT transfer that matched no order: wrong amount, or paid twice. */
+  "usdt.unmatched",
 ] as const;
 export type AuditAction = (typeof auditActions)[number];
 

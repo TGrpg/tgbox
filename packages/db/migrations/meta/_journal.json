@@ -64,6 +64,13 @@
       "when": 1789649502984,
       "tag": "0009_entry_translations",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1789663203660,
+      "tag": "0010_usdt_payments",
+      "breakpoints": true
     }
   ]
 }

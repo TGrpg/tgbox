@@ -12,3 +12,4 @@ export * from "./schema.ts";
 export * from "./settings.ts";
 export * from "./support.ts";
 export * from "./translations.ts";
+export * from "./usdt.ts";

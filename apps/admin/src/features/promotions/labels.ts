@@ -31,6 +31,7 @@ export const orderStatusOptions = (Object.keys(orderStatusLabels) as OrderStatus
 export const providerLabels: Record<PaymentProvider, string> = {
   stars: "Stars",
   cryptopay: "Crypto Pay",
+  usdt: "USDT·TRC20",
   manual: "手动",
 };
 

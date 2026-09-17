@@ -1,6 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { BotSettings, PaymentSettings, SiteSettings } from "@tgbox/shared";
-import { MAX_POST_BLOCKLIST } from "@tgbox/shared";
+import {
+  type BotSettings,
+  MAX_POST_BLOCKLIST,
+  type PaymentSettings,
+  type SiteSettings,
+  TRON_ADDRESS_RE,
+} from "@tgbox/shared";
 import {
   BotIcon,
   CheckIcon,
@@ -28,7 +33,12 @@ import { Skeleton } from "@/components/coss/ui/skeleton.tsx";
 import { Textarea } from "@/components/coss/ui/textarea.tsx";
 import { toastManager } from "@/components/coss/ui/toast.tsx";
 import { OptionSelect } from "@/features/entries/option-select.tsx";
-import { $setCryptoPayToken, $updateSettings, settingsQueryOptions } from "@/functions/settings.ts";
+import {
+  $setCryptoPayToken,
+  $setTronGridKey,
+  $updateSettings,
+  settingsQueryOptions,
+} from "@/functions/settings.ts";
 import { invalidate } from "@/lib/query-keys.ts";
 import type { SettingsInput, SettingsView } from "@/server/settings.ts";
 import { isChatId, normalizeSupportUsername } from "./admin-ids.ts";
@@ -458,14 +468,18 @@ function PaymentsSection({ initial, view }: { initial: PaymentSettings; view: Se
   const patch = (next: Partial<PaymentSettings>) =>
     setValue((current) => ({ ...current, ...next }));
   const dirty = JSON.stringify(value) !== JSON.stringify(initial);
+  const badAddress = value.usdtAddress !== "" && !TRON_ADDRESS_RE.test(value.usdtAddress);
+  const badExpiry = value.usdtExpiryMinutes < 10 || value.usdtExpiryMinutes > 120;
 
   return (
     <Section
       icon={CreditCardIcon}
       title="支付"
-      description="推广位的付款方式。Stars 由 Telegram 结算；USDT 通过 @CryptoBot 的 Crypto Pay 收款。"
+      description="推广位的付款方式。Stars 由 Telegram 结算；自建 USDT 直接转入你自己的 TRC20 钱包，不经过任何第三方。"
       onSubmit={() => save.mutate({ key: "payments", value })}
-      footer={<SaveButton dirty={dirty} pending={save.isPending} />}
+      footer={
+        <SaveButton dirty={dirty} pending={save.isPending} disabled={badAddress || badExpiry} />
+      }
     >
       <SwitchRow
         label="Telegram Stars"
@@ -473,7 +487,47 @@ function PaymentsSection({ initial, view }: { initial: PaymentSettings; view: Se
         onChange={(starsEnabled) => patch({ starsEnabled })}
       />
       <SwitchRow
-        label="USDT（Crypto Pay）"
+        label="USDT（自建收款，TRC20）"
+        hint={
+          badAddress
+            ? "请填写有效的 TRC20 收款地址"
+            : "买家按唯一金额转账到下面的地址，到账后约 5 分钟自动确认。无手续费、无第三方。"
+        }
+        checked={value.usdtSelfEnabled}
+        onChange={(usdtSelfEnabled) => patch({ usdtSelfEnabled })}
+      />
+      <Field
+        label="TRC20 收款地址"
+        htmlFor="usdt-address"
+        hint="以 T 开头的 34 位地址。只填收款地址（公钥），本系统永远不会要求私钥。"
+        error={badAddress ? "不是有效的 TRC20 地址" : null}
+      >
+        <Input
+          id="usdt-address"
+          autoComplete="off"
+          spellCheck={false}
+          placeholder="T..."
+          value={value.usdtAddress}
+          onChange={(event) => patch({ usdtAddress: event.target.value.trim() })}
+        />
+      </Field>
+      <Field
+        label="付款时限（分钟）"
+        htmlFor="usdt-expiry"
+        hint="超时未付款的订单会释放它占用的金额。10–120 分钟。"
+      >
+        <Input
+          id="usdt-expiry"
+          type="number"
+          min={10}
+          max={120}
+          value={String(value.usdtExpiryMinutes)}
+          onChange={(event) => patch({ usdtExpiryMinutes: Number(event.target.value) })}
+        />
+      </Field>
+      <TronGridCredential view={view} />
+      <SwitchRow
+        label="USDT（Crypto Pay 第三方）"
         hint={view.hasCryptoPayToken ? undefined : "需要先填写 Crypto Pay token"}
         checked={value.cryptoPayEnabled}
         onChange={(cryptoPayEnabled) => patch({ cryptoPayEnabled })}
@@ -494,6 +548,68 @@ function PaymentsSection({ initial, view }: { initial: PaymentSettings; view: Se
 }
 
 /** A nested form can't live inside the section form, so the token saves via its own button. */
+function TronGridCredential({ view }: { view: SettingsView }) {
+  const queryClient = useQueryClient();
+  const [key, setKey] = useState("");
+  const keyMissing = !view.configured.SETTINGS_KEY;
+  const saveKey = useMutation({
+    mutationFn: (value: string) => $setTronGridKey({ data: { token: value } }),
+    onSuccess: (result) => {
+      if (result.ok) {
+        setKey("");
+        toastManager.add({ type: "success", title: "TronGrid API key 已保存" });
+      } else {
+        toastManager.add({ type: "error", title: "未配置 SETTINGS_KEY，无法保存" });
+      }
+    },
+    onError: () =>
+      toastManager.add({ type: "error", title: "保存失败", description: "格式不正确" }),
+    onSettled: () => invalidate(queryClient, "settings", "audit", "dashboardActivity"),
+  });
+
+  return (
+    <Field
+      label="TronGrid API key（可选）"
+      htmlFor="trongrid-key"
+      hint="只写：保存后加密存储，不会再显示。不填也能用，走 TronGrid 的免费限流即可（每 5 分钟一次查询远低于上限）。"
+    >
+      <div className="flex items-center gap-2">
+        {view.hasTronGridKey ? (
+          <Badge variant="success">已设置</Badge>
+        ) : (
+          <Badge variant="outline">未设置</Badge>
+        )}
+      </div>
+      <div className="flex gap-2">
+        <Input
+          id="trongrid-key"
+          type="password"
+          autoComplete="off"
+          placeholder={view.hasTronGridKey ? "输入新 key 以替换" : "留空即可"}
+          disabled={keyMissing}
+          value={key}
+          onChange={(event) => setKey(event.target.value)}
+          onKeyDown={(event) => {
+            // Enter must not submit the surrounding payments form.
+            if (event.key !== "Enter") return;
+            event.preventDefault();
+            if (key.trim().length >= 10) saveKey.mutate(key.trim());
+          }}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          disabled={keyMissing || key.trim().length < 10}
+          loading={saveKey.isPending}
+          onClick={() => saveKey.mutate(key.trim())}
+        >
+          保存 key
+        </Button>
+      </div>
+    </Field>
+  );
+}
+
 function CryptoPayCredential({ view }: { view: SettingsView }) {
   const queryClient = useQueryClient();
   const [token, setToken] = useState("");
