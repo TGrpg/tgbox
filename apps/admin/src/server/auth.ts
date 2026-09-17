@@ -16,7 +16,8 @@ export type AdminAuth = { actor: Actor; via: "access" | "telegram" | "dev" };
 
 const INIT_DATA_MAX_AGE_S = 24 * 60 * 60;
 
-const list = (value: string) =>
+// Unset secrets arrive as undefined in production.
+const list = (value = "") =>
   value
     .split(",")
     .map((item) => item.trim().toLowerCase())

@@ -36,7 +36,8 @@ export function createApp(env: BotEnv, deps: BotDeps): App {
   const db = createDb(env.DB);
   const now = deps.now ?? Date.now;
   const adminIds = new Set(
-    env.ADMIN_IDS.split(",")
+    (env.ADMIN_IDS ?? "")
+      .split(",")
       .map((id) => id.trim())
       .filter(Boolean),
   );

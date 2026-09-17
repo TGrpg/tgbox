@@ -18,12 +18,10 @@
   "vars": {
     "SITE_URL": "https://tgbox.cc",
     "R2_PUBLIC_URL": "https://media.tgbox.cc",
-    "ADMIN_CHAT_ID": "",
-    "ADMIN_IDS": "",
     "GITHUB_REPO": "",
     "BOT_USERNAME": "tgboxccbot",
     // Entries refreshed per cron minute; keep under the 50-subrequest budget (see src/refresh).
     "REFRESH_BATCH_SIZE": "6"
   }
-  // Secrets (see .dev.vars.example): BOT_TOKEN, WEBHOOK_SECRET, GITHUB_DISPATCH_TOKEN
+  // Secrets (see .dev.vars.example): BOT_TOKEN, WEBHOOK_SECRET, GITHUB_DISPATCH_TOKEN, ADMIN_IDS, ADMIN_CHAT_ID
 }

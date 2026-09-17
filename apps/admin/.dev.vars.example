@@ -1,5 +1,9 @@
 # Copy to .dev.vars for `pnpm dev`. In production set secrets with `wrangler secret put <NAME>`.
 BOT_TOKEN=123456:replace-me
 GITHUB_DISPATCH_TOKEN=
+# Comma-separated Telegram user ids allowed in the Mini App (same list as the bot)
+ADMIN_IDS=
+# Comma-separated Cloudflare Access emails allowed in the web admin
+ADMIN_EMAILS=
 # Local only: skips auth for requests to localhost / 127.0.0.1.
 ADMIN_DEV_BYPASS=1

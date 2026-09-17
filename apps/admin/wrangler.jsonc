@@ -16,10 +16,6 @@
   ],
   "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "tgbox-media" }],
   "vars": {
-    // Comma-separated Cloudflare Access emails allowed in the web admin.
-    "ADMIN_EMAILS": "",
-    // Comma-separated Telegram user ids allowed in the Mini App (same list as the bot).
-    "ADMIN_IDS": "",
     // e.g. "myteam.cloudflareaccess.com"
     "CF_ACCESS_TEAM_DOMAIN": "",
     // Application Audience (AUD) tag of the Access application.
@@ -30,5 +26,5 @@
     "SITE_URL": "https://tgbox.cc",
     "R2_PUBLIC_URL": "https://media.tgbox.cc"
   }
-  // Secrets (see .dev.vars.example): BOT_TOKEN, GITHUB_DISPATCH_TOKEN
+  // Secrets (see .dev.vars.example): BOT_TOKEN, GITHUB_DISPATCH_TOKEN, ADMIN_IDS, ADMIN_EMAILS
 }

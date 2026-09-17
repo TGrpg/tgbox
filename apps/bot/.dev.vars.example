@@ -2,3 +2,7 @@
 BOT_TOKEN=123456:replace-me
 WEBHOOK_SECRET=replace-me
 GITHUB_DISPATCH_TOKEN=replace-me
+# Comma-separated Telegram user ids of admins
+ADMIN_IDS=
+# Chat that receives review requests (group id, or an admin user id)
+ADMIN_CHAT_ID=
