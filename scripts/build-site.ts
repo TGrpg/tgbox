@@ -20,6 +20,10 @@ const SNAPSHOT_TABLES = [
   "settings",
   "promotions",
   "hidden_posts",
+  // Public: the bot already quotes these prices in chat, and the Mini App reads the price list as
+  // a static file. Every table added here must be public — `orders` carries buyer ids and is the
+  // reason this is an allowlist rather than a denylist.
+  "products",
 ];
 
 const { values } = parseArgs({
