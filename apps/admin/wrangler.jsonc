@@ -22,7 +22,7 @@
     "CF_ACCESS_AUD": "",
     // "1" skips auth, but only for requests to localhost / 127.0.0.1. Set in .dev.vars, never here.
     "ADMIN_DEV_BYPASS": "",
-    "GITHUB_REPO": "",
+    "GITHUB_REPO": "TGrpg/tgbox",
     "SITE_URL": "https://tgbox.cc",
     "R2_PUBLIC_URL": "https://media.tgbox.cc",
     // Public URL of the bot Worker; the admin shows `${BOT_PUBLIC_URL}/cryptopay/webhook` for @CryptoBot.

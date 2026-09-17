@@ -23,8 +23,9 @@ env:
   SITE_URL: ${{ vars.SITE_URL }}
   R2_PUBLIC_URL: ${{ vars.R2_PUBLIC_URL }}
   PUBLIC_BOT_USERNAME: ${{ vars.PUBLIC_BOT_USERNAME }}
-  # The search island loads pagefind.js from R2 (uploaded by sync-pagefind.ts).
-  PUBLIC_PAGEFIND_URL: ${{ vars.R2_PUBLIC_URL }}/pagefind
+  # The Pagefind index ships with the site (a few dozen files). Past ~9,000 entries, move it to R2
+  # instead (scripts/sync-pagefind.ts) so it stops counting against the 20,000 static-file limit.
+  PAGEFIND_LOCAL: "1"
 
 jobs:
   deploy:
@@ -62,24 +63,10 @@ jobs:
         if: steps.dirty.outputs.build == 'true'
         run: node scripts/build-site.ts --remote --media-base-url "$R2_PUBLIC_URL"
 
-      - name: Upload new Pagefind files to R2
-        if: steps.dirty.outputs.build == 'true'
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-        run: node scripts/sync-pagefind.ts upload
-
       - name: Deploy web
         if: steps.dirty.outputs.build == 'true'
         working-directory: apps/web
         run: pnpm exec wrangler deploy
-
-      - name: Delete stale Pagefind files from R2
-        if: steps.dirty.outputs.build == 'true'
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-        run: node scripts/sync-pagefind.ts prune
 
       # Changes made after this build started keep the flag for the next run.
       - name: Clear dirty flag

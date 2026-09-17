@@ -21,7 +21,7 @@
   "vars": {
     "SITE_URL": "https://tgbox.cc",
     "R2_PUBLIC_URL": "https://media.tgbox.cc",
-    "GITHUB_REPO": "",
+    "GITHUB_REPO": "TGrpg/tgbox",
     "BOT_USERNAME": "tgboxccbot",
     // Entries refreshed per cron minute; keep under the 50-subrequest budget (see src/refresh).
     "REFRESH_BATCH_SIZE": "6"
