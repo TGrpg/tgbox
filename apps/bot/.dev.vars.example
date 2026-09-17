@@ -6,3 +6,5 @@ GITHUB_DISPATCH_TOKEN=replace-me
 ADMIN_IDS=
 # Chat that receives review requests (group id, or an admin user id)
 ADMIN_CHAT_ID=
+# Encrypts third-party tokens entered in the admin (e.g. Crypto Pay); same value as the admin Worker's
+SETTINGS_KEY=replace-me

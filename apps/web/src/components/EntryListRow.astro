@@ -7,7 +7,10 @@ import { ui } from "@/i18n/ui.ts";
 import { formatNumber } from "@/lib/format.ts";
 
 interface Props {
-  entry: Pick<EntryView, "username" | "kind" | "title" | "verified" | "avatarUrl" | "members">;
+  entry: Pick<
+    EntryView,
+    "username" | "kind" | "title" | "verified" | "avatarUrl" | "members" | "isPromoted"
+  >;
   locale: Locale;
 }
 
@@ -28,6 +31,13 @@ const strings = ui(locale).entry;
     </span>
     {entry.verified && (
         <RosetteCheck class="size-4 shrink-0 text-primary" aria-label={strings.verified} role="img" />
+      )}
+    {entry.isPromoted && (
+        <span
+          data-promoted-badge
+          data-pagefind-ignore
+          class="shrink-0 rounded-md bg-warning px-1.5 py-px text-[0.675rem] leading-4 font-medium whitespace-nowrap text-warning-foreground"
+        >{strings.promoted}</span>
       )}
   </span>
   {entry.members !== null && (

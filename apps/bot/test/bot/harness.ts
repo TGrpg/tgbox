@@ -1,6 +1,12 @@
-import { createExecutionContext, waitOnExecutionContext } from "cloudflare:test";
+import {
+  createExecutionContext,
+  createScheduledController,
+  waitOnExecutionContext,
+} from "cloudflare:test";
 import { env } from "cloudflare:workers";
-import { createDb, syncTaxonomy } from "@tgbox/db";
+import { type CoreContext, setCredential } from "@tgbox/core";
+import { createDb, syncTaxonomy, upsertSetting } from "@tgbox/db";
+import { type BotSettings, type PaymentSettings, settingsDefaults } from "@tgbox/shared";
 import { vi } from "vitest";
 import firstPostHtml from "../../../../packages/telegram/fixtures/channel-first-post.html?raw";
 import postsHtml from "../../../../packages/telegram/fixtures/channel-posts.html?raw";
@@ -25,6 +31,46 @@ const testEnv: Env = Object.assign({}, env, {
 });
 
 export const db = createDb(env.DB);
+
+/** Core context for arranging state the way the admin app would. */
+export const core: CoreContext = {
+  db,
+  fetch: (input, init) => fetch(input, init),
+  now: Date.now,
+  config: { GITHUB_REPO: "", GITHUB_DISPATCH_TOKEN: "", SETTINGS_KEY: env.SETTINGS_KEY },
+};
+
+export const CRYPTO_PAY_TOKEN = "12345:crypto-test-token";
+
+export async function setBotSettings(patch: Partial<BotSettings>) {
+  const value = JSON.stringify({ ...settingsDefaults.bot, ...patch });
+  await upsertSetting(db, "bot", value, Date.now());
+}
+
+export async function setPaymentSettings(patch: Partial<PaymentSettings>) {
+  const value = JSON.stringify({ ...settingsDefaults.payments, ...patch });
+  await upsertSetting(db, "payments", value, Date.now());
+}
+
+/** Enables USDT payments with a stored (encrypted) Crypto Pay token. */
+export async function enableCryptoPay() {
+  await setPaymentSettings({ cryptoPayEnabled: true, cryptoPayNetwork: "testnet" });
+  await setCredential(core, { key: "cryptopay_token", value: CRYPTO_PAY_TOKEN, actor: "system" });
+}
+
+/** hex(HMAC-SHA256(body, key = SHA-256(token))), as Crypto Pay signs webhooks. */
+export async function cryptoPaySignature(body: string, token = CRYPTO_PAY_TOKEN) {
+  const secret = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+  const key = await crypto.subtle.importKey(
+    "raw",
+    secret,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const mac = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(body));
+  return [...new Uint8Array(mac)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
 
 // Worker handlers type requests with incoming cf properties (pattern from the vitest-pool-workers docs).
 const IncomingRequest = Request<unknown, IncomingRequestCfProperties>;
@@ -55,12 +101,18 @@ export async function startHarness() {
       "entry_tags",
       "entries_fts",
       "site_state",
+      "settings",
+      "credentials",
+      "bot_chats",
+      "orders",
+      "promotions",
     ].map((table) => env.DB.prepare(`DELETE FROM ${table}`)),
   );
   await syncTaxonomy(db);
   const telegram: TelegramCall[] = [];
   const dispatches: { url: string; body: string }[] = [];
   const tme: string[] = [];
+  const cryptoPay: { url: string; body: Record<string, unknown> }[] = [];
   let nextMessageId = 5000;
   // While set, t.me requests stay pending until the test calls the release function.
   let tmeGate: Promise<void> | null = null;
@@ -81,7 +133,7 @@ export async function startHarness() {
         );
       }
       const result =
-        method === "sendMessage"
+        method === "sendMessage" || method === "sendInvoice"
           ? {
               message_id: ++nextMessageId,
               date: 0,
@@ -99,6 +151,13 @@ export async function startHarness() {
         return new Response(third ? firstPostHtml : postsHtml, { status: 200 });
       }
       return new Response(profiles[first.toLowerCase()] ?? channelHtml, { status: 200 });
+    }
+    if (url.hostname === "pay.crypt.bot" || url.hostname === "testnet-pay.crypt.bot") {
+      cryptoPay.push({ url: url.href, body: body ? JSON.parse(body) : {} });
+      return Response.json({
+        ok: true,
+        result: { invoice_id: 777, bot_invoice_url: "https://t.me/CryptoTestnetBot?start=IVtest" },
+      });
     }
     if (url.hostname === "api.github.com") {
       dispatches.push({ url: url.href, body });
@@ -150,6 +209,32 @@ export async function startHarness() {
     telegram,
     dispatches,
     tme,
+    cryptoPay,
+    /** Delivers a raw Telegram update (payments, chat member changes…). */
+    update: (update: Record<string, unknown>) => send(update),
+    /** POSTs a Crypto Pay webhook body with the given signature header. */
+    cryptoPayWebhook: async (body: string, signature: string | null) => {
+      const headers: Record<string, string> = {};
+      if (signature !== null) headers["crypto-pay-api-signature"] = signature;
+      const ctx = createExecutionContext();
+      const response = await worker.fetch(
+        new IncomingRequest("https://bot.test/cryptopay/webhook", {
+          method: "POST",
+          headers,
+          body,
+        }),
+        testEnv,
+        ctx,
+      );
+      await waitOnExecutionContext(ctx);
+      return response;
+    },
+    /** Runs the cron handler for one trigger. */
+    scheduled: async (scheduledTime: number, cron: string) => {
+      const ctx = createExecutionContext();
+      await worker.scheduled(createScheduledController({ scheduledTime, cron }), testEnv, ctx);
+      await waitOnExecutionContext(ctx);
+    },
     /** Telegram API calls of one method, in order. */
     calls: (method: string) => telegram.filter((call) => call.method === method),
     /** Buttons of the most recent call that carried an inline keyboard. */
@@ -163,6 +248,7 @@ export async function startHarness() {
       telegram.length = 0;
       dispatches.length = 0;
       tme.length = 0;
+      cryptoPay.length = 0;
     },
     message: (from: From, text: string, chat?: Record<string, unknown>) =>
       send(message(from, text, chat)),

@@ -14,6 +14,43 @@ export type SubmissionSummary = {
   submitterId: number;
 };
 
+export type ProductLabel = { name: string; days: number; stars: number; usdt: string };
+
+/** What a promotion shows: a pinned entry or a banner. */
+export type PromotionTarget = { username: string | null; bannerTitle: string | null };
+
+export type OrderSummary = PromotionTarget & {
+  id: number;
+  product: string;
+  stars: number;
+  usdt: string;
+};
+
+export type BannerOrderSummary = {
+  id: number;
+  product: string;
+  title: string;
+  subtitle: string;
+  href: string;
+  amount: string;
+  currency: string;
+  buyerId: number;
+};
+
+export type PublishSummary = {
+  kind: string;
+  category: string;
+  title: string;
+  username: string;
+  description: string;
+  url: string;
+};
+
+/** YYYY-MM-DD HH:mm in UTC */
+export const utcTime = (ms: number) =>
+  `${new Date(ms).toISOString().slice(0, 16).replace("T", " ")} UTC`;
+const utcDate = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+
 export type EntryStatusSummary = {
   entry: Entry;
   members: number | null;
@@ -22,11 +59,17 @@ export type EntryStatusSummary = {
 };
 
 const zhKinds = { channel: "频道", group: "群组", bot: "机器人" };
+const zhTarget = (t: PromotionTarget) =>
+  t.username ? `置顶 @${t.username}` : `首页横幅「${t.bannerTitle ?? ""}」`;
 
 export const zh = {
   welcome:
     "欢迎使用 TGbox收录机器人！\n\n直接发送频道、群组或机器人的链接（https://t.me/xxx、t.me/xxx 或 @xxx）即可提交收录。",
   submitButton: "提交收录",
+  promoteButton: "购买推广",
+  submissionsClosed: "收录暂时关闭，请稍后再来。",
+  support: (username: string | null) =>
+    username ? `客服联系方式：@${username}` : "暂未设置客服，请稍后再试。",
   help: "收录标准：公开的频道、群组或机器人，内容合法、持续更新、无刷粉。\n\n提交方式：发送 t.me 链接或 @用户名，按提示选择分类和标签。\n审核结果会通过私信通知。有问题请联系管理员。",
   sendLink: "请发送要提交的频道、群组或机器人链接（https://t.me/xxx、t.me/xxx 或 @xxx）。",
   invalidLink:
@@ -66,6 +109,59 @@ export const zh = {
     `很抱歉，你提交的 @${username} 未通过审核。原因：${reason}`,
   openTelegram: "打开 Telegram",
   openSite: "网站详情",
+  promote: {
+    intro:
+      "📣 推广位\n\n置顶：已收录的条目在网站列表中置顶展示。\n首页横幅：网站首页的推广卡片（需审核）。\n\n请选择商品：",
+    unavailable: "暂时无法购买推广，请稍后再试或联系客服（/support）。",
+    product: (p: ProductLabel) => `${p.name} · ⭐${p.stars} / ${p.usdt} USDT`,
+    askTarget: "请发送要置顶的频道、群组或机器人（@用户名或 t.me 链接），必须是已收录的条目。",
+    askTitle: "请发送横幅标题（1–20 字）：",
+    askSubtitle: "请发送横幅副标题（1–40 字）：",
+    askHref: "请发送横幅链接（https:// 开头，可以是 t.me 链接）：",
+    invalidTarget: "无法识别，请发送 @用户名或 t.me 链接。",
+    targetNotListed: (username: string) =>
+      `@${username} 还没有被收录，只能置顶已收录的条目。可以先发送 /submit 提交收录。`,
+    invalidTitle: "标题需要 1–20 个字，请重新发送。",
+    invalidSubtitle: "副标题需要 1–40 个字，请重新发送。",
+    invalidHref: "链接需要以 https:// 开头，请重新发送。",
+    noSlots: (nextFreeAt: number | null) =>
+      nextFreeAt
+        ? `名额已满，最早 ${utcDate(nextFreeAt)} 有空位，届时再来吧。`
+        : "名额已满，请稍后再试。",
+    productUnavailable: "该商品已下架，请发送 /promote 重新选择。",
+    order: (o: OrderSummary) =>
+      [
+        `订单 #${o.id}`,
+        `商品：${o.product}`,
+        `内容：${zhTarget(o)}`,
+        `价格：⭐${o.stars} 或 ${o.usdt} USDT`,
+      ].join("\n"),
+    choosePayment: "请选择支付方式：",
+    noPaymentMethod: "暂时无法在线支付，请联系客服（/support）。",
+    payStars: (stars: number) => `⭐ Telegram Stars（${stars}）`,
+    payUsdt: (usdt: string) => `💵 USDT（${usdt}）`,
+    orderExpired: "订单已失效，请发送 /promote 重新下单。",
+    invoiceDescription: (t: PromotionTarget, days: number) => `${zhTarget(t)}，${days} 天`,
+    usdtInvoice: (amount: string) => `请在 1 小时内支付 ${amount} USDT，支付成功后会自动通知你。`,
+    payNow: "去支付",
+    invoiceFailed: "创建账单失败，请稍后再试。",
+    cancelled: "已取消。",
+    checkoutInvalid: "订单已失效，请重新下单。",
+    checkoutNoSlots: "名额已满，本次不会扣款。",
+    paidPin: (username: string, days: number) =>
+      `✅ 支付成功！@${username} 已置顶 ${days} 天，网站几分钟后更新。`,
+    paidBanner: "✅ 支付成功！横幅已提交审核，通过后会通知你。",
+    bannerApproved: (endsAt: number) =>
+      `🎉 你的首页横幅已通过审核并上线，展示至 ${utcTime(endsAt)}。`,
+    bannerRejectedRefunded: "很抱歉，你的首页横幅未通过审核，Stars 已原路退回。",
+    bannerRejectedManual: (orderId: number, support: string | null) =>
+      `很抱歉，你的首页横幅未通过审核。请联系客服${support ? ` @${support}` : ""}办理退款（订单 #${orderId}）。`,
+    orphanRefunded: "该订单已失效，本次支付的 Stars 已原路退回。",
+    expired: (t: PromotionTarget) =>
+      `你的推广（${zhTarget(t)}）已到期下架。发送 /promote 可以再次购买。`,
+    expiringSoon: (t: PromotionTarget, endsAt: number) =>
+      `你的推广（${zhTarget(t)}）将于 ${utcTime(endsAt)} 到期。发送 /promote 续费。`,
+  },
   admin: {
     newSubmission: (s: SubmissionSummary) =>
       [
@@ -92,6 +188,31 @@ export const zh = {
       duplicate: "重复",
       other: "其他",
     },
+    reviewChatSet: "✅ 已把本群设为审核群。",
+    bannerReview: (o: BannerOrderSummary) =>
+      [
+        "🖼 首页横幅待审核",
+        `订单 #${o.id}：${o.product}`,
+        `标题：${o.title}`,
+        `副标题：${o.subtitle}`,
+        `链接：${o.href}`,
+        `支付：${o.amount} ${o.currency}`,
+        `买家：${o.buyerId}`,
+      ].join("\n"),
+    bannerRejected: (name: string, refunded: boolean, amount: string) =>
+      `❌ 已拒绝（${name}）${refunded ? "，已自动退款" : `，需人工退款 ${amount}`}`,
+    orphanPayment: (orderId: number, provider: string, chargeId: string, amount: string) =>
+      `⚠️ 收到无效订单 #${orderId} 的付款（${provider} ${chargeId}，${amount}），请人工核对并退款。`,
+    publish: (p: PublishSummary) =>
+      [
+        `🆕 新收录 · ${p.kind} · ${p.category}`,
+        "",
+        p.title,
+        `@${p.username}`,
+        ...(p.description ? ["", p.description] : []),
+        "",
+        p.url,
+      ].join("\n"),
     banUsage: "用法：/ban <用户ID|@用户名> [原因]",
     unbanUsage: "用法：/unban <用户ID|@用户名>",
     banned: (target: string) => `已拉黑 ${target}`,

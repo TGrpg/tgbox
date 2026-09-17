@@ -9,6 +9,8 @@ export interface HotItem {
   v: boolean;
   a: string | null;
   m: number | null;
+  /** promoted */
+  p: boolean;
 }
 
 /** Page `index` of the pool, wrapping around once the pool is exhausted. */
@@ -27,7 +29,8 @@ function isHotItem(value: unknown): value is HotItem {
     typeof item.t === "string" &&
     typeof item.v === "boolean" &&
     (item.a === null || typeof item.a === "string") &&
-    (item.m === null || typeof item.m === "number")
+    (item.m === null || typeof item.m === "number") &&
+    typeof item.p === "boolean"
   );
 }
 

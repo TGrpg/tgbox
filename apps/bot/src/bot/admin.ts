@@ -4,6 +4,7 @@ import {
   setEntriesStatus,
   setEntryCategoryAndTags,
   tgActor,
+  updateSettings,
 } from "@tgbox/core";
 import {
   type BlacklistType,
@@ -36,6 +37,16 @@ export function admin(app: App) {
   const composer = new Composer<Context>();
   // Non-admins get no reaction: the commands stay invisible in shared chats.
   const commands = composer.filter((ctx) => app.isAdmin(ctx));
+
+  commands.chatType(["group", "supergroup"]).command("setreview", async (ctx) => {
+    const bot = (await app.settings()).bot;
+    const result = await updateSettings(app.core, {
+      key: "bot",
+      value: { ...bot, reviewChatId: String(ctx.chat.id) },
+      actor: actorOf(ctx),
+    });
+    if (result.ok) await ctx.reply(i18n(ctx).admin.reviewChatSet);
+  });
 
   commands.command(["ban", "unban"], async (ctx) => {
     const m = i18n(ctx).admin;

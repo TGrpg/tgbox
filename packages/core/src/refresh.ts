@@ -13,6 +13,7 @@ import {
 } from "@tgbox/db";
 import { type Liveness, MemberPoint, type PostView } from "@tgbox/shared";
 import { type EntrySnapshot, fetchEntrySnapshot } from "@tgbox/telegram";
+import { getSettings } from "./settings.ts";
 
 type Fetch = (input: string, init?: RequestInit) => Promise<Response>;
 type RefreshDeps = { fetch: Fetch };
@@ -41,8 +42,8 @@ const SUBREQUEST_BUDGET = 45;
 // Worst case for one entry: 3 t.me pages + avatar get/put + posts head/put
 // + history get/put + cold, stats and liveness writes.
 const ENTRY_WORST_CASE = 12;
-// markDirty + admin summary at the end of the run.
-const FINAL_RESERVE = 2;
+// markDirty + settings read + admin summary at the end of the run.
+const FINAL_RESERVE = 3;
 
 // A single batch is 5–10 entries, so "more than 5% failed" is any failure at all;
 // instead treat ≥ 2 definitive failures in one batch as a likely Telegram-side/parser issue:
@@ -201,9 +202,14 @@ export async function runRefresh(
     await markDirty(db, now);
     result.subrequests++;
   }
-  if (result.hidden.length > 0 && env.ADMIN_CHAT_ID) {
-    await notifyAdmins(env, deps, pending, result.hidden);
+  if (result.hidden.length > 0) {
+    // The review chat set in the admin wins over the env fallback; only read when there is news.
+    const chatId = (await getSettings({ db })).bot.reviewChatId ?? env.ADMIN_CHAT_ID;
     result.subrequests++;
+    if (chatId) {
+      await notifyAdmins(env.BOT_TOKEN, chatId, deps, pending, result.hidden);
+      result.subrequests++;
+    }
   }
   return result;
 }
@@ -369,7 +375,8 @@ async function appendHistory(
 }
 
 async function notifyAdmins(
-  env: RefreshEnv,
+  botToken: string,
+  chatId: string,
   deps: RefreshDeps,
   pending: Pending[],
   hidden: string[],
@@ -378,10 +385,10 @@ async function notifyAdmins(
   const lines = hidden.map((username) => `@${username} (${reasons.get(username)})`);
   const text = `系统已隐藏 ${hidden.length} 个失效条目：\n${lines.join("\n")}`;
   try {
-    await deps.fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendMessage`, {
+    await deps.fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ chat_id: env.ADMIN_CHAT_ID, text }),
+      body: JSON.stringify({ chat_id: chatId, text }),
     });
   } catch {
     // Best effort: the hide itself is already recorded.

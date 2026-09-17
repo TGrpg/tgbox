@@ -7,9 +7,9 @@ import type { EntryKind, Locale } from "@tgbox/shared";
 import EntryListRow from "@/components/EntryListRow.astro";
 import { localizePath } from "@/i18n/locale.ts";
 import { homeUi } from "@/i18n/ui-home.ts";
-import { hotPool } from "@/lib/home.ts";
+import { hotEntries } from "@/lib/home.ts";
 import { HOT_PAGE_SIZE } from "@/lib/home-hot.ts";
-import { byMembers, getSiteData } from "@/lib/site-data.ts";
+import { getSiteData } from "@/lib/site-data.ts";
 
 interface Props {
   locale: Locale;
@@ -22,10 +22,10 @@ const icons = { channel: ChannelIcon, group: GroupIcon, bot: BotIcon } satisfies
   unknown
 >;
 const Icon = icons[kind];
-const entries = getSiteData().entries;
-const rows = byMembers(entries.filter((entry) => entry.kind === kind)).slice(0, HOT_PAGE_SIZE);
-const canShuffle = hotPool(entries, kind).length > HOT_PAGE_SIZE;
-// Row skeleton the shuffle script clones and fills in (verified badge and members present; removed per item).
+const hot = hotEntries(getSiteData().entries, kind);
+const rows = hot.slice(0, HOT_PAGE_SIZE);
+const canShuffle = hot.length > HOT_PAGE_SIZE;
+// Row skeleton the shuffle script clones and fills in (verified, promoted badge and members present; removed per item).
 const skeleton = {
   username: "_",
   kind,
@@ -33,6 +33,7 @@ const skeleton = {
   verified: true,
   avatarUrl: "/favicon.svg",
   members: 1,
+  isPromoted: true,
 };
 ---
 

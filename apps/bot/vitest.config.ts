@@ -18,6 +18,7 @@ export default defineConfig(async () => {
             BOT_TOKEN: "123456:TEST",
             WEBHOOK_SECRET: "test-secret",
             GITHUB_DISPATCH_TOKEN: "test-token",
+            SETTINGS_KEY: "test-settings-key",
           },
         },
       }),

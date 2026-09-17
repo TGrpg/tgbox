@@ -6,10 +6,11 @@ import {
   rejectSubmission,
   tgActor,
 } from "@tgbox/core";
-import { getSubmission } from "@tgbox/db";
+import { getEntryByUsername, getSubmission, listCategories } from "@tgbox/db";
 import { Composer, type Context, InlineKeyboard } from "grammy";
 import type { App } from "./app.ts";
 import { i18n, messages } from "./i18n/index.ts";
+import { truncate } from "./submit.ts";
 
 export function reviewKeyboard(submissionId: number) {
   const m = messages("zh").admin;
@@ -26,7 +27,7 @@ export function review(app: App) {
   const admin = messages("zh").admin;
 
   composer.callbackQuery(/^r[ajrb]:/, async (ctx, next) => {
-    if (app.isAdmin(ctx)) return next();
+    if (await app.isAdmin(ctx)) return next();
     await ctx.answerCallbackQuery({ text: i18n(ctx).noPermission, show_alert: true });
   });
 
@@ -54,11 +55,19 @@ export function review(app: App) {
     // Queued before answering the callback: the submission is already approved, so a failed
     // answer (query too old) must not leave it without an entry.
     await app.background(async () => {
-      await listApprovedSubmission(app.core, submission);
+      const { created } = await listApprovedSubmission(app.core, submission);
       await closeReview(ctx, admin.approvedBy(reviewerName(ctx))).catch((error: unknown) =>
         console.error("closing review failed", error),
       );
-      await ctx.api.sendMessage(submission.tgUserId, notice.approved(submission.username));
+      await ctx.api
+        .sendMessage(submission.tgUserId, notice.approved(submission.username))
+        .catch((error: unknown) => console.error("approval notice failed", error));
+      const { publishChannelId } = (await app.settings()).bot;
+      if (publishChannelId && created) {
+        await publishEntry(app, publishChannelId, submission.username).catch((error: unknown) =>
+          console.error("publishing entry failed", error),
+        );
+      }
     });
     await ctx.answerCallbackQuery();
   });
@@ -107,6 +116,31 @@ export function review(app: App) {
   });
 
   return composer;
+}
+
+/** Announces a newly listed entry in the publish channel (Chinese, the site's default locale). */
+async function publishEntry(app: App, channelId: string, username: string) {
+  const entry = await getEntryByUsername(app.db, username);
+  if (!entry) return;
+  const category = (await listCategories(app.db)).find((row) => row.id === entry.categoryId);
+  const m = messages("zh");
+  const url = `${app.env.SITE_URL.replace(/\/$/, "")}/detail/${entry.username}/`;
+  await app.api.sendMessage(
+    channelId,
+    m.admin.publish({
+      kind: m.kinds[entry.kind],
+      category: category?.nameZh ?? "",
+      title: entry.title,
+      username: entry.username,
+      description: truncate(entry.description, 200),
+      url,
+    }),
+    {
+      reply_markup: new InlineKeyboard()
+        .url(m.openTelegram, `https://t.me/${entry.username}`)
+        .url(m.openSite, url),
+    },
+  );
 }
 
 // We don't know the submitter's language at review time, so notices are bilingual.

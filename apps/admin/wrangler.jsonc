@@ -24,7 +24,9 @@
     "ADMIN_DEV_BYPASS": "",
     "GITHUB_REPO": "",
     "SITE_URL": "https://tgbox.cc",
-    "R2_PUBLIC_URL": "https://media.tgbox.cc"
+    "R2_PUBLIC_URL": "https://media.tgbox.cc",
+    // Public URL of the bot Worker; the admin shows `${BOT_PUBLIC_URL}/cryptopay/webhook` for @CryptoBot.
+    "BOT_PUBLIC_URL": "https://bot.tgbox.cc"
   }
-  // Secrets (see .dev.vars.example): BOT_TOKEN, GITHUB_DISPATCH_TOKEN, ADMIN_IDS, ADMIN_EMAILS
+  // Secrets (see .dev.vars.example): BOT_TOKEN, GITHUB_DISPATCH_TOKEN, ADMIN_IDS, ADMIN_EMAILS, SETTINGS_KEY
 }

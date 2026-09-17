@@ -6,7 +6,10 @@ import { localizePath } from "@/i18n/locale.ts";
 import { ui } from "@/i18n/ui.ts";
 
 interface Props {
-  entry: Pick<EntryView, "username" | "title" | "description" | "verified" | "avatarUrl">;
+  entry: Pick<
+    EntryView,
+    "username" | "title" | "description" | "verified" | "avatarUrl" | "isPromoted"
+  >;
   locale: Locale;
   eagerAvatar?: boolean | undefined;
 }
@@ -32,6 +35,13 @@ const strings = ui(locale).entry;
       </a>
       {entry.verified && (
           <RosetteCheck class="size-4 shrink-0 text-primary" aria-label={strings.verified} role="img" />
+        )}
+      {entry.isPromoted && (
+          <span
+            data-promoted-badge
+          data-pagefind-ignore
+            class="shrink-0 rounded-md bg-warning px-1.5 py-px text-[0.675rem] leading-4 font-medium whitespace-nowrap text-warning-foreground"
+          >{strings.promoted}</span>
         )}
     </h3>
   </div>

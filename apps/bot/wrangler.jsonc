@@ -4,8 +4,11 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-09-15",
   "compatibility_flags": ["nodejs_compat"],
+  "routes": [{ "pattern": "bot.tgbox.cc", "custom_domain": true }],
   "observability": { "enabled": true },
-  "triggers": { "crons": ["* * * * *"] },
+  // Every minute: entry refresh. Hourly: promotion maintenance, in its own invocation so both
+  // stay under the 50-subrequest budget (see src/index.ts).
+  "triggers": { "crons": ["* * * * *", "0 * * * *"] },
   "d1_databases": [
     {
       "binding": "DB",
@@ -23,5 +26,5 @@
     // Entries refreshed per cron minute; keep under the 50-subrequest budget (see src/refresh).
     "REFRESH_BATCH_SIZE": "6"
   }
-  // Secrets (see .dev.vars.example): BOT_TOKEN, WEBHOOK_SECRET, GITHUB_DISPATCH_TOKEN, ADMIN_IDS, ADMIN_CHAT_ID
+  // Secrets (see .dev.vars.example): BOT_TOKEN, WEBHOOK_SECRET, GITHUB_DISPATCH_TOKEN, ADMIN_IDS, ADMIN_CHAT_ID, SETTINGS_KEY
 }

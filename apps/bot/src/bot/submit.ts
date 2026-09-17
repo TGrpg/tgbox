@@ -182,12 +182,14 @@ export function submit(app: App) {
     }
   }
 
-  /** Checks 2–4 of the submission order (blacklist runs in the guard); returns an error text. */
+  /** Open submissions, then checks 2–4 of the submission order (blacklist runs in the guard); returns an error text. */
   async function precheck(locale: Locale, userId: number, username: string) {
     const m = messages(locale);
+    const settings = (await app.settings()).bot;
+    if (!settings.submissionsOpen) return m.submissionsClosed;
     if (await getEntryByUsername(app.db, username)) return m.alreadyListed(username);
     if (await findPendingSubmission(app.db, username)) return m.alreadyPending(username);
-    const limit = Number(app.env.SUBMIT_DAILY_LIMIT) || 5;
+    const limit = settings.submitDailyLimit;
     if ((await countSubmissionsSince(app.db, userId, app.now() - DAY_MS)) >= limit) {
       return m.dailyLimit(limit);
     }
@@ -198,6 +200,10 @@ export function submit(app: App) {
     if (ctx.message.text.startsWith("/")) return next();
     const locale = localeOf(ctx);
     const m = messages(locale);
+    if (!(await app.settings()).bot.submissionsOpen) {
+      await ctx.reply(m.submissionsClosed);
+      return;
+    }
     const username = parseTelegramRef(ctx.message.text);
     if (!username) {
       await ctx.reply(m.invalidLink);
@@ -354,7 +360,7 @@ export function submit(app: App) {
 
       // Queue the admin notice before touching the user's message: if answering or editing fails
       // (query too old, message gone), the pending submission must still reach the review group.
-      const adminChatId = app.env.ADMIN_CHAT_ID;
+      const adminChatId = await app.reviewChatId();
       if (adminChatId) {
         const categoryName = (await categoriesFor(draft.kind)).find(
           (category) => category.id === draft.categoryId,

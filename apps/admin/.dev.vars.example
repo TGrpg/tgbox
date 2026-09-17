@@ -5,5 +5,7 @@ GITHUB_DISPATCH_TOKEN=
 ADMIN_IDS=
 # Comma-separated Cloudflare Access emails allowed in the web admin
 ADMIN_EMAILS=
+# Encrypts third-party tokens entered in the admin (same value as the bot), e.g. `openssl rand -base64 32`
+SETTINGS_KEY=
 # Local only: skips auth for requests to localhost / 127.0.0.1.
 ADMIN_DEV_BYPASS=1

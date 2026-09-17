@@ -25,6 +25,47 @@ test("members order puts the largest first, latest order the newest listing firs
   expect(sortEntries(entries, "latest").map((item) => item.username)).toEqual(["b", "c", "a"]);
 });
 
+test("promoted entries lead both orders, keeping the order among themselves", () => {
+  const entries = [
+    entry({
+      username: "big",
+      members: 90,
+      listedAt: "2026-01-03T00:00:00.000Z",
+      isPromoted: false,
+    }),
+    entry({
+      username: "pin-small",
+      members: 5,
+      listedAt: "2026-01-01T00:00:00.000Z",
+      isPromoted: true,
+    }),
+    entry({
+      username: "pin-mid",
+      members: 20,
+      listedAt: "2026-01-02T00:00:00.000Z",
+      isPromoted: true,
+    }),
+    entry({
+      username: "mid",
+      members: 50,
+      listedAt: "2026-01-04T00:00:00.000Z",
+      isPromoted: false,
+    }),
+  ];
+  expect(sortEntries(entries, "members").map((item) => item.username)).toEqual([
+    "pin-mid",
+    "pin-small",
+    "big",
+    "mid",
+  ]);
+  expect(sortEntries(entries, "latest").map((item) => item.username)).toEqual([
+    "pin-mid",
+    "pin-small",
+    "mid",
+    "big",
+  ]);
+});
+
 test("category listings are built for both sort orders, each paginated", () => {
   const data = {
     ...devSiteData,

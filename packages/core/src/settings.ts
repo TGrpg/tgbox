@@ -35,7 +35,7 @@ function withDefaults<TValue extends object>(defaults: TValue, stored: unknown) 
 }
 
 /** All settings in one query. Never throws on bad stored values. */
-export async function getSettings(ctx: CoreContext): Promise<Settings> {
+export async function getSettings(ctx: Pick<CoreContext, "db">): Promise<Settings> {
   const rows = await listSettingsRows(ctx.db);
   const stored = (key: SettingsKey) => storedValue(rows.find((row) => row.key === key)?.value);
   const bot = BotSettings.safeParse(withDefaults(settingsDefaults.bot, stored("bot")));

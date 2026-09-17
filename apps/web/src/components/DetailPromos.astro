@@ -5,18 +5,28 @@ import Category from "@tabler/icons/outline/category.svg";
 import Heart from "@tabler/icons/outline/heart.svg";
 import Info from "@tabler/icons/outline/info-circle.svg";
 import Robot from "@tabler/icons/outline/robot.svg";
+import Speakerphone from "@tabler/icons/outline/speakerphone.svg";
 import type { Locale } from "@tgbox/shared";
 import { promos } from "@/data/promos.ts";
-import { localizePath } from "@/i18n/locale.ts";
+import { ui } from "@/i18n/ui.ts";
 import { detailUi } from "@/i18n/ui-detail.ts";
+import { mergePromos, type PromoCard } from "@/lib/promos.ts";
+import { getSiteData } from "@/lib/site-data.ts";
 
 interface Props {
   locale: Locale;
 }
 const { locale } = Astro.props;
-const icons = { robot: Robot, bottle: Bottle, category: Category, info: Info, heart: Heart };
-const items = promos.slice(0, 3);
-const href = (target: string) => (target.startsWith("/") ? localizePath(target, locale) : target);
+const icons = {
+  robot: Robot,
+  bottle: Bottle,
+  category: Category,
+  info: Info,
+  heart: Heart,
+  ad: Speakerphone,
+} satisfies Record<PromoCard["icon"], unknown>;
+const adLabel = ui(locale).entry.ad;
+const items = mergePromos(getSiteData().promos, promos, locale, 3);
 ---
 
 {items.length > 0 && (
@@ -31,8 +41,11 @@ const href = (target: string) => (target.startsWith("/") ? localizePath(target, 
           return (
             <li>
               <a
-                href={href(promo.href)}
+                href={promo.href}
                 data-press
+                data-promo-sponsored={promo.sponsored ? "" : undefined}
+                rel={promo.external ? "sponsored noopener" : undefined}
+                target={promo.external ? "_blank" : undefined}
                 class="group relative flex h-20 flex-col justify-end overflow-hidden rounded-xl p-2.5 text-white outline-none focus-visible:ring-3 focus-visible:ring-outline/50 sm:h-24 sm:p-3"
                 style={`background:${promo.background}`}
               >
@@ -41,11 +54,11 @@ const href = (target: string) => (target.startsWith("/") ? localizePath(target, 
                   aria-hidden="true"
                 />
                 <span class="absolute top-2 left-2 rounded-md bg-black/25 px-1.5 text-[0.65rem] font-medium backdrop-blur-sm">
-                  {promo.badge[locale]}
+                  {promo.badge ?? adLabel}
                 </span>
-                <span class="relative truncate text-sm leading-tight font-semibold">{promo.title[locale]}</span>
-                <span class="relative hidden truncate text-[0.7rem] opacity-85 sm:block">
-                  {promo.subtitle[locale]}
+                <span class="relative truncate text-sm leading-tight font-semibold" dir="auto">{promo.title}</span>
+                <span class="relative hidden truncate text-[0.7rem] opacity-85 sm:block" dir="auto">
+                  {promo.subtitle}
                 </span>
               </a>
             </li>

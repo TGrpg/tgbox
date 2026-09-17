@@ -42,6 +42,19 @@ const gameChannels: FixtureEntry[] = Array.from({ length: 61 }, (_, index) => ({
   listedDaysAgo: 60,
 }));
 
+const announcement = {
+  zh: "春季推广位开放预订",
+  en: "Spring promo slots are open",
+  href: "https://t.me/tgbox_support",
+};
+const paidPromo = {
+  id: "41",
+  title: "Rocket <VPN> & Proxy",
+  subtitle: "Fast nodes worldwide",
+  href: "https://t.me/rocketvpn",
+  sponsored: true as const,
+};
+
 const approved = fixtureEntries.filter((entry) => (entry.status ?? "approved") === "approved");
 const hidden = fixtureEntries.filter((entry) => (entry.status ?? "approved") !== "approved");
 
@@ -72,6 +85,9 @@ beforeAll(async () => {
     mediaDir: writeFixtureMedia(path.join(work, "media")),
     now: fixtureNow,
   });
+  // Admin-managed content is layered on here; "aiwatch" is the fixture's promoted entry.
+  data.announcement = announcement;
+  data.promos = [paidPromo];
   const dataPath = path.join(work, "site-data.json");
   writeFileSync(dataPath, JSON.stringify(data));
   execFileSync(path.join(webRoot, "node_modules/.bin/astro"), ["build", "--outDir", outDir], {
@@ -220,6 +236,52 @@ describe("site build from snapshot data", () => {
     for (const kind of ["group", "bot"]) {
       expect(existsSync(path.join(client, `data/hot-${kind}.json`)), kind).toBe(true);
     }
+  });
+
+  test("announcement bar shows the snapshot announcement in each locale", () => {
+    const zh = html("");
+    const en = html("en/");
+    expect(zh).toContain(announcement.zh);
+    expect(en).toContain(announcement.en);
+    expect(en).not.toContain(announcement.zh);
+    const bar = zh.split("data-announcement")[1]?.split("data-announcement-dismiss")[0] ?? "";
+    expect(bar).toMatch(/href="https:\/\/t\.me\/tgbox_support"[^>]*target="_blank"/);
+    expect(zh).toMatch(/dismissKey = "announcement:[0-9a-z]+"/);
+  });
+
+  test("paid banners lead the home and detail promos with an ad badge and sponsored links", () => {
+    for (const [route, label, cards] of [
+      ["", "广告", 5],
+      ["en/", "Ad", 5],
+      ["detail/techdaily", "广告", 3],
+    ] as const) {
+      const page = html(route);
+      const start = page.search(/<section[^>]*data-home-promos|<aside[^>]*aria-label="推广"/);
+      const promos = page.slice(start).split(/<\/section>|<\/aside>/)[0] ?? "";
+      const links = [...promos.matchAll(/<a\s[^>]*>/g)].map((match) => match[0]);
+      expect(links, route).toHaveLength(cards);
+      expect(links[0]).toContain(`href="${paidPromo.href}"`);
+      expect(links[0]).toContain('rel="sponsored noopener"');
+      expect(links[0]).toContain('target="_blank"');
+      expect(promos).toContain(`>${label}<`);
+      expect(promos).toContain("Rocket &lt;VPN&gt; &amp; Proxy");
+    }
+    // Dismissing the lineup is keyed by every card id, the paid banner included.
+    expect(html("")).toMatch(/storageKey = "home-promos:41,enroll-bot,/);
+  });
+
+  test("promoted entries lead listings and hot columns with a promoted badge", () => {
+    const ai = html("channel/ai");
+    expect(ai).toMatch(/data-entry-card="aiwatch"[\s\S]*?data-promoted-badge[\s\S]*?推广/);
+    const home = html("");
+    const channelColumn =
+      home.split('data-home-hot="channel"')[1]?.split("data-home-hot=")[0] ?? "";
+    expect(channelColumn.match(/data-entry-row="([^"]+)"/)?.[1]).toBe("aiwatch");
+    const pool: unknown = JSON.parse(
+      readFileSync(path.join(client, "data/hot-channel.json"), "utf8"),
+    );
+    expect(Array.isArray(pool) && pool[0]).toMatchObject({ u: "aiwatch", p: true });
+    expect(html("channel/tech")).not.toContain("data-promoted-badge");
   });
 
   test("kind, category and tag listing pages exist in both locales", () => {

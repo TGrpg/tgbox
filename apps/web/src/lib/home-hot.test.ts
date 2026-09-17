@@ -10,7 +10,7 @@ test("hot pages cycle through the pool and wrap to the start", () => {
 });
 
 test("a fetched pool keeps only well-formed items", () => {
-  const good = { u: "durov", t: "Durov", v: true, a: null, m: 5 };
+  const good = { u: "durov", t: "Durov", v: true, a: null, m: 5, p: false };
   expect(parseHotPool([good, { u: "x" }, null, { ...good, m: "5" }])).toEqual([good]);
   expect(parseHotPool({ items: [good] })).toEqual([]);
 });

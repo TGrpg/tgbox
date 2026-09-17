@@ -1,7 +1,13 @@
 import { env } from "cloudflare:workers";
 import { runRefresh } from "@tgbox/core";
-import { createDb, getEntryByUsername, getSiteState, insertApprovedEntry } from "@tgbox/db";
-import { type EntryKind, type EntryStatus, PostView } from "@tgbox/shared";
+import {
+  createDb,
+  getEntryByUsername,
+  getSiteState,
+  insertApprovedEntry,
+  upsertSetting,
+} from "@tgbox/db";
+import { type EntryKind, type EntryStatus, PostView, settingsDefaults } from "@tgbox/shared";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import channelFirstPost from "../../../../packages/telegram/fixtures/channel-first-post.html?raw";
 import channelPosts from "../../../../packages/telegram/fixtures/channel-posts.html?raw";
@@ -94,7 +100,7 @@ const adminEnv = { ...env, ADMIN_CHAT_ID: "-100123" };
 
 beforeEach(async () => {
   await env.DB.batch(
-    ["entries", "entry_stats", "entry_tags", "entries_fts", "site_state"].map((table) =>
+    ["entries", "entry_stats", "entry_tags", "entries_fts", "site_state", "settings"].map((table) =>
       env.DB.prepare(`DELETE FROM ${table}`),
     ),
   );
@@ -292,6 +298,22 @@ describe("liveness", () => {
     expect(sent[0]?.url).toBe(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendMessage`);
     expect(JSON.parse(sent[0]?.body ?? "{}")).toMatchObject({ chat_id: "-100123" });
     expect(sent[0]?.body).toContain("@blocked");
+  });
+
+  test("the hidden-entry summary goes to the review chat from the settings when set", async () => {
+    await upsertSetting(
+      db,
+      "bot",
+      JSON.stringify({ ...settingsDefaults.bot, reviewChatId: "-100777" }),
+      T0,
+    );
+    await addEntry("blocked", { kind: "group" });
+    const tg = fakeTelegram({ blocked: "banned" });
+    await runRefresh(adminEnv, T0, tg);
+    await runRefresh(adminEnv, T0 + 2 * MINUTE, tg);
+
+    const sent = tg.calls.filter((call) => call.url.includes("api.telegram.org"));
+    expect(sent.map((call) => JSON.parse(call.body ?? "{}").chat_id)).toEqual(["-100777"]);
   });
 
   test("guard: with 2+ definitive failures in one batch, failures are counted but nothing is hidden", async () => {

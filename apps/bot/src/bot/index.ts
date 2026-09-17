@@ -1,13 +1,17 @@
 import { Bot } from "grammy";
 import { admin } from "./admin.ts";
 import { type BotDeps, type BotEnv, createApp } from "./app.ts";
+import { chatMembers } from "./chat-members.ts";
 import { guard } from "./guard.ts";
 import { inlineSearch } from "./inline-search.ts";
+import { payments } from "./payments.ts";
+import { promote } from "./promote.ts";
 import { review } from "./review.ts";
 import { startHelp } from "./start-help.ts";
 import { submit } from "./submit.ts";
 
-export type { BotDeps, BotEnv } from "./app.ts";
+export type { App, BotDeps, BotEnv } from "./app.ts";
+export { createApp } from "./app.ts";
 
 export function createBot(
   env: BotEnv,
@@ -34,17 +38,20 @@ export function createBot(
     client: { fetch: deps.fetch },
   });
 
-  // Order matters: review/admin/inline work for anyone they authorize; the guard only fronts the
-  // private-chat submit flow.
+  // Order matters: review/admin/inline work for anyone they authorize; payments are recorded for
+  // everyone who paid; the guard only fronts the private-chat promote and submit flows.
   // `bot.catch` only applies to long polling. For webhooks a thrown error becomes a 500 and Telegram
   // redelivers the update (e.g. forever for a user who blocked the bot), so log and answer 200.
   bot.errorBoundary(
     (error) => console.error("bot update failed", error.error),
+    chatMembers(app),
     inlineSearch(app),
+    payments(app),
     review(app),
     admin(app),
     guard(app),
-    startHelp(),
+    startHelp(app),
+    promote(app),
     submit(app),
   );
   return bot;

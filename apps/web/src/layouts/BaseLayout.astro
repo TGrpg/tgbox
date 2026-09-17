@@ -10,6 +10,7 @@ import SiteHeader from "@/components/layout/SiteHeader.astro";
 import SearchDialog from "@/components/search/SearchDialog.tsx";
 import { htmlLang } from "@/i18n/locale.ts";
 import { ui } from "@/i18n/ui.ts";
+import { announcementKey } from "@/lib/announcement.ts";
 import { siteUrl } from "@/lib/site.ts";
 import { byMembers, getSiteData } from "@/lib/site-data.ts";
 
@@ -25,15 +26,24 @@ interface Props {
   announcement?: boolean | undefined;
 }
 
-const { locale, title, description, image, type, noindex, announcement = true } = Astro.props;
+const {
+  locale,
+  title,
+  description,
+  image,
+  type,
+  noindex,
+  announcement: showAnnouncement = true,
+} = Astro.props;
 const path = Astro.url.pathname;
 const strings = ui(locale);
+const data = getSiteData();
+const announcement = showAnnouncement ? data.announcement : null;
 // Titles of the largest entries always hit the (zh-built) index, unlike localized tag names.
-const hotKeywords = byMembers(getSiteData().entries)
+const hotKeywords = byMembers(data.entries)
   .slice(0, 6)
   .map((entry) => entry.title);
-// A new announcement text gets a new key, so earlier dismissals don't hide it.
-const announcementKey = `announcement:${[...ui("zh").announcement.text].reduce((hash, char) => (hash * 31 + (char.codePointAt(0) ?? 0)) >>> 0, 7).toString(36)}`;
+const dismissKey = announcement ? announcementKey(announcement) : "";
 const pagefindUrl = (import.meta.env.PUBLIC_PAGEFIND_URL ?? "/pagefind").replace(/\/$/, "");
 ---
 
@@ -57,7 +67,7 @@ const pagefindUrl = (import.meta.env.PUBLIC_PAGEFIND_URL ?? "/pagefind").replace
     <link rel="apple-touch-icon" href="/icons/icon-180.png">
     <link rel="manifest" href="/manifest.webmanifest">
     {/* Runs before first paint so the stored theme never flashes. */}
-    <script is:inline define:vars={{ announcementKey }}>
+    <script is:inline define:vars={{ dismissKey }}>
     (() => {
       const root = document.documentElement;
       root.classList.add("js");
@@ -67,9 +77,9 @@ const pagefindUrl = (import.meta.env.PUBLIC_PAGEFIND_URL ?? "/pagefind").replace
           ? stored === "dark"
           : matchMedia("(prefers-color-scheme: dark)").matches;
         root.classList.toggle("dark", dark);
-        if (localStorage.getItem(announcementKey)) root.dataset.announcementDismissed = "";
+        if (dismissKey && localStorage.getItem(dismissKey)) root.dataset.announcementDismissed = "";
       } catch {}
-      root.dataset.announcementKey = announcementKey;
+      if (dismissKey) root.dataset.announcementKey = dismissKey;
     })();
     </script>
     <slot name="head" />
@@ -82,7 +92,7 @@ const pagefindUrl = (import.meta.env.PUBLIC_PAGEFIND_URL ?? "/pagefind").replace
       {ui(locale).nav.skipToContent}
     </a>
     <SiteHeader locale={locale} path={path} />
-    {announcement && <Announcement locale={locale} />}
+    {announcement && <Announcement locale={locale} announcement={announcement} />}
     <main id="main" class="flex-1">
       <slot />
     </main>

@@ -40,6 +40,11 @@ export function findEntries(usernames: string[]): EntryView[] {
   return usernames.flatMap((username) => byUsername?.get(username) ?? []);
 }
 
+/** Promoted (pinned) entries lead; the sort is stable, so the incoming order holds within each group. */
+export function promotedFirst(entries: EntryView[]): EntryView[] {
+  return [...entries].sort((a, b) => Number(b.isPromoted) - Number(a.isPromoted));
+}
+
 /** Largest first; entries without a member count go last. */
 export function byMembers(entries: EntryView[]): EntryView[] {
   return [...entries].sort(

@@ -1,9 +1,28 @@
-import type { EntryStatusSummary, SubmissionSummary, zh } from "./zh.ts";
+import {
+  type BannerOrderSummary,
+  type EntryStatusSummary,
+  type OrderSummary,
+  type ProductLabel,
+  type PromotionTarget,
+  type PublishSummary,
+  type SubmissionSummary,
+  utcTime,
+  type zh,
+} from "./zh.ts";
+
+const enTarget = (t: PromotionTarget) =>
+  t.username ? `pin @${t.username}` : `home banner "${t.bannerTitle ?? ""}"`;
 
 export const en: typeof zh = {
   welcome:
     "Welcome to the TGbox submission bot!\n\nSend a link to a channel, group or bot (https://t.me/xxx, t.me/xxx or @xxx) to submit it.",
   submitButton: "Submit",
+  promoteButton: "Buy promotion",
+  submissionsClosed: "Submissions are closed for now. Please come back later.",
+  support: (username: string | null) =>
+    username
+      ? `Contact support: @${username}`
+      : "Support isn't set up yet. Please try again later.",
   help: "Listing criteria: public channels, groups or bots with legal content, regular updates and no fake subscribers.\n\nHow to submit: send a t.me link or @username, then pick a category and tags.\nYou'll get a private message with the review result. Contact the admins with any questions.",
   sendLink:
     "Send the link of the channel, group or bot to submit (https://t.me/xxx, t.me/xxx or @xxx).",
@@ -46,6 +65,63 @@ export const en: typeof zh = {
     `Sorry, your submission @${username} was not approved. Reason: ${reason}`,
   openTelegram: "Open in Telegram",
   openSite: "Details",
+  promote: {
+    intro:
+      "📣 Promotions\n\nPin: a listed entry is pinned to the top of the site's lists.\nHome banner: a promo card on the site's home page (reviewed).\n\nChoose a product:",
+    unavailable:
+      "Promotions can't be bought right now. Try again later or contact support (/support).",
+    product: (p: ProductLabel) => `${p.name} · ⭐${p.stars} / ${p.usdt} USDT`,
+    askTarget:
+      "Send the channel, group or bot to pin (@username or t.me link). It must already be listed.",
+    askTitle: "Send the banner title (1–20 characters):",
+    askSubtitle: "Send the banner subtitle (1–40 characters):",
+    askHref: "Send the banner link (starting with https://, t.me links work too):",
+    invalidTarget: "That wasn't recognized. Send an @username or t.me link.",
+    targetNotListed: (username: string) =>
+      `@${username} isn't listed yet; only listed entries can be pinned. Send /submit to submit it first.`,
+    invalidTitle: "The title must be 1–20 characters. Please send it again.",
+    invalidSubtitle: "The subtitle must be 1–40 characters. Please send it again.",
+    invalidHref: "The link must start with https://. Please send it again.",
+    noSlots: (nextFreeAt: number | null) =>
+      nextFreeAt
+        ? `All slots are taken. The next one frees up on ${new Date(nextFreeAt).toISOString().slice(0, 10)}.`
+        : "All slots are taken. Please try again later.",
+    productUnavailable: "That product is no longer available. Send /promote to choose again.",
+    order: (o: OrderSummary) =>
+      [
+        `Order #${o.id}`,
+        `Product: ${o.product}`,
+        `Content: ${enTarget(o)}`,
+        `Price: ⭐${o.stars} or ${o.usdt} USDT`,
+      ].join("\n"),
+    choosePayment: "Choose a payment method:",
+    noPaymentMethod: "Online payment isn't available right now. Please contact support (/support).",
+    payStars: (stars: number) => `⭐ Telegram Stars (${stars})`,
+    payUsdt: (usdt: string) => `💵 USDT (${usdt})`,
+    orderExpired: "This order is no longer valid. Send /promote to order again.",
+    invoiceDescription: (t: PromotionTarget, days: number) => `${enTarget(t)}, ${days} days`,
+    usdtInvoice: (amount: string) =>
+      `Please pay ${amount} USDT within 1 hour. You'll be notified once the payment arrives.`,
+    payNow: "Pay",
+    invoiceFailed: "Couldn't create the invoice. Please try again later.",
+    cancelled: "Cancelled.",
+    checkoutInvalid: "This order is no longer valid. Please order again.",
+    checkoutNoSlots: "All slots are taken; you haven't been charged.",
+    paidPin: (username: string, days: number) =>
+      `✅ Payment received! @${username} is pinned for ${days} days. The site updates in a few minutes.`,
+    paidBanner:
+      "✅ Payment received! Your banner is awaiting review; you'll be notified of the result.",
+    bannerApproved: (endsAt: number) =>
+      `🎉 Your home banner was approved and is live until ${utcTime(endsAt)}.`,
+    bannerRejectedRefunded: "Sorry, your home banner was not approved. Your Stars were refunded.",
+    bannerRejectedManual: (orderId: number, support: string | null) =>
+      `Sorry, your home banner was not approved. Please contact support${support ? ` @${support}` : ""} for a refund (order #${orderId}).`,
+    orphanRefunded: "This order is no longer valid, so your Stars were refunded.",
+    expired: (t: PromotionTarget) =>
+      `Your promotion (${enTarget(t)}) has ended. Send /promote to buy again.`,
+    expiringSoon: (t: PromotionTarget, endsAt: number) =>
+      `Your promotion (${enTarget(t)}) ends at ${utcTime(endsAt)}. Send /promote to renew.`,
+  },
   admin: {
     newSubmission: (s: SubmissionSummary) =>
       [
@@ -72,6 +148,31 @@ export const en: typeof zh = {
       duplicate: "Duplicate",
       other: "Other",
     },
+    reviewChatSet: "✅ This chat is now the review chat.",
+    bannerReview: (o: BannerOrderSummary) =>
+      [
+        "🖼 Home banner awaiting review",
+        `Order #${o.id}: ${o.product}`,
+        `Title: ${o.title}`,
+        `Subtitle: ${o.subtitle}`,
+        `Link: ${o.href}`,
+        `Paid: ${o.amount} ${o.currency}`,
+        `Buyer: ${o.buyerId}`,
+      ].join("\n"),
+    bannerRejected: (name: string, refunded: boolean, amount: string) =>
+      `❌ Rejected (${name})${refunded ? ", refunded automatically" : `, refund ${amount} by hand`}`,
+    orphanPayment: (orderId: number, provider: string, chargeId: string, amount: string) =>
+      `⚠️ Payment for invalid order #${orderId} (${provider} ${chargeId}, ${amount}). Check and refund by hand.`,
+    publish: (p: PublishSummary) =>
+      [
+        `🆕 New · ${p.kind} · ${p.category}`,
+        "",
+        p.title,
+        `@${p.username}`,
+        ...(p.description ? ["", p.description] : []),
+        "",
+        p.url,
+      ].join("\n"),
     banUsage: "Usage: /ban <userId|@username> [reason]",
     unbanUsage: "Usage: /unban <userId|@username>",
     banned: (target: string) => `Banned ${target}`,

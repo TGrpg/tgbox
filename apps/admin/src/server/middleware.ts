@@ -25,7 +25,12 @@ export const adminMiddleware = createMiddleware({ type: "function" })
       db: createDb(env.DB),
       fetch: (input, init) => fetch(input, init),
       now: Date.now,
-      config: { GITHUB_REPO: env.GITHUB_REPO, GITHUB_DISPATCH_TOKEN: env.GITHUB_DISPATCH_TOKEN },
+      config: {
+        GITHUB_REPO: env.GITHUB_REPO,
+        GITHUB_DISPATCH_TOKEN: env.GITHUB_DISPATCH_TOKEN,
+        BOT_TOKEN: env.BOT_TOKEN,
+        SETTINGS_KEY: env.SETTINGS_KEY,
+      },
       waitUntil,
     };
     return next({ context: { auth, core } });

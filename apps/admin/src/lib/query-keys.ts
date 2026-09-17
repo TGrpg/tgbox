@@ -16,6 +16,11 @@ export const queryKeys = {
   blacklist: ["blacklist"],
   reviewQueue: ["review-queue"],
   submissionPreview: ["submission-preview"],
+  settings: ["settings"],
+  orders: ["orders"],
+  promotions: ["promotions"],
+  promotionCounts: ["promotion-counts"],
+  products: ["products"],
 } as const;
 
 export type QueryKeyRoot = keyof typeof queryKeys;

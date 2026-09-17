@@ -5,11 +5,14 @@ import Category from "@tabler/icons/outline/category-2.svg";
 import Heart from "@tabler/icons/outline/heart-handshake.svg";
 import Info from "@tabler/icons/outline/info-circle.svg";
 import Robot from "@tabler/icons/outline/robot.svg";
+import Speakerphone from "@tabler/icons/outline/speakerphone.svg";
 import X from "@tabler/icons/outline/x.svg";
 import type { Locale } from "@tgbox/shared";
-import { type Promo, promos } from "@/data/promos.ts";
-import { localizePath } from "@/i18n/locale.ts";
+import { promos } from "@/data/promos.ts";
+import { ui } from "@/i18n/ui.ts";
 import { homeUi } from "@/i18n/ui-home.ts";
+import { mergePromos, type PromoCard } from "@/lib/promos.ts";
+import { getSiteData } from "@/lib/site-data.ts";
 
 interface Props {
   locale: Locale;
@@ -22,18 +25,15 @@ const icons = {
   category: Category,
   info: Info,
   heart: Heart,
-} satisfies Record<Promo["icon"], unknown>;
-const items = promos.map((promo) => {
-  const external = /^https?:/.test(promo.href);
-  return {
-    ...promo,
-    external,
-    Icon: icons[promo.icon],
-    href: external ? promo.href : localizePath(promo.href, locale),
-  };
-});
-// New promo lineups get a new key, so an earlier dismissal doesn't hide them.
-const storageKey = `home-promos:${promos.map((promo) => promo.id).join(",")}`;
+  ad: Speakerphone,
+} satisfies Record<PromoCard["icon"], unknown>;
+const adLabel = ui(locale).entry.ad;
+const items = mergePromos(getSiteData().promos, promos, locale, 5).map((promo) => ({
+  ...promo,
+  Icon: icons[promo.icon],
+}));
+// New promo lineups (including each paid banner id) get a new key, so an earlier dismissal doesn't hide them.
+const storageKey = `home-promos:${items.map((promo) => promo.id).join(",")}`;
 ---
 
 {items.length > 0 && (
@@ -80,7 +80,8 @@ const storageKey = `home-promos:${promos.map((promo) => promo.id).join(",")}`;
               href={promo.href}
               data-hover-lift
               data-press
-              rel={promo.external ? "noopener sponsored" : undefined}
+              data-promo-sponsored={promo.sponsored ? "" : undefined}
+              rel={promo.external ? "sponsored noopener" : undefined}
               target={promo.external ? "_blank" : undefined}
               class="home-promo group relative flex aspect-[16/10] flex-col justify-end overflow-hidden rounded-2xl p-3 text-white shadow-card outline-none focus-visible:ring-4 focus-visible:ring-outline/50 sm:p-4"
               style={`background:${promo.background}`}
@@ -90,13 +91,13 @@ const storageKey = `home-promos:${promos.map((promo) => promo.id).join(",")}`;
                 aria-hidden="true"
               />
               <span class="absolute top-2.5 left-2.5 rounded-md bg-black/30 px-1.5 py-0.5 text-[0.7rem] font-semibold backdrop-blur-sm sm:top-3 sm:left-3">
-                {promo.badge[locale]}
+                {promo.badge ?? adLabel}
               </span>
-              <span class="relative text-[0.95rem] leading-tight font-bold drop-shadow-sm sm:text-lg">
-                {promo.title[locale]}
+              <span class="relative line-clamp-2 text-[0.95rem] leading-tight font-bold [overflow-wrap:anywhere] drop-shadow-sm sm:text-lg" dir="auto">
+                {promo.title}
               </span>
-              <span class="relative mt-0.5 truncate text-xs text-white/85 sm:text-[0.8rem]">
-                {promo.subtitle[locale]}
+              <span class="relative mt-0.5 truncate text-xs text-white/85 sm:text-[0.8rem]" dir="auto">
+                {promo.subtitle}
               </span>
             </a>
           </li>

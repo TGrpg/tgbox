@@ -13,18 +13,21 @@ test("hot categories are the largest non-empty categories, one per slug", () => 
   expect(new Set(slugs).size).toBe(slugs.length);
 });
 
-test("hot pool holds the biggest entries of one kind with only what a row shows", () => {
+test("hot pool holds promoted, then the biggest entries of one kind with only what a row shows", () => {
   const pool = hotPool(devSiteData.entries, "channel", 50);
   const channels = devSiteData.entries.filter((entry) => entry.kind === "channel");
   expect(pool).toHaveLength(Math.min(50, channels.length));
+  // "telegram" is the dev dataset's promoted channel; "durov" is the largest.
   expect(pool[0]).toEqual({
-    u: "durov",
-    t: "Du Rove's Channel",
+    u: "telegram",
+    t: "Telegram News",
     v: true,
     a: null,
-    m: 12_480_000,
+    m: 9_870_000,
+    p: true,
   });
-  const members = pool.map((item) => item.m ?? -1);
+  expect(pool[1]).toMatchObject({ u: "durov", m: 12_480_000, p: false });
+  const members = pool.filter((item) => !item.p).map((item) => item.m ?? -1);
   expect(members).toEqual([...members].sort((a, b) => b - a));
   expect(hotPool(devSiteData.entries, "channel", 1)).toHaveLength(1);
 });

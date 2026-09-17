@@ -1,6 +1,6 @@
 import type { CategoryView, EntryKind, EntryView } from "@tgbox/shared";
 import type { HotItem } from "./home-hot.ts";
-import { byMembers } from "./site-data.ts";
+import { byMembers, promotedFirst } from "./site-data.ts";
 
 /** Entries per kind in the static `/data/hot-<kind>.json` pool. */
 const HOT_POOL_SIZE = 50;
@@ -15,9 +15,14 @@ export function hotCategories(categories: CategoryView[], limit: number): Catego
     .slice(0, limit);
 }
 
-/** Biggest entries of a kind, with short keys to keep the static JSON small. */
+/** Promoted, then biggest entries of a kind (the column's first rows are this order too). */
+export function hotEntries(entries: EntryView[], kind: EntryKind): EntryView[] {
+  return promotedFirst(byMembers(entries.filter((entry) => entry.kind === kind)));
+}
+
+/** `hotEntries` with short keys to keep the static JSON small. */
 export function hotPool(entries: EntryView[], kind: EntryKind, size = HOT_POOL_SIZE): HotItem[] {
-  return byMembers(entries.filter((entry) => entry.kind === kind))
+  return hotEntries(entries, kind)
     .slice(0, size)
     .map((entry) => ({
       u: entry.username,
@@ -25,6 +30,7 @@ export function hotPool(entries: EntryView[], kind: EntryKind, size = HOT_POOL_S
       v: entry.verified,
       a: entry.avatarUrl,
       m: entry.members,
+      p: entry.isPromoted,
     }));
 }
 

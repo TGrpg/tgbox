@@ -2,15 +2,24 @@
 import ArrowRight from "@tabler/icons/outline/arrow-right.svg";
 import Speakerphone from "@tabler/icons/outline/speakerphone.svg";
 import X from "@tabler/icons/outline/x.svg";
-import type { Locale } from "@tgbox/shared";
+import type { AnnouncementView, Locale } from "@tgbox/shared";
 import { localizePath } from "@/i18n/locale.ts";
 import { ui } from "@/i18n/ui.ts";
 
 interface Props {
   locale: Locale;
+  announcement: AnnouncementView;
 }
-const { locale } = Astro.props;
+const { locale, announcement } = Astro.props;
 const strings = ui(locale).announcement;
+const text = announcement[locale] || announcement.zh || announcement.en;
+const external = announcement.href !== null && /^https?:\/\//.test(announcement.href);
+// Site paths are localized; anything that is neither a site path nor http(s) is dropped.
+const href = external
+  ? announcement.href
+  : announcement.href && /^\/(?!\/)/.test(announcement.href)
+    ? localizePath(announcement.href, locale)
+    : null;
 ---
 
 {/*
@@ -31,15 +40,22 @@ const strings = ui(locale).announcement;
       <Speakerphone class="size-3.5" aria-hidden="true" />
       {strings.badge}
     </span>
-    <p class="min-w-0 flex-1 text-sm leading-relaxed text-foreground/90">
-      {strings.text}
+    <p
+      class="min-w-0 flex-1 text-sm leading-relaxed text-foreground/90 [overflow-wrap:anywhere]"
+      dir="auto"
+    >
+      {text}
+      {href && (
       <a
-        href={localizePath("/enroll/", locale)}
+        href={href}
+        target={external ? "_blank" : undefined}
+        rel={external ? "noopener" : undefined}
         class="ml-1 inline-flex items-center gap-0.5 font-medium whitespace-nowrap text-brand underline decoration-brand/30 underline-offset-4 transition-colors hover:decoration-brand"
       >
         {strings.cta}
         <ArrowRight class="size-3.5" aria-hidden="true" />
       </a>
+      )}
     </p>
     <button
       type="button"

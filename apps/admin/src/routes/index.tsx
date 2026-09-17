@@ -1,13 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import type { AdminStats } from "@tgbox/db";
 import {
   BotIcon,
   CircleCheckIcon,
   ClipboardListIcon,
   EyeOffIcon,
+  ImageIcon,
   type LucideIcon,
   MegaphoneIcon,
+  RocketIcon,
   Trash2Icon,
   UsersIcon,
 } from "lucide-react";
@@ -23,6 +25,7 @@ import {
   DashboardActivity,
   LastTrigger,
 } from "@/features/dashboard/dashboard-activity.tsx";
+import { promotionCountsQueryOptions } from "@/functions/promotions.ts";
 import { adminStatsQueryOptions } from "@/functions/stats.ts";
 
 export const Route = createFileRoute("/")({
@@ -49,6 +52,7 @@ function Dashboard() {
       ) : (
         <DashboardCards data={stats.data} />
       )}
+      <PromotionCards />
       <div className="mt-4">
         <DashboardActivity />
       </div>
@@ -135,4 +139,47 @@ function DashboardCards({ data }: { data: AdminStats }) {
 
 function StatGrid({ children }: { children: ReactNode }) {
   return <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">{children}</div>;
+}
+
+function PromotionCards() {
+  const counts = useQuery(promotionCountsQueryOptions());
+  if (!counts.data) return null;
+  const cards = [
+    {
+      label: "待审核横幅",
+      value: counts.data.pendingBanners,
+      icon: ImageIcon,
+      tab: "orders" as const,
+      warn: counts.data.pendingBanners > 0,
+    },
+    { label: "投放中推广", value: counts.data.active, icon: RocketIcon, tab: "active" as const },
+  ];
+  return (
+    <div className="mt-4 grid grid-cols-2 gap-3 md:gap-4">
+      {cards.map((card, index) => (
+        <motion.div
+          key={card.label}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: index * 0.03, duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <Card
+            render={<Link to="/promotions" search={{ tab: card.tab }} />}
+            className="h-full flex-row items-center justify-between gap-3 p-4 transition-colors hover:bg-accent/40"
+          >
+            <span className="flex items-center gap-2 text-muted-foreground text-sm">
+              <card.icon
+                className={card.warn ? "size-4 text-warning-foreground" : "size-4"}
+                aria-hidden
+              />
+              {card.label}
+            </span>
+            <span className="font-semibold text-2xl tracking-tight">
+              <NumberRoll value={card.value} />
+            </span>
+          </Card>
+        </motion.div>
+      ))}
+    </div>
+  );
 }

@@ -1,5 +1,5 @@
 import type { EntryKind, EntryView, SiteData, TagView } from "@tgbox/shared";
-import { byMembers, PAGE_SIZE } from "./site-data.ts";
+import { byMembers, PAGE_SIZE, promotedFirst } from "./site-data.ts";
 
 /** Category pages are built in both orders: `/<kind>/<cat>/` and `/<kind>/<cat>/latest/`. */
 export const listingSorts = ["members", "latest"] as const;
@@ -13,7 +13,7 @@ function byListedAt(entries: EntryView[]): EntryView[] {
 }
 
 export function sortEntries(entries: EntryView[], sort: ListingSort): EntryView[] {
-  return sort === "latest" ? byListedAt(entries) : byMembers(entries);
+  return promotedFirst(sort === "latest" ? byListedAt(entries) : byMembers(entries));
 }
 
 /** Locale-neutral first-page path of a category listing in the given order. */
@@ -40,14 +40,15 @@ export function categoryListingPaths(data: SiteData) {
     );
 }
 
-/** Kind overview: one section per non-empty category with its largest entries. */
+/** Kind overview: one section per non-empty category with its promoted, then largest entries. */
 export function kindSections(data: SiteData, kind: EntryKind, limit = 10) {
   return data.categories
     .filter((category) => category.kind === kind && category.count > 0)
     .map((category) => ({
       category,
-      entries: byMembers(
+      entries: sortEntries(
         data.entries.filter((item) => item.kind === kind && item.category === category.slug),
+        "members",
       ).slice(0, limit),
     }))
     .filter((section) => section.entries.length > 0);

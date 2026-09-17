@@ -14,7 +14,9 @@ import { Route as AddRouteImport } from './routes/add'
 import { Route as AuditRouteImport } from './routes/audit'
 import { Route as BlacklistRouteImport } from './routes/blacklist'
 import { Route as EntriesRouteImport } from './routes/entries'
+import { Route as PromotionsRouteImport } from './routes/promotions'
 import { Route as ReviewRouteImport } from './routes/review'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as TaxonomyRouteImport } from './routes/taxonomy'
 
 const IndexRoute = IndexRouteImport.update({
@@ -42,9 +44,19 @@ const EntriesRoute = EntriesRouteImport.update({
   path: '/entries',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PromotionsRoute = PromotionsRouteImport.update({
+  id: '/promotions',
+  path: '/promotions',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ReviewRoute = ReviewRouteImport.update({
   id: '/review',
   path: '/review',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TaxonomyRoute = TaxonomyRouteImport.update({
@@ -59,7 +71,9 @@ export interface FileRoutesByFullPath {
   '/audit': typeof AuditRoute
   '/blacklist': typeof BlacklistRoute
   '/entries': typeof EntriesRoute
+  '/promotions': typeof PromotionsRoute
   '/review': typeof ReviewRoute
+  '/settings': typeof SettingsRoute
   '/taxonomy': typeof TaxonomyRoute
 }
 export interface FileRoutesByTo {
@@ -68,7 +82,9 @@ export interface FileRoutesByTo {
   '/audit': typeof AuditRoute
   '/blacklist': typeof BlacklistRoute
   '/entries': typeof EntriesRoute
+  '/promotions': typeof PromotionsRoute
   '/review': typeof ReviewRoute
+  '/settings': typeof SettingsRoute
   '/taxonomy': typeof TaxonomyRoute
 }
 export interface FileRoutesById {
@@ -78,7 +94,9 @@ export interface FileRoutesById {
   '/audit': typeof AuditRoute
   '/blacklist': typeof BlacklistRoute
   '/entries': typeof EntriesRoute
+  '/promotions': typeof PromotionsRoute
   '/review': typeof ReviewRoute
+  '/settings': typeof SettingsRoute
   '/taxonomy': typeof TaxonomyRoute
 }
 export interface FileRouteTypes {
@@ -89,7 +107,9 @@ export interface FileRouteTypes {
     | '/audit'
     | '/blacklist'
     | '/entries'
+    | '/promotions'
     | '/review'
+    | '/settings'
     | '/taxonomy'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -98,7 +118,9 @@ export interface FileRouteTypes {
     | '/audit'
     | '/blacklist'
     | '/entries'
+    | '/promotions'
     | '/review'
+    | '/settings'
     | '/taxonomy'
   id:
     | '__root__'
@@ -107,7 +129,9 @@ export interface FileRouteTypes {
     | '/audit'
     | '/blacklist'
     | '/entries'
+    | '/promotions'
     | '/review'
+    | '/settings'
     | '/taxonomy'
   fileRoutesById: FileRoutesById
 }
@@ -117,7 +141,9 @@ export interface RootRouteChildren {
   AuditRoute: typeof AuditRoute
   BlacklistRoute: typeof BlacklistRoute
   EntriesRoute: typeof EntriesRoute
+  PromotionsRoute: typeof PromotionsRoute
   ReviewRoute: typeof ReviewRoute
+  SettingsRoute: typeof SettingsRoute
   TaxonomyRoute: typeof TaxonomyRoute
 }
 
@@ -158,11 +184,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EntriesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/promotions': {
+      id: '/promotions'
+      path: '/promotions'
+      fullPath: '/promotions'
+      preLoaderRoute: typeof PromotionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/review': {
       id: '/review'
       path: '/review'
       fullPath: '/review'
       preLoaderRoute: typeof ReviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/taxonomy': {
@@ -181,7 +221,9 @@ const rootRouteChildren: RootRouteChildren = {
   AuditRoute: AuditRoute,
   BlacklistRoute: BlacklistRoute,
   EntriesRoute: EntriesRoute,
+  PromotionsRoute: PromotionsRoute,
   ReviewRoute: ReviewRoute,
+  SettingsRoute: SettingsRoute,
   TaxonomyRoute: TaxonomyRoute,
 }
 export const routeTree = rootRouteImport
