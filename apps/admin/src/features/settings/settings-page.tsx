@@ -326,6 +326,7 @@ function SiteSection({ initial }: { initial: SiteSettings }) {
   const [announcement, setAnnouncement] = useState(initial.announcement);
   const [blocklistText, setBlocklistText] = useState(formatPostBlocklist(initial.postBlocklist));
   const [hidePostMedia, setHidePostMedia] = useState(initial.hidePostMedia);
+  const [showAdSlots, setShowAdSlots] = useState(initial.showAdSlots);
   const save = useSaveSettings();
   const patch = (next: Partial<SiteSettings["announcement"]>) =>
     setAnnouncement((current) => ({ ...current, ...next }));
@@ -340,6 +341,7 @@ function SiteSection({ initial }: { initial: SiteSettings }) {
     },
     postBlocklist: blocklist.keywords,
     hidePostMedia,
+    showAdSlots,
   };
   const dirty = JSON.stringify(candidate) !== JSON.stringify(initial);
   const missingText =
@@ -432,6 +434,12 @@ function SiteSection({ initial }: { initial: SiteSettings }) {
         hint="开启后「最近消息」只显示文字，不再显示配图。改动在下次网站构建后生效。"
         checked={hidePostMedia}
         onChange={setHidePostMedia}
+      />
+      <SwitchRow
+        label="显示广告位招租"
+        hint="没有投放中的付费推广时，是否仍在首页和详情页展示「广告位招租」卡片招揽客户。关闭后整块「赞助商推广」不再出现。"
+        checked={showAdSlots}
+        onChange={setShowAdSlots}
       />
     </Section>
   );

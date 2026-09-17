@@ -171,4 +171,5 @@ export const devSiteData: SiteData = {
   },
   announcement: null,
   promos: [],
+  showAdSlots: true,
 };

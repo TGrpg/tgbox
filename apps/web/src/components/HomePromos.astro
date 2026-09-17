@@ -15,10 +15,16 @@ interface Props {
 const { locale } = Astro.props;
 const strings = homeUi(locale);
 const { entry, adSlot } = ui(locale);
-const items = promoSlots(getSiteData().promos, 5, 2);
+const data = getSiteData();
+const items = promoSlots(data.promos, 5, 2, data.showAdSlots);
 const paidIds = items.flatMap((promo) => (promo.type === "paid" ? [promo.id] : []));
-// Only real banners can be dismissed; each new paid lineup gets a new key so an earlier dismissal doesn't hide it.
-const storageKey = paidIds.length > 0 ? `home-promos:${paidIds.join(",")}` : "";
+// Every lineup gets a key so a visitor can dismiss the block — including an all-placeholder one,
+// which is otherwise the hardest to get rid of. A new paid lineup gets a new key, so an earlier
+// dismissal never hides a banner someone paid for.
+const storageKey = `home-promos:${paidIds.join(",") || "ads"}`;
+// Layout, not dismissal: a lineup with real banners uses the dense 5-up card grid, while an
+// all-placeholder lineup stays in the calmer 2-up row so unsold space never outshines paid space.
+const hasPaid = paidIds.length > 0;
 const promoteHref = promoteUrl(botUsername);
 ---
 
@@ -29,7 +35,7 @@ const promoteHref = promoteUrl(botUsername);
       class="mx-auto max-w-7xl px-4 pt-2 sm:px-6"
     >
       {/* Hides the section before its cards paint; runs before the button is parsed, so it listens on the section. */}
-      {storageKey && <script is:inline define:vars={{ storageKey }}>
+      <script is:inline define:vars={{ storageKey }}>
       (() => {
         const section = document.currentScript?.closest("[data-home-promos]");
         if (!section) return;
@@ -44,25 +50,25 @@ const promoteHref = promoteUrl(botUsername);
           } catch {}
         });
       })();
-      </script>}
+      </script>
       <div class="mb-3 flex items-center justify-between">
         <span class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-2 py-0.5 text-xs font-medium text-muted-foreground shadow-card">
           <Ad class="size-3.5" aria-hidden="true" />
           {strings.sponsored}
         </span>
-        {storageKey && <button
+        <button
           type="button"
           data-promos-dismiss
           aria-label={strings.dismissPromos}
           class="inline-grid size-8 place-items-center rounded-full border border-border bg-card text-muted-foreground shadow-card transition-colors outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-outline/40"
         >
           <X class="size-4" aria-hidden="true" />
-        </button>}
+        </button>
       </div>
       <ul
         class:list={[
           "grid gap-3 sm:gap-4",
-          storageKey ? "grid-cols-2 lg:grid-cols-5" : "grid-cols-1 sm:grid-cols-2",
+          hasPaid ? "grid-cols-2 lg:grid-cols-5" : "grid-cols-1 sm:grid-cols-2",
         ]}
       >
         {items.map((promo, index) => (
@@ -70,7 +76,7 @@ const promoteHref = promoteUrl(botUsername);
             data-reveal
             class:list={[
               "min-w-0",
-              storageKey && index === items.length - 1 && items.length % 2 === 1 && "home-promo-wide col-span-2 lg:col-span-1",
+              hasPaid && index === items.length - 1 && items.length % 2 === 1 && "home-promo-wide col-span-2 lg:col-span-1",
             ]}
           >
             {promo.type === "paid" ? (
@@ -112,7 +118,7 @@ const promoteHref = promoteUrl(botUsername);
                 target="_blank"
                 class:list={[
                   "ad-slot group relative flex flex-col overflow-hidden rounded-2xl border-2 border-dashed border-primary/30 p-3 text-foreground outline-none transition-colors hover:border-primary/60 focus-visible:ring-4 focus-visible:ring-outline/50 sm:p-4",
-                  storageKey ? "aspect-[16/10] justify-end" : "min-h-24 justify-center pr-24 sm:min-h-28",
+                  hasPaid ? "aspect-[16/10] justify-end" : "min-h-24 justify-center pr-24 sm:min-h-28",
                 ]}
               >
                 <Speakerphone

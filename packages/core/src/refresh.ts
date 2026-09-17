@@ -38,6 +38,13 @@ const MINUTE_MS = 60_000;
 const WEEK_MS = 7 * 24 * 60 * MINUTE_MS;
 const DEFAULT_BATCH_SIZE = 6;
 
+/**
+ * How often the refresh cron fires. **Must match the every-5-minutes trigger in
+ * `apps/bot/wrangler.jsonc`**: the batch slot is derived by dividing the clock by this interval,
+ * so a mismatch makes the rotation skip slices and silently strand entries.
+ */
+export const REFRESH_INTERVAL_MS = 5 * MINUTE_MS;
+
 // Free plan: 50 subrequests per invocation (fetch + D1 + R2). Stay under 45.
 const SUBREQUEST_BUDGET = 45;
 const SUBREQUEST_LIMIT = 50;
@@ -150,10 +157,14 @@ export async function runRefresh(
   if (maxId === 0) return result;
   const batchSize = batchSizeOf(env);
   const batches = Math.ceil(maxId / batchSize);
-  const minute = Math.floor(scheduledTime / MINUTE_MS);
-  const slot = minute % batches;
+  // Counted in cron ticks, not wall-clock minutes: with an every-5-minutes trigger the minute of
+  // the hour advances in steps of 5, so `minute % batches` would land on the same slice forever
+  // whenever `batches` shares a factor with 5, and the entries in every other slice would never
+  // be refreshed again while the logs still looked healthy.
+  const tick = Math.floor(scheduledTime / REFRESH_INTERVAL_MS);
+  const slot = tick % batches;
   // One cycle = one full pass over all slots; low-activity channels are refreshed every other pass.
-  const oddCycle = Math.floor(minute / batches) % 2 === 1;
+  const oddCycle = Math.floor(tick / batches) % 2 === 1;
   result.from = slot * batchSize + 1;
   result.to = result.from + batchSize - 1;
 

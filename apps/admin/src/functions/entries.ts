@@ -12,6 +12,7 @@ import {
   type EntryStats,
   getEntryTagIds,
   getEntryWithStats,
+  listActivePromotions,
   listCategories,
   listEntriesAdmin,
   listTagIdsForEntries,
@@ -56,6 +57,14 @@ export const $listEntries = createServerFn({ method: "GET" })
       db,
       rows.map((row) => row.entry.id),
     );
+    // A live paid pin re-asserts `isPromoted` at every site build, so the raw column alone would
+    // let an admin "turn promotion off", watch it come back, and have no idea why. `promotions`
+    // only holds what is currently running and is deleted on expiry, so this scan is a few rows.
+    const pinned = new Set(
+      (await listActivePromotions(db, Date.now(), "pin")).flatMap((promotion) =>
+        promotion.entryUsername === null ? [] : [promotion.entryUsername],
+      ),
+    );
     return {
       total,
       siteUrl: env.SITE_URL,
@@ -73,6 +82,8 @@ export const $listEntries = createServerFn({ method: "GET" })
         liveness: entry.liveness,
         status: entry.status,
         promoted: entry.isPromoted,
+        /** Pinned by a paid promotion: the site shows the badge regardless of `promoted`. */
+        pinnedByPromotion: pinned.has(entry.username),
         hidePosts: entry.hidePosts,
         listedAt: entry.listedAt,
         updatedAt: entry.updatedAt,

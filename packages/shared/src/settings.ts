@@ -48,6 +48,12 @@ export const SiteSettings = z.object({
   postBlocklist: z.array(z.string()).max(MAX_POST_BLOCKLIST),
   /** Drop post media thumbnails site-wide (text previews stay). */
   hidePostMedia: z.boolean(),
+  /**
+   * Fill the unsold sponsor slots with "this space is for rent" cards. Off by default: with no
+   * paid promotions the section would otherwise still render, which reads as an ad nobody can
+   * turn off.
+   */
+  showAdSlots: z.boolean(),
 });
 export type SiteSettings = z.infer<typeof SiteSettings>;
 
@@ -81,6 +87,7 @@ export const settingsDefaults: Settings = {
     announcement: { enabled: false, zh: "", en: "", href: null },
     postBlocklist: [],
     hidePostMedia: false,
+    showAdSlots: false,
   },
   payments: { starsEnabled: true, cryptoPayEnabled: false, cryptoPayNetwork: "mainnet" },
 };

@@ -13,7 +13,8 @@ interface Props {
 }
 const { locale } = Astro.props;
 const { entry, adSlot } = ui(locale);
-const items = promoSlots(getSiteData().promos, 3, 1);
+const data = getSiteData();
+const items = promoSlots(data.promos, 3, 1, data.showAdSlots);
 const onlyPlaceholder = items.length === 1 && items[0]?.type === "placeholder";
 const promoteHref = promoteUrl(botUsername);
 ---

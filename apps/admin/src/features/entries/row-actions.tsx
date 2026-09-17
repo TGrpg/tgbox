@@ -60,9 +60,16 @@ export function RowActions({
         <MenuItem disabled={refresh.isPending} onClick={() => refresh.mutate(entry.id)}>
           <RefreshCwIcon /> 立即刷新
         </MenuItem>
-        <MenuItem onClick={() => promote.mutate({ ids, promoted: !entry.promoted })}>
+        <MenuItem
+          disabled={entry.pinnedByPromotion}
+          onClick={() => promote.mutate({ ids, promoted: !entry.promoted })}
+        >
           {entry.promoted ? <StarOffIcon /> : <StarIcon />}
-          {entry.promoted ? "取消推广" : "设为推广"}
+          {entry.pinnedByPromotion
+            ? "付费置顶中，请在推广页结束"
+            : entry.promoted
+              ? "取消推广"
+              : "设为推广"}
         </MenuItem>
         {entry.kind === "channel" && (
           <>

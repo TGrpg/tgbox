@@ -278,6 +278,7 @@ export async function buildSiteData(options: BuildSiteDataOptions): Promise<Site
       },
       announcement,
       promos,
+      showAdSlots: site.showAdSlots,
     });
 
     /** Applies the operator's post filters: whole entry, single posts, keywords, media. */

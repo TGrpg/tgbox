@@ -40,10 +40,17 @@ export function promoteUrl(botUsername: string) {
 
 /**
  * Paid banners first (in snapshot order), then placeholders fill the remaining `slots`. With no paid
- * banner only `emptySlots` placeholders are shown, so the section isn't a wall of identical cards.
- * Paid banners are user-provided: only http(s) links are kept.
+ * banner only `emptySlots` placeholders are shown, so the section isn't a wall of identical cards —
+ * and when `showAdSlots` is off, nothing at all, so the whole sponsor block disappears rather than
+ * advertising space the operator never sold. Paid banners are user-provided: only http(s) links
+ * are kept.
  */
-export function promoSlots(paid: PromoView[], slots: number, emptySlots: number): PromoSlot[] {
+export function promoSlots(
+  paid: PromoView[],
+  slots: number,
+  emptySlots: number,
+  showAdSlots: boolean,
+): PromoSlot[] {
   const paidSlots = paid
     .filter((promo) => /^https?:\/\//i.test(promo.href))
     .slice(0, slots)
@@ -62,6 +69,7 @@ export function promoSlots(paid: PromoView[], slots: number, emptySlots: number)
         background: imageUrl ? `url("${imageUrl}") center/cover no-repeat, ${gradient}` : gradient,
       };
     });
+  if (!showAdSlots) return paidSlots;
   const total = paidSlots.length === 0 ? Math.min(slots, emptySlots) : slots;
   const placeholders = Array.from(
     { length: total - paidSlots.length },

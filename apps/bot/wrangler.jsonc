@@ -6,9 +6,11 @@
   "compatibility_flags": ["nodejs_compat"],
   "routes": [{ "pattern": "bot.tgbox.cc", "custom_domain": true }],
   "observability": { "enabled": true },
-  // Every minute: entry refresh. Hourly: promotion maintenance, in its own invocation so both
-  // stay under the 50-subrequest budget (see src/index.ts).
-  "triggers": { "crons": ["* * * * *", "0 * * * *"] },
+  // Every 5 minutes: entry refresh (REFRESH_INTERVAL_MS in packages/core/src/refresh.ts must match
+  // this, or the batch rotation strands entries). Hourly: promotion maintenance, in its own
+  // invocation so both stay under the 50-subrequest budget (see src/index.ts). Every scheduled
+  // invocation costs one request out of the 100k/day account budget, so ticks stay few and fat.
+  "triggers": { "crons": ["*/5 * * * *", "0 * * * *"] },
   "d1_databases": [
     {
       "binding": "DB",

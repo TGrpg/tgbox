@@ -87,9 +87,18 @@ function EditForm({ entry, onClose }: { entry: EntryRow; onClose: () => void }) 
               />
             </div>
             <Label className="flex items-center gap-2">
-              <Checkbox checked={promoted} onCheckedChange={(checked) => setPromoted(checked)} />
+              <Checkbox
+                checked={promoted || entry.pinnedByPromotion}
+                disabled={entry.pinnedByPromotion}
+                onCheckedChange={(checked) => setPromoted(checked)}
+              />
               推广
             </Label>
+            {entry.pinnedByPromotion && (
+              <p className="-mt-2 text-xs text-muted-foreground">
+                该条目有投放中的付费置顶，网站每次构建都会重新置顶它。要下线请到推广页结束这笔投放。
+              </p>
+            )}
           </>
         )}
       </SheetPanel>

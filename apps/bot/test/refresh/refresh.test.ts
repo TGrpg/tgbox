@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { runRefresh } from "@tgbox/core";
+import { REFRESH_INTERVAL_MS, runRefresh } from "@tgbox/core";
 import {
   createDb,
   getEntryByUsername,
@@ -118,9 +118,26 @@ describe("scheduling", () => {
 
     const first = await runRefresh(sliced, T0, tg);
     expect(first.processed).toEqual(["a1", "a2"]);
-    const second = await runRefresh(sliced, T0 + MINUTE, tg);
+    const second = await runRefresh(sliced, T0 + REFRESH_INTERVAL_MS, tg);
     expect(second.processed).toEqual(["a3", "a4"]);
     expect(await getSiteState(db, "refresh_cursor")).toBeUndefined();
+  });
+
+  test("rotates through every slot when the cron fires on its own interval", async () => {
+    // 10 entries / 2 per batch = 5 batches, and the cron fires every 5 minutes. Deriving the slot
+    // from the wall-clock minute would land on the same batch every single time, leaving 8 of the
+    // 10 entries permanently unrefreshed while the logs still looked healthy.
+    const names = Array.from({ length: 10 }, (_, index) => `slot${index}`);
+    for (const name of names) await addEntry(name, { kind: "group" });
+    const tg = fakeTelegram(Object.fromEntries(names.map((name) => [name, "group" as const])));
+    const sliced = { ...env, REFRESH_BATCH_SIZE: "2" };
+
+    const seen: string[] = [];
+    for (let tick = 0; tick < 5; tick++) {
+      const result = await runRefresh(sliced, T0 + tick * REFRESH_INTERVAL_MS, tg);
+      seen.push(...result.processed);
+    }
+    expect([...seen].sort()).toEqual([...names].sort());
   });
 
   test("skips removed and admin-hidden entries, and low-activity channels on odd cycles", async () => {
@@ -130,9 +147,9 @@ describe("scheduling", () => {
     await setStatus(await addEntry("muted", { kind: "group" }), "hidden_by_admin");
     const tg = fakeTelegram({ quiet: "channel", busy: "group", gone: "group", muted: "group" });
 
-    const odd = await runRefresh(env, T0 + MINUTE, tg);
+    const odd = await runRefresh(env, T0 + REFRESH_INTERVAL_MS, tg);
     expect(odd.processed).toEqual(["busy"]);
-    const even = await runRefresh(env, T0 + 2 * MINUTE, tg);
+    const even = await runRefresh(env, T0 + 2 * REFRESH_INTERVAL_MS, tg);
     expect(even.processed).toEqual(["quiet", "busy"]);
   });
 });

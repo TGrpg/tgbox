@@ -91,12 +91,13 @@ function jsonLd(page: string): unknown[] {
   );
 }
 
+// Shared with the ad-slots-off build below, which re-exports the same fixture database.
+let dbPath = "";
+let mediaDir = "";
+
 beforeAll(async () => {
-  const dbPath = buildFixtureDb(path.join(work, "export.sqlite"), [
-    ...fixtureEntries,
-    ...gameChannels,
-  ]);
-  const mediaDir = writeFixtureMedia(path.join(work, "media"));
+  dbPath = buildFixtureDb(path.join(work, "export.sqlite"), [...fixtureEntries, ...gameChannels]);
+  mediaDir = writeFixtureMedia(path.join(work, "media"));
   // devnotes (3,000 members now) grew over the last week and month; techdaily is flat week over week.
   writeFileSync(
     path.join(mediaDir, "history/devnotes.json"),
@@ -122,6 +123,9 @@ beforeAll(async () => {
   // Admin-managed content is layered on here; "aiwatch" is the fixture's promoted entry.
   data.announcement = announcement;
   data.promos = [paidPromo];
+  // The main build asserts the ad slots as an operator who turned them on would see them; the
+  // default-off behaviour gets its own build below.
+  data.showAdSlots = true;
   const dataPath = path.join(work, "site-data.json");
   writeFileSync(dataPath, JSON.stringify(data));
   execFileSync(path.join(webRoot, "node_modules/.bin/astro"), ["build", "--outDir", outDir], {
@@ -131,9 +135,56 @@ beforeAll(async () => {
   });
 }, 180_000);
 
+const cleanup: string[] = [];
+
 afterAll(() => {
   rmSync(work, { recursive: true, force: true });
   rmSync(outDir, { recursive: true, force: true });
+  for (const dir of cleanup) rmSync(dir, { recursive: true, force: true });
+});
+
+/**
+ * The operator turning the sponsor block off is the one case the main build can't cover, because
+ * it is baked in at build time. It gets a second, smaller build: `showAdSlots: false` with no paid
+ * banners at all, which is the state the live site was actually in when the block still rendered.
+ */
+describe("sponsor block with ad slots off", () => {
+  let offClient = "";
+
+  beforeAll(async () => {
+    const offOut = mkdtempSync(path.join(webRoot, "node_modules/.cache/build-test-noads-"));
+    offClient = path.join(offOut, "client");
+    const data = await buildSiteData({ dbPath, mediaBaseUrl, mediaDir, now: fixtureNow });
+    data.promos = [];
+    data.showAdSlots = false;
+    const offDataPath = path.join(work, "site-data-noads.json");
+    writeFileSync(offDataPath, JSON.stringify(data));
+    execFileSync(path.join(webRoot, "node_modules/.bin/astro"), ["build", "--outDir", offOut], {
+      cwd: webRoot,
+      env: { ...process.env, SITE_DATA_PATH: offDataPath, SITE_URL: siteUrl },
+      stdio: "pipe",
+    });
+    cleanup.push(offOut);
+  }, 180_000);
+
+  const page = (route: string) => readFileSync(path.join(offClient, route, "index.html"), "utf8");
+
+  test("the whole sponsor section is gone from the home page", () => {
+    const home = page(".");
+    expect(home).not.toContain("赞助商推广");
+    expect(home).not.toContain("广告位招租");
+    expect(home).not.toContain("data-home-promos");
+    expect(page("en")).not.toContain("Sponsored");
+  });
+
+  test("detail pages drop it too", () => {
+    expect(page("detail/techdaily")).not.toContain("广告位招租");
+    expect(page("detail/techdaily")).not.toContain("data-promo-slot");
+  });
+
+  test("the rest of the page still renders", () => {
+    expect(page(".")).toContain("techdaily");
+  });
 });
 
 describe("site build from snapshot data", () => {

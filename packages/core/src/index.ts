@@ -43,7 +43,7 @@ export {
   upsertProduct,
 } from "./promotions.ts";
 export { publishEntryToChannel } from "./publish.ts";
-export { type MediaBucket, runRefresh } from "./refresh.ts";
+export { type MediaBucket, REFRESH_INTERVAL_MS, runRefresh } from "./refresh.ts";
 export { approveSubmissions, previewSubmission, rejectSubmissions } from "./review.ts";
 export {
   getCredential,

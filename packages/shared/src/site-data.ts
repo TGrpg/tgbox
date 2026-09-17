@@ -135,5 +135,7 @@ export const SiteData = z.object({
   announcement: AnnouncementView.nullable(),
   /** Live paid banners, ordered by start time. */
   promos: z.array(PromoView),
+  /** Admin setting: pad the unsold sponsor slots with "for rent" cards instead of hiding them. */
+  showAdSlots: z.boolean(),
 });
 export type SiteData = z.infer<typeof SiteData>;
