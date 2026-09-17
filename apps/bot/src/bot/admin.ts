@@ -17,7 +17,6 @@ import {
 import { type EntryStatus, MAX_TAGS, parseTelegramRef } from "@tgbox/shared";
 import { Composer, type Context } from "grammy";
 import type { App } from "./app.ts";
-import { i18n } from "./i18n/index.ts";
 
 /** `/ban 12345` → user id, `/ban @name` or a t.me link → username. */
 function parseBlacklistTarget(arg: string): { type: BlacklistType; value: string } | null {
@@ -45,11 +44,11 @@ export function admin(app: App) {
       value: { ...bot, reviewMode: "chat", reviewChatId: String(ctx.chat.id) },
       actor: actorOf(ctx),
     });
-    if (result.ok) await ctx.reply(i18n(ctx).admin.reviewChatSet);
+    if (result.ok) await ctx.reply((await app.m(ctx)).admin.reviewChatSet);
   });
 
   commands.command(["ban", "unban"], async (ctx) => {
-    const m = i18n(ctx).admin;
+    const m = (await app.m(ctx)).admin;
     const [first = "", ...rest] = args(ctx);
     const target = parseBlacklistTarget(first);
     if (!target) {
@@ -70,7 +69,7 @@ export function admin(app: App) {
   async function entryFromArgs(ctx: Context, usage: string) {
     const [first = ""] = args(ctx);
     const username = parseTelegramRef(first);
-    const m = i18n(ctx).admin;
+    const m = (await app.m(ctx)).admin;
     if (!username) {
       await ctx.reply(usage);
       return undefined;
@@ -86,7 +85,7 @@ export function admin(app: App) {
     remove: "removed",
   };
   commands.command(Object.keys(statusCommands), async (ctx) => {
-    const m = i18n(ctx).admin;
+    const m = (await app.m(ctx)).admin;
     const name = ctx.message?.text.slice(1).split(/[\s@]/)[0] ?? "";
     const status = statusCommands[name];
     if (!status) return;
@@ -102,7 +101,7 @@ export function admin(app: App) {
   });
 
   commands.command("setcat", async (ctx) => {
-    const m = i18n(ctx).admin;
+    const m = (await app.m(ctx)).admin;
     const entry = await entryFromArgs(ctx, m.setcatUsage);
     if (!entry) return;
     const slug = args(ctx)[1] ?? "";
@@ -122,7 +121,7 @@ export function admin(app: App) {
   });
 
   commands.command("settags", async (ctx) => {
-    const m = i18n(ctx).admin;
+    const m = (await app.m(ctx)).admin;
     const entry = await entryFromArgs(ctx, m.settagsUsage);
     if (!entry) return;
     const slugs = [
@@ -151,7 +150,7 @@ export function admin(app: App) {
   });
 
   commands.command("status", async (ctx) => {
-    const m = i18n(ctx).admin;
+    const m = (await app.m(ctx)).admin;
     const entry = await entryFromArgs(ctx, m.entryUsage("status"));
     if (!entry) return;
     const [row] = await getEntriesByIdRange(app.db, entry.id, entry.id);

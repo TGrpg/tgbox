@@ -42,6 +42,14 @@ export const utcTime = (ms: number) =>
   `${new Date(ms).toISOString().slice(0, 16).replace("T", " ")} UTC`;
 const utcDate = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
+/** Who the support topic belongs to (shown in the topic header). */
+export type SupportUser = {
+  id: number;
+  name: string;
+  username: string | null;
+  language: string | null;
+};
+
 export type EntryStatusSummary = {
   entry: Entry;
   members: number | null;
@@ -61,7 +69,22 @@ export const zh = {
   submissionsClosed: "收录暂时关闭，请稍后再来。",
   support: (username: string | null) =>
     username ? `客服联系方式：@${username}` : "暂未设置客服，请稍后再试。",
-  help: "收录标准：公开的频道、群组或机器人，内容合法、持续更新、无刷粉。\n\n提交方式：发送 t.me 链接或 @用户名，按提示选择分类和标签。\n审核结果会通过私信通知。有问题请联系管理员。",
+  help: "收录标准：公开的频道、群组或机器人，内容合法、持续更新、无刷粉。\n\n提交方式：发送 t.me 链接或 @用户名，按提示选择分类和标签。\n审核结果会通过私信通知。\n\n/lang 切换语言，/support 联系客服。",
+  langButton: "🌐 语言 / Language",
+  lang: {
+    choose: "请选择机器人语言：",
+    zh: "中文",
+    en: "English",
+    auto: "自动 / Auto",
+    saved: "✅ 已切换到中文。",
+    savedAuto: "✅ 已改为跟随 Telegram 客户端的语言。",
+  },
+  supportChat: {
+    /** /support while the relay is on. */
+    ask: "有任何问题，直接在这里发消息就好，客服会尽快回复。",
+    sent: "✅ 已转达客服，请稍候。",
+    unavailable: "客服暂时无法接收消息，请稍后再试。",
+  },
   sendLink: "请发送要提交的频道、群组或机器人链接（https://t.me/xxx、t.me/xxx 或 @xxx）。",
   invalidLink:
     "无法识别链接。请发送 https://t.me/xxx、t.me/xxx 或 @xxx 格式的公开用户名（邀请链接不支持）。",
@@ -180,6 +203,23 @@ export const zh = {
       other: "其他",
     },
     reviewChatSet: "✅ 已把本群设为审核群。",
+    support: {
+      topicName: (name: string, userId: number) => `${name} (${userId})`,
+      header: (u: SupportUser) =>
+        [
+          `👤 ${u.name}`,
+          `ID：${u.id}`,
+          `用户名：${u.username ? `@${u.username}` : "无"}`,
+          `语言：${u.language ?? "未知"}`,
+          "",
+          "在本话题内回复即可转发给用户。/ban [原因] 拉黑，/done 结束会话。",
+        ].join("\n"),
+      banned: (userId: number, reason: string | null) =>
+        `已拉黑用户 ${userId}${reason ? `（${reason}）` : ""}，之后的消息不再转发。`,
+      done: "✅ 已结束本次会话。用户再次发消息会自动重新打开。",
+      relayFailed: (reason: string) =>
+        `⚠️ 客服转发失败：${reason}\n请确认客服群已开启「话题」，且机器人是管理员并有「管理话题」权限。`,
+    },
     bannerReview: (o: BannerOrderSummary) =>
       [
         "🖼 首页横幅待审核",

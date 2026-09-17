@@ -47,10 +47,10 @@ describe("products", () => {
   test("seeded by the migration, editable, and filterable by active", async () => {
     const seeded = await listProducts(db);
     expect(seeded.map((p) => [p.kind, p.days, p.priceStars, p.priceUsdt, p.slots])).toEqual([
-      ["pin", 7, 500, "10", 10],
-      ["pin", 30, 1500, "30", 10],
-      ["banner", 7, 1000, "20", 5],
-      ["banner", 30, 3000, "60", 5],
+      ["pin", 7, 800, "10", 10],
+      ["pin", 30, 2400, "30", 10],
+      ["banner", 7, 1600, "20", 5],
+      ["banner", 30, 4800, "60", 5],
     ]);
     const [, , , bannerMonth] = seeded;
     if (!bannerMonth) throw new Error("missing seed");

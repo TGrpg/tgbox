@@ -5,6 +5,7 @@ import {
   type ProductLabel,
   type PromotionTarget,
   type SubmissionSummary,
+  type SupportUser,
   utcTime,
   type zh,
 } from "./zh.ts";
@@ -22,7 +23,21 @@ export const en: typeof zh = {
     username
       ? `Contact support: @${username}`
       : "Support isn't set up yet. Please try again later.",
-  help: "Listing criteria: public channels, groups or bots with legal content, regular updates and no fake subscribers.\n\nHow to submit: send a t.me link or @username, then pick a category and tags.\nYou'll get a private message with the review result. Contact the admins with any questions.",
+  help: "Listing criteria: public channels, groups or bots with legal content, regular updates and no fake subscribers.\n\nHow to submit: send a t.me link or @username, then pick a category and tags.\nYou'll get a private message with the review result.\n\n/lang switches the language, /support reaches the team.",
+  langButton: "🌐 语言 / Language",
+  lang: {
+    choose: "Choose the bot language:",
+    zh: "中文",
+    en: "English",
+    auto: "自动 / Auto",
+    saved: "✅ Language set to English.",
+    savedAuto: "✅ The bot now follows your Telegram client language.",
+  },
+  supportChat: {
+    ask: "Just send your question here and the team will get back to you.",
+    sent: "✅ Sent to support. Hang tight.",
+    unavailable: "Support can't take messages right now. Please try again later.",
+  },
   sendLink:
     "Send the link of the channel, group or bot to submit (https://t.me/xxx, t.me/xxx or @xxx).",
   invalidLink:
@@ -148,6 +163,23 @@ export const en: typeof zh = {
       other: "Other",
     },
     reviewChatSet: "✅ This chat is now the review chat.",
+    support: {
+      topicName: (name: string, userId: number) => `${name} (${userId})`,
+      header: (u: SupportUser) =>
+        [
+          `👤 ${u.name}`,
+          `ID: ${u.id}`,
+          `Username: ${u.username ? `@${u.username}` : "none"}`,
+          `Language: ${u.language ?? "unknown"}`,
+          "",
+          "Reply in this topic to relay to the user. /ban [reason] blocks them, /done closes it.",
+        ].join("\n"),
+      banned: (userId: number, reason: string | null) =>
+        `Banned user ${userId}${reason ? ` (${reason})` : ""}; their messages are no longer relayed.`,
+      done: "✅ Session closed. It reopens automatically when the user writes again.",
+      relayFailed: (reason: string) =>
+        `⚠️ Support relay failed: ${reason}\nCheck that the support group has topics enabled and the bot is an admin with "Manage topics".`,
+    },
     bannerReview: (o: BannerOrderSummary) =>
       [
         "🖼 Home banner awaiting review",

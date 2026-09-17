@@ -6,7 +6,7 @@ import {
   setCredential,
 } from "@tgbox/core";
 import { listBotChats } from "@tgbox/db";
-import { BotSettings, PaymentSettings, SiteSettings } from "@tgbox/shared";
+import { BotSettings, MAX_POST_BLOCKLIST, PaymentSettings, SiteSettings } from "@tgbox/shared";
 import { z } from "zod";
 
 export type SettingsEnv = Pick<
@@ -33,6 +33,11 @@ export const SettingsInput = z.discriminatedUnion("key", [
         .string()
         .regex(/^[A-Za-z][A-Za-z0-9_]{3,31}$/)
         .nullable(),
+      supportGroupId: z
+        .string()
+        .regex(/^-?\d+$/)
+        .nullable(),
+      supportEnabled: z.boolean(),
       welcome: z.object({ zh: z.string().max(2000), en: z.string().max(2000) }),
     }),
   }),
@@ -49,6 +54,7 @@ export const SettingsInput = z.discriminatedUnion("key", [
         .refine((a) => !a.enabled || (a.zh.length > 0 && a.en.length > 0), {
           message: "enabled announcement needs zh and en text",
         }),
+      postBlocklist: z.array(z.string().trim().min(1).max(50)).max(MAX_POST_BLOCKLIST),
     }),
   }),
   z.object({ key: z.literal("payments"), value: PaymentSettings }),
@@ -78,6 +84,7 @@ export async function loadSettingsView(core: CoreContext, env: SettingsEnv) {
   });
   return {
     settings,
+    // Groups the bot is in: the picker source for both the review chat and the support group.
     reviewChats: chats
       .filter(
         (chat) =>

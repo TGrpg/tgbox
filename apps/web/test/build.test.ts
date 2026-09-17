@@ -10,6 +10,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { gzipSync } from "node:zlib";
 import { RankingsData } from "@tgbox/shared";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
@@ -56,6 +57,9 @@ const paidPromo = {
   sponsored: true as const,
 };
 
+// devnotes has posts in R2, but the operator turned them off for that entry.
+const hiddenPosts = [{ id: 7, date: "2026-08-29T12:00:00.000Z", text: "被隐藏的消息", views: 9 }];
+
 const approved = fixtureEntries.filter((entry) => (entry.status ?? "approved") === "approved");
 const hidden = fixtureEntries.filter((entry) => (entry.status ?? "approved") !== "approved");
 
@@ -90,6 +94,10 @@ beforeAll(async () => {
       { t: "2026-08-25T00:00:00.000Z", members: 2900 },
     ]),
   );
+  writeFileSync(path.join(mediaDir, "posts/devnotes.json"), JSON.stringify(hiddenPosts));
+  const db = new DatabaseSync(dbPath);
+  db.exec("UPDATE entries SET hide_posts = 1 WHERE username = 'devnotes'");
+  db.close();
   const data = await buildSiteData({
     dbPath,
     mediaBaseUrl,
@@ -144,6 +152,24 @@ describe("site build from snapshot data", () => {
     // related channel devnotes shares the category
     expect(zh).toContain('href="/detail/devnotes/"');
     expect(html("en/detail/techdaily")).toContain('href="/en/detail/devnotes/"');
+  });
+
+  test("a channel with hidden posts renders no posts section", () => {
+    for (const [route, heading] of [
+      ["detail/devnotes", "最近消息"],
+      ["en/detail/devnotes", "Recent posts"],
+    ] as const) {
+      const page = html(route);
+      expect(page, route).not.toContain(heading);
+      expect(page, route).not.toContain(hiddenPosts[0]?.text ?? "");
+      expect(page, route).not.toContain("https://t.me/s/devnotes");
+      // The rest of the page is unaffected.
+      expect(page, route).toContain("Dev Notes");
+      expect(page, route).toMatch(/<svg[^>]*data-sparkline/);
+      expect(page, route).toContain("data-detail-sticky");
+    }
+    expect(html("detail/techdaily")).toContain("最近消息");
+    expect(html("en/detail/techdaily")).toContain("Recent posts");
   });
 
   test("hidden and removed entries are absent from pages and sitemaps", () => {

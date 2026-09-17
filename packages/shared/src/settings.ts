@@ -25,10 +25,17 @@ export const BotSettings = z.object({
   submitDailyLimit: z.number().int().min(1).max(100),
   /** Without the leading @. */
   supportUsername: z.string().nullable(),
+  /** Forum ("topics") group the two-way support relay writes to; null = no relay. */
+  supportGroupId: chatId.nullable(),
+  /** Master switch for the relay; the group id still has to be set. */
+  supportEnabled: z.boolean(),
   /** Empty string = built-in text. */
   welcome: z.object({ zh: z.string(), en: z.string() }),
 });
 export type BotSettings = z.infer<typeof BotSettings>;
+
+/** Most substrings the post blocklist may hold; the snapshot scans every post against all of them. */
+export const MAX_POST_BLOCKLIST = 100;
 
 export const SiteSettings = z.object({
   announcement: z.object({
@@ -37,6 +44,10 @@ export const SiteSettings = z.object({
     en: z.string(),
     href: z.string().nullable(),
   }),
+  /** Case-insensitive substrings; a post containing any of them is dropped from the snapshot. */
+  postBlocklist: z.array(z.string()).max(MAX_POST_BLOCKLIST),
+  /** Drop post media thumbnails site-wide (text previews stay). */
+  hidePostMedia: z.boolean(),
 });
 export type SiteSettings = z.infer<typeof SiteSettings>;
 
@@ -62,11 +73,26 @@ export const settingsDefaults: Settings = {
     submissionsOpen: true,
     submitDailyLimit: 5,
     supportUsername: null,
+    supportGroupId: null,
+    supportEnabled: true,
     welcome: { zh: "", en: "" },
   },
-  site: { announcement: { enabled: false, zh: "", en: "", href: null } },
+  site: {
+    announcement: { enabled: false, zh: "", en: "", href: null },
+    postBlocklist: [],
+    hidePostMedia: false,
+  },
   payments: { starsEnabled: true, cryptoPayEnabled: false, cryptoPayNetwork: "mainnet" },
 };
+
+/** True when a post preview contains one of the blocked substrings (case-insensitive). */
+export function shouldHidePost(text: string, blocklist: string[]): boolean {
+  const haystack = text.toLowerCase();
+  return blocklist.some((word) => {
+    const needle = word.trim().toLowerCase();
+    return needle !== "" && haystack.includes(needle);
+  });
+}
 
 /** Private review copies are capped so one notice stays well inside the subrequest budget. */
 export const MAX_REVIEW_RECIPIENTS = 10;

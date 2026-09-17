@@ -12,6 +12,11 @@ export {
   setPromoted,
 } from "./entries.ts";
 export {
+  type ModerationError,
+  setEntryPostsVisibility,
+  setPostVisibility,
+} from "./moderation.ts";
+export {
   createCryptoPayInvoice,
   parseCryptoPayUpdate,
   verifyCryptoPaySignature,

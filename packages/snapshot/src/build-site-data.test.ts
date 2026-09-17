@@ -1,9 +1,9 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { SiteData } from "@tgbox/shared";
+import { type PostView, SiteData } from "@tgbox/shared";
 import { describe, expect, test } from "vitest";
 import {
   buildFixtureDb,
@@ -281,5 +281,98 @@ describe("snapshot CLI", () => {
     expect(data.stats.total).toBe(10);
     expect(entry(data, "techdaily").posts).toEqual(fixturePosts);
     expect(stdout).toContain("10 entries");
+  });
+});
+
+describe("post visibility", () => {
+  const posts: PostView[] = [
+    {
+      id: 3,
+      date: "2026-08-31T12:00:00.000Z",
+      text: "正常内容",
+      views: 10,
+      mediaThumb: "https://media.example.com/thumbs/3.jpg",
+    },
+    { id: 2, date: "2026-08-30T12:00:00.000Z", text: "免费 VPN 节点", views: 5 },
+    { id: 1, date: "2026-08-29T12:00:00.000Z", text: "First post", views: null },
+  ];
+
+  /** Fixture db + a media dir where `techdaily` has the posts above. */
+  function fixture(prepare?: (db: DatabaseSync) => void) {
+    const dir = tempDir();
+    const dbPath = buildFixtureDb(path.join(dir, "export.sqlite"));
+    if (prepare) {
+      const db = new DatabaseSync(dbPath);
+      prepare(db);
+      db.close();
+    }
+    mkdirSync(path.join(dir, "posts"), { recursive: true });
+    writeFileSync(path.join(dir, "posts/techdaily.json"), JSON.stringify(posts));
+    return { dbPath, mediaDir: dir };
+  }
+
+  const siteSettings = (value: object) => (db: DatabaseSync) => {
+    db.prepare("INSERT INTO settings (key, value, updated_at) VALUES ('site', ?, 0)").run(
+      JSON.stringify(value),
+    );
+  };
+
+  test("publishes every post when nothing is hidden", async () => {
+    const data = await buildSiteData({ ...fixture(), now: fixtureNow });
+
+    expect(entry(data, "techdaily").posts).toEqual(posts);
+  });
+
+  test("drops all posts of an entry with hide_posts", async () => {
+    const data = await buildSiteData({
+      ...fixture((db) => db.exec("UPDATE entries SET hide_posts = 1 WHERE username = 'techdaily'")),
+      now: fixtureNow,
+    });
+
+    expect(entry(data, "techdaily").posts).toEqual([]);
+  });
+
+  test("drops single posts listed in hidden_posts", async () => {
+    const data = await buildSiteData({
+      ...fixture((db) =>
+        db.exec(
+          `INSERT INTO hidden_posts (entry_id, post_id, created_at)
+             SELECT id, 3, 0 FROM entries WHERE username = 'techdaily'`,
+        ),
+      ),
+      now: fixtureNow,
+    });
+
+    expect(entry(data, "techdaily").posts.map((post) => post.id)).toEqual([2, 1]);
+  });
+
+  test("drops posts matching the keyword blocklist, ignoring case", async () => {
+    const data = await buildSiteData({
+      ...fixture(siteSettings({ postBlocklist: ["vpn", "  "] })),
+      now: fixtureNow,
+    });
+
+    expect(entry(data, "techdaily").posts.map((post) => post.id)).toEqual([3, 1]);
+  });
+
+  test("strips media thumbnails but keeps the text when hidePostMedia is on", async () => {
+    const data = await buildSiteData({
+      ...fixture(siteSettings({ hidePostMedia: true })),
+      now: fixtureNow,
+    });
+
+    expect(entry(data, "techdaily").posts).toEqual(posts.map(({ mediaThumb, ...post }) => post));
+    expect(entry(data, "techdaily").posts[0]?.mediaThumb).toBeUndefined();
+  });
+
+  test("an export without hidden_posts or hide_posts publishes every post", async () => {
+    const data = await buildSiteData({
+      ...fixture((db) =>
+        db.exec("DROP TABLE hidden_posts; ALTER TABLE entries DROP COLUMN hide_posts"),
+      ),
+      now: fixtureNow,
+    });
+
+    expect(entry(data, "techdaily").posts).toEqual(posts);
   });
 });

@@ -43,6 +43,13 @@
       "when": 1789631815314,
       "tag": "0005_settings_promotions",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1789639288003,
+      "tag": "0006_support_prefs_hidden_posts",
+      "breakpoints": true
     }
   ]
 }

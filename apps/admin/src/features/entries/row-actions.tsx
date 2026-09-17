@@ -3,6 +3,8 @@ import {
   ExternalLinkIcon,
   EyeIcon,
   EyeOffIcon,
+  MessageSquareIcon,
+  MessageSquareOffIcon,
   PencilIcon,
   RefreshCwIcon,
   SendIcon,
@@ -21,20 +23,28 @@ import {
 import { Spinner } from "@/components/coss/ui/spinner.tsx";
 import type { EntryRow } from "@/functions/entries.ts";
 import { sitePageUrl, telegramUrl } from "./labels.ts";
-import { useRefreshEntry, useSetPromoted, useSetStatus } from "./mutations.ts";
+import {
+  useRefreshEntry,
+  useSetEntryPostsVisibility,
+  useSetPromoted,
+  useSetStatus,
+} from "./mutations.ts";
 
 export function RowActions({
   entry,
   siteUrl,
   onEdit,
+  onManagePosts,
 }: {
   entry: EntryRow;
   siteUrl: string;
   onEdit: (entry: EntryRow) => void;
+  onManagePosts: (entry: EntryRow) => void;
 }) {
   const refresh = useRefreshEntry();
   const status = useSetStatus();
   const promote = useSetPromoted();
+  const posts = useSetEntryPostsVisibility();
   const ids = [entry.id];
   return (
     <Menu>
@@ -54,6 +64,22 @@ export function RowActions({
           {entry.promoted ? <StarOffIcon /> : <StarIcon />}
           {entry.promoted ? "取消推广" : "设为推广"}
         </MenuItem>
+        {entry.kind === "channel" && (
+          <>
+            <MenuSeparator />
+            <MenuItem onClick={() => onManagePosts(entry)}>
+              <MessageSquareIcon /> 管理最近消息
+            </MenuItem>
+            <MenuItem
+              onClick={() =>
+                posts.mutate({ id: entry.id, username: entry.username, hide: !entry.hidePosts })
+              }
+            >
+              {entry.hidePosts ? <MessageSquareIcon /> : <MessageSquareOffIcon />}
+              {entry.hidePosts ? "恢复最近消息" : "不显示最近消息"}
+            </MenuItem>
+          </>
+        )}
         <MenuSeparator />
         <MenuItem
           render={

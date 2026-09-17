@@ -10,7 +10,7 @@ import { getOrder, getProduct, type Order } from "@tgbox/db";
 import type { Locale, PaymentCurrency, PaymentProvider } from "@tgbox/shared";
 import { Composer, type Context, InlineKeyboard } from "grammy";
 import type { App } from "./app.ts";
-import { i18n, localeOf, messages } from "./i18n/index.ts";
+import { messages } from "./i18n/index.ts";
 import { answerAlreadyHandled } from "./review.ts";
 
 type Messages = ReturnType<typeof messages>;
@@ -122,7 +122,7 @@ export function payments(app: App) {
 
   composer.on("pre_checkout_query", async (ctx) => {
     const query = ctx.preCheckoutQuery;
-    const m = i18n(ctx).promote;
+    const m = (await app.m(ctx)).promote;
     const orderId = parseOrderPayload(query.invoice_payload);
     const order = orderId === null ? undefined : await getOrder(app.db, orderId);
     const product = order ? await getProduct(app.db, order.productId) : undefined;
@@ -156,13 +156,13 @@ export function payments(app: App) {
       amount: String(payment.total_amount),
       currency: "XTR",
       buyerId: ctx.from?.id ?? null,
-      locale: localeOf(ctx),
+      locale: await app.locale(ctx),
     });
   });
 
   composer.callbackQuery(/^b[aj]:/, async (ctx, next) => {
     if (await app.isAdmin(ctx)) return next();
-    await ctx.answerCallbackQuery({ text: i18n(ctx).noPermission, show_alert: true });
+    await ctx.answerCallbackQuery({ text: (await app.m(ctx)).noPermission, show_alert: true });
   });
 
   async function closeReview(ctx: Context, status: string) {
@@ -178,7 +178,7 @@ export function payments(app: App) {
       actor: tgActor(ctx.from.id),
     });
     if (!order) {
-      await answerAlreadyHandled(ctx);
+      await answerAlreadyHandled(app, ctx);
       return;
     }
     const endsAt = order.endsAt ?? app.now();
@@ -198,7 +198,7 @@ export function payments(app: App) {
       actor: tgActor(ctx.from.id),
     });
     if (!result) {
-      await answerAlreadyHandled(ctx);
+      await answerAlreadyHandled(app, ctx);
       return;
     }
     const { order, refunded } = result;

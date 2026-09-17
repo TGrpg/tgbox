@@ -94,7 +94,7 @@ describe("buying a pin with Stars", () => {
   test("/promote → product → @username → Stars sends an XTR invoice for the order", async () => {
     await h.message(buyer, "/promote");
     expect(h.lastButtons().map((b) => b.callback_data)).toEqual(["pp:1", "pp:2", "pp:3", "pp:4"]);
-    expect(h.lastButtons()[0]?.text).toContain("⭐500");
+    expect(h.lastButtons()[0]?.text).toContain("⭐800");
 
     await press("pp:1");
     expect(h.lastText()).toContain("已收录");
@@ -119,14 +119,14 @@ describe("buying a pin with Stars", () => {
       currency: "XTR",
       provider_token: "",
       payload: `order:${orderId}`,
-      prices: [{ amount: 500 }],
+      prices: [{ amount: 800 }],
     });
   });
 
   test("pre-checkout accepts the matching pending order and rejects a wrong amount", async () => {
     const pin = await order({ productId: 1, targetUsername: "@pin_me" });
     await preCheckout(pin.id, 400);
-    await preCheckout(pin.id, 500);
+    await preCheckout(pin.id, 800);
     expect(h.calls("answerPreCheckoutQuery").map((c) => c.payload)).toEqual([
       expect.objectContaining({ ok: false, error_message: expect.stringContaining("失效") }),
       expect.objectContaining({ ok: true }),

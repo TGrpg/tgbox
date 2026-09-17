@@ -54,10 +54,28 @@ describe("SettingsInput", () => {
     ],
     ["a daily limit of 0", { key: "bot", value: { ...bot, submitDailyLimit: 0 } }, false],
     [
+      "a support group with the relay on",
+      { key: "bot", value: { ...bot, supportGroupId: "-1001234567890", supportEnabled: true } },
+      true,
+    ],
+    [
+      "a support group given as a username",
+      { key: "bot", value: { ...bot, supportGroupId: "@support" } },
+      false,
+    ],
+    [
+      "no support group with the relay off",
+      { key: "bot", value: { ...bot, supportGroupId: null, supportEnabled: false } },
+      true,
+    ],
+    [
       "an announcement with an https link",
       {
         key: "site",
-        value: { announcement: { enabled: true, zh: "公告", en: "News", href: "https://t.me/x" } },
+        value: {
+          ...site,
+          announcement: { enabled: true, zh: "公告", en: "News", href: "https://t.me/x" },
+        },
       },
       true,
     ],
@@ -65,13 +83,31 @@ describe("SettingsInput", () => {
       "an announcement with an http link",
       {
         key: "site",
-        value: { announcement: { enabled: true, zh: "公告", en: "News", href: "http://x.com" } },
+        value: {
+          ...site,
+          announcement: { enabled: true, zh: "公告", en: "News", href: "http://x.com" },
+        },
       },
       false,
     ],
     [
       "an enabled announcement without text",
-      { key: "site", value: { announcement: { ...site.announcement, enabled: true } } },
+      { key: "site", value: { ...site, announcement: { ...site.announcement, enabled: true } } },
+      false,
+    ],
+    [
+      "a post blocklist and hidden post media",
+      { key: "site", value: { ...site, postBlocklist: ["vpn", "赌博"], hidePostMedia: true } },
+      true,
+    ],
+    [
+      "a blank blocklist keyword",
+      { key: "site", value: { ...site, postBlocklist: ["  "] } },
+      false,
+    ],
+    [
+      "more blocklist keywords than the cap",
+      { key: "site", value: { ...site, postBlocklist: Array.from({ length: 101 }, () => "x") } },
       false,
     ],
     ["default payments", { key: "payments", value: settingsDefaults.payments }, true],

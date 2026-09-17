@@ -1,4 +1,5 @@
 import { type QueryClient, useMutation, useQueryClient } from "@tanstack/react-query";
+import type { ModerationError } from "@tgbox/core";
 import type { EntryStatus } from "@tgbox/shared";
 import { toastManager } from "@/components/coss/ui/toast.tsx";
 import {
@@ -10,6 +11,11 @@ import {
   $setEntriesStatus,
   type EntryRow,
 } from "@/functions/entries.ts";
+import {
+  $setEntryPostsVisibility,
+  $setPostVisibility,
+  type EntryPostsView,
+} from "@/functions/posts.ts";
 import { invalidate, queryKeys } from "@/lib/query-keys.ts";
 import { entryEditErrorText } from "./edit.ts";
 import { formatCount, livenessLabel, statusLabel } from "./labels.ts";
@@ -30,6 +36,20 @@ function patchRows(client: QueryClient, ids: number[], patch: Partial<EntryRow>)
   return () => {
     for (const [key, data] of snapshot) client.setQueryData(key, data);
   };
+}
+
+type LoadedPosts = Extract<EntryPostsView, { ok: true }>;
+
+/** Patches the cached posts panel of one entry in place, so toggling costs no extra R2 read. */
+function patchPosts(
+  client: QueryClient,
+  username: string,
+  patch: (view: LoadedPosts) => LoadedPosts,
+) {
+  const key = [...queryKeys.entryPosts, username];
+  const before = client.getQueryData<EntryPostsView>(key);
+  client.setQueryData<EntryPostsView>(key, (view) => (view?.ok ? patch(view) : view));
+  return () => client.setQueryData<EntryPostsView>(key, before);
 }
 
 function useSettled() {
@@ -174,6 +194,98 @@ export function useRefreshEntry() {
                     `${fieldLabel[c.field] ?? c.field}：${show(c.field, c.before)} → ${show(c.field, c.after)}`,
                 )
                 .join("\n"),
+      });
+    },
+    onSettled: settled,
+  });
+}
+
+/* ------------------------------------------------------- post moderation */
+
+const moderationErrorText: Record<ModerationError, string> = {
+  invalid_username: "用户名无效",
+  not_found: "条目不存在",
+};
+
+const appliesAtNextBuild = "下次网站构建后生效";
+
+/** Hides or shows every post preview of one entry. */
+export function useSetEntryPostsVisibility() {
+  const client = useQueryClient();
+  const settled = useSettled();
+  return useMutation({
+    mutationFn: (input: { id: number; username: string; hide: boolean }) =>
+      $setEntryPostsVisibility({ data: { username: input.username, hide: input.hide } }),
+    onMutate: async (input) => {
+      await client.cancelQueries({ queryKey: queryKeys.entries });
+      const rollbackPosts = patchPosts(client, input.username, (view) => ({
+        ...view,
+        hidePosts: input.hide,
+      }));
+      const rollbackRows = patchRows(client, [input.id], { hidePosts: input.hide });
+      return {
+        rollback: () => {
+          rollbackPosts();
+          rollbackRows();
+        },
+      };
+    },
+    onError: (error, _input, context) => {
+      context?.rollback();
+      failed(error);
+    },
+    onSuccess: (result, input) => {
+      if (!result.ok) {
+        toastManager.add({
+          type: "error",
+          title: "操作失败",
+          description: moderationErrorText[result.error],
+        });
+        return;
+      }
+      toastManager.add({
+        type: "success",
+        title: input.hide ? "已隐藏最近消息" : "已恢复最近消息",
+        description: appliesAtNextBuild,
+      });
+    },
+    onSettled: settled,
+  });
+}
+
+/** Hides or shows one post. The panel's cache is patched in place: no extra R2 read. */
+export function useSetPostVisibility(username: string) {
+  const client = useQueryClient();
+  const settled = useSettled();
+  return useMutation({
+    mutationFn: (input: { postId: number; hidden: boolean }) =>
+      $setPostVisibility({ data: { username, ...input } }),
+    onMutate: (input) => ({
+      rollback: patchPosts(client, username, (view) => ({
+        ...view,
+        posts: view.posts.map((post) =>
+          post.id === input.postId ? { ...post, hidden: input.hidden } : post,
+        ),
+      })),
+    }),
+    onError: (error, _input, context) => {
+      context?.rollback();
+      failed(error);
+    },
+    onSuccess: (result, input, context) => {
+      if (result.ok) {
+        toastManager.add({
+          type: "success",
+          title: input.hidden ? "已隐藏这条消息" : "已恢复这条消息",
+          description: appliesAtNextBuild,
+        });
+        return;
+      }
+      context?.rollback();
+      toastManager.add({
+        type: "error",
+        title: "操作失败",
+        description: moderationErrorText[result.error],
       });
     },
     onSettled: settled,

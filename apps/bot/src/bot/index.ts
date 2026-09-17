@@ -9,6 +9,7 @@ import { promote } from "./promote.ts";
 import { review } from "./review.ts";
 import { startHelp } from "./start-help.ts";
 import { submit } from "./submit.ts";
+import { supportGroup, supportRelay } from "./support.ts";
 
 export type { App, BotDeps, BotEnv } from "./app.ts";
 export { createApp } from "./app.ts";
@@ -40,6 +41,8 @@ export function createBot(
 
   // Order matters: review/admin/inline work for anyone they authorize; payments are recorded for
   // everyone who paid; the guard only fronts the private-chat promote and submit flows.
+  // `supportGroup` runs before `admin` so `/ban` inside a support topic bans that topic's user, and
+  // `supportRelay` runs last so it only sees private messages no other flow wanted.
   // `bot.catch` only applies to long polling. For webhooks a thrown error becomes a 500 and Telegram
   // redelivers the update (e.g. forever for a user who blocked the bot), so log and answer 200.
   bot.errorBoundary(
@@ -47,12 +50,14 @@ export function createBot(
     chatMembers(app),
     inlineSearch(app),
     payments(app),
+    supportGroup(app),
     review(app),
     admin(app),
     guard(app),
     startHelp(app),
     promote(app),
     submit(app),
+    supportRelay(app),
   );
   return bot;
 }

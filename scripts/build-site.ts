@@ -19,6 +19,7 @@ const SNAPSHOT_TABLES = [
   "tags",
   "settings",
   "promotions",
+  "hidden_posts",
 ];
 
 const { values } = parseArgs({

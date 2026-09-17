@@ -38,6 +38,7 @@ export async function setup(config: Partial<CoreContext["config"]> = {}) {
       "credentials",
       "orders",
       "promotions",
+      "hidden_posts",
     ].map((table) => env.DB.prepare(`DELETE FROM ${table}`)),
   );
   await syncTaxonomy(db);

@@ -19,7 +19,7 @@ import {
 import { BannerContent, type Locale, parseTelegramRef } from "@tgbox/shared";
 import { Composer, type Context, InlineKeyboard } from "grammy";
 import type { App } from "./app.ts";
-import { localeOf, messages } from "./i18n/index.ts";
+import { messages } from "./i18n/index.ts";
 
 const promoteSteps = [
   "promote_target",
@@ -68,7 +68,7 @@ export function promote(app: App) {
     new InlineKeyboard().text(messages(locale).cancel, "px");
 
   async function showProducts(ctx: Context) {
-    const locale = localeOf(ctx);
+    const locale = await app.locale(ctx);
     const m = messages(locale).promote;
     const [products, methods] = await Promise.all([
       listProducts(app.db, { activeOnly: true }),
@@ -102,7 +102,7 @@ export function promote(app: App) {
   });
 
   composer.callbackQuery(/^pp:(\d+)$/, async (ctx) => {
-    const locale = localeOf(ctx);
+    const locale = await app.locale(ctx);
     const m = messages(locale).promote;
     const product = await getProduct(app.db, Number(ctx.match[1]));
     await ctx.answerCallbackQuery();
@@ -132,7 +132,7 @@ export function promote(app: App) {
   composer.callbackQuery("px", async (ctx) => {
     await deleteBotDraft(app.db, ctx.from.id);
     await ctx.answerCallbackQuery();
-    await ctx.editMessageText(messages(localeOf(ctx)).promote.cancelled).catch(() => {});
+    await ctx.editMessageText((await app.m(ctx)).promote.cancelled).catch(() => {});
   });
 
   composer.on("message:text", async (ctx, next) => {
@@ -142,7 +142,7 @@ export function promote(app: App) {
     const current = row ? parsePromoteDraft(row.step, row.payload) : null;
     if (!current) return next();
 
-    const locale = localeOf(ctx);
+    const locale = await app.locale(ctx);
     const m = messages(locale).promote;
     const text = ctx.message.text.trim();
     const { step, draft } = current;
@@ -226,7 +226,7 @@ export function promote(app: App) {
     const product = order ? await getProduct(app.db, order.productId) : undefined;
     if (order?.tgUserId !== ctx.from.id || order.status !== "pending" || !product) {
       await ctx.answerCallbackQuery({
-        text: messages(localeOf(ctx)).promote.orderExpired,
+        text: (await app.m(ctx)).promote.orderExpired,
         show_alert: true,
       });
       return null;
@@ -235,7 +235,7 @@ export function promote(app: App) {
   }
 
   composer.callbackQuery(/^ps:(\d+)$/, async (ctx) => {
-    const locale = localeOf(ctx);
+    const locale = await app.locale(ctx);
     const m = messages(locale).promote;
     const found = await pendingOrder(ctx, Number(ctx.match[1]));
     if (!found) return;
@@ -258,7 +258,7 @@ export function promote(app: App) {
   });
 
   composer.callbackQuery(/^pu:(\d+)$/, async (ctx) => {
-    const locale = localeOf(ctx);
+    const locale = await app.locale(ctx);
     const m = messages(locale).promote;
     const found = await pendingOrder(ctx, Number(ctx.match[1]));
     if (!found) return;

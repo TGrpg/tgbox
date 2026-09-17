@@ -4,6 +4,7 @@ import type {
   EntryKind,
   EntryStatus,
   Liveness,
+  Locale,
   OrderStatus,
   PaymentCurrency,
   PaymentProvider,
@@ -57,6 +58,8 @@ export const entries = sqliteTable("entries", {
   firstFailAt: integer("first_fail_at"),
   lastFailAt: integer("last_fail_at"),
   isPromoted: integer("is_promoted", { mode: "boolean" }).notNull().default(false),
+  /** Hide every post preview of this entry on the site. */
+  hidePosts: integer("hide_posts", { mode: "boolean" }).notNull().default(false),
   updatedAt: integer("updated_at").notNull(),
 });
 
@@ -222,3 +225,34 @@ export const promotions = sqliteTable("promotions", {
   endsAt: integer("ends_at").notNull(),
   createdAt: integer("created_at").notNull(),
 });
+
+/** Bot language chosen with /lang; absent = follow the Telegram client language. */
+export const userPrefs = sqliteTable("user_prefs", {
+  tgUserId: integer("tg_user_id").primaryKey(),
+  locale: text().$type<Locale>().notNull(),
+  updatedAt: integer("updated_at").notNull(),
+});
+
+/** One forum topic per user in the support group; the relay maps both ways through this table. */
+export const supportThreads = sqliteTable(
+  "support_threads",
+  {
+    tgUserId: integer("tg_user_id").primaryKey(),
+    topicId: integer("topic_id").notNull(),
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  // Lookup key for the admin side of the relay (message_thread_id → user).
+  (t) => [uniqueIndex("support_threads_topic_unique").on(t.topicId)],
+);
+
+/** Post previews hidden by a moderator; the snapshot drops them from the site. */
+export const hiddenPosts = sqliteTable(
+  "hidden_posts",
+  {
+    entryId: integer("entry_id").notNull(),
+    postId: integer("post_id").notNull(),
+    createdAt: integer("created_at").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.entryId, t.postId] })],
+);

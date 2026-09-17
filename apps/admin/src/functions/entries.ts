@@ -73,6 +73,7 @@ export const $listEntries = createServerFn({ method: "GET" })
         liveness: entry.liveness,
         status: entry.status,
         promoted: entry.isPromoted,
+        hidePosts: entry.hidePosts,
         listedAt: entry.listedAt,
         updatedAt: entry.updatedAt,
         avatarUrl: avatarUrl(entry),

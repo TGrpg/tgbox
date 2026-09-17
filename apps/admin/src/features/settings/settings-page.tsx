@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { BotSettings, PaymentSettings, SiteSettings } from "@tgbox/shared";
+import { MAX_POST_BLOCKLIST } from "@tgbox/shared";
 import {
   BotIcon,
   CheckIcon,
@@ -32,6 +33,7 @@ import { invalidate } from "@/lib/query-keys.ts";
 import type { SettingsInput, SettingsView } from "@/server/settings.ts";
 import { isChatId, normalizeSupportUsername } from "./admin-ids.ts";
 import { AdminIdsField, ChatField, Field, SwitchRow } from "./fields.tsx";
+import { formatPostBlocklist, parsePostBlocklist } from "./post-blocklist.ts";
 
 const ease = [0.16, 1, 0.3, 1] as const;
 
@@ -182,6 +184,7 @@ function BotSection({ view }: { view: SettingsView }) {
   const valid =
     (candidate.reviewChatId === null || isChatId(candidate.reviewChatId)) &&
     (candidate.publishChannelId === null || isChatId(candidate.publishChannelId)) &&
+    (candidate.supportGroupId === null || isChatId(candidate.supportGroupId)) &&
     Number.isInteger(candidate.submitDailyLimit) &&
     candidate.submitDailyLimit >= 1 &&
     candidate.submitDailyLimit <= 100;
@@ -273,6 +276,24 @@ function BotSection({ view }: { view: SettingsView }) {
           />
         </Field>
       </div>
+      <SwitchRow
+        label="客服中转"
+        hint={
+          value.supportGroupId
+            ? "用户私聊机器人的消息会转到客服群，管理员的回复原样发回给用户。"
+            : "需要先设置下面的客服群。"
+        }
+        checked={value.supportEnabled}
+        onChange={(supportEnabled) => patch({ supportEnabled })}
+      />
+      <ChatField
+        label="客服群"
+        value={value.supportGroupId}
+        chats={view.reviewChats}
+        emptyLabel="未设置 · 不中转"
+        hint="群里需要开启话题（Topics），机器人必须是管理员并有「管理话题」权限。每位用户对应一个话题：在话题里直接回复就会发回给该用户；发 /ban 拉黑这位用户，发 /done 关闭话题（用户再来消息会自动重开）。"
+        onChange={(supportGroupId) => patch({ supportGroupId })}
+      />
       <div className="grid gap-5 md:grid-cols-2">
         <Field label="欢迎语（中文）" htmlFor="bot-welcome-zh" hint="留空使用内置文案。">
           <Textarea
@@ -303,10 +324,13 @@ function BotSection({ view }: { view: SettingsView }) {
 
 function SiteSection({ initial }: { initial: SiteSettings }) {
   const [announcement, setAnnouncement] = useState(initial.announcement);
+  const [blocklistText, setBlocklistText] = useState(formatPostBlocklist(initial.postBlocklist));
+  const [hidePostMedia, setHidePostMedia] = useState(initial.hidePostMedia);
   const save = useSaveSettings();
   const patch = (next: Partial<SiteSettings["announcement"]>) =>
     setAnnouncement((current) => ({ ...current, ...next }));
 
+  const blocklist = parsePostBlocklist(blocklistText);
   const candidate: SiteSettings = {
     announcement: {
       ...announcement,
@@ -314,6 +338,8 @@ function SiteSection({ initial }: { initial: SiteSettings }) {
       en: announcement.en.trim(),
       href: announcement.href?.trim() || null,
     },
+    postBlocklist: blocklist.keywords,
+    hidePostMedia,
   };
   const dirty = JSON.stringify(candidate) !== JSON.stringify(initial);
   const missingText =
@@ -325,7 +351,7 @@ function SiteSection({ initial }: { initial: SiteSettings }) {
     <Section
       icon={GlobeIcon}
       title="网站"
-      description="首页顶部公告条。保存后会标记网站需重建，并自动触发构建。"
+      description="首页顶部公告条与最近消息过滤。保存后会标记网站需重建，并自动触发构建。"
       onSubmit={() => save.mutate({ key: "site", value: candidate })}
       footer={
         <SaveButton dirty={dirty} pending={save.isPending} disabled={missingText || badHref} />
@@ -376,6 +402,37 @@ function SiteSection({ initial }: { initial: SiteSettings }) {
           onChange={(event) => patch({ href: event.target.value })}
         />
       </Field>
+      <Field
+        label="消息关键词屏蔽"
+        htmlFor="site-post-blocklist"
+        hint={
+          <>
+            每行一个关键词，不区分大小写；详情页「最近消息」里包含任一关键词的整条消息不再显示。
+            留空表示不过滤。已填写 {blocklist.keywords.length} / {MAX_POST_BLOCKLIST} 个。
+            改动在下次网站构建后生效。
+            {blocklist.dropped > 0 && (
+              <span className="text-warning-foreground">
+                {" "}
+                超出上限的 {blocklist.dropped} 个关键词不会保存。
+              </span>
+            )}
+          </>
+        }
+      >
+        <Textarea
+          id="site-post-blocklist"
+          rows={6}
+          placeholder={"赌博\n色情\n免费 VPN"}
+          value={blocklistText}
+          onChange={(event) => setBlocklistText(event.target.value)}
+        />
+      </Field>
+      <SwitchRow
+        label="隐藏消息图片"
+        hint="开启后「最近消息」只显示文字，不再显示配图。改动在下次网站构建后生效。"
+        checked={hidePostMedia}
+        onChange={setHidePostMedia}
+      />
     </Section>
   );
 }

@@ -233,6 +233,6 @@ describe("submission flow", () => {
   test("/start shows the welcome with a submit button", async () => {
     await h.message(owner, "/start");
     expect(h.lastText()).toContain("欢迎");
-    expect(h.lastButtons().map((b) => b.callback_data)).toEqual(["submit", "promote"]);
+    expect(h.lastButtons().map((b) => b.callback_data)).toEqual(["submit", "promote", "lang"]);
   });
 });

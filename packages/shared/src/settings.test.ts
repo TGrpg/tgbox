@@ -1,5 +1,12 @@
 import { describe, expect, test } from "vitest";
-import { BannerContent, BotSettings, reviewRecipients, settingsDefaults } from "./settings.ts";
+import {
+  BannerContent,
+  BotSettings,
+  reviewRecipients,
+  SiteSettings,
+  settingsDefaults,
+  shouldHidePost,
+} from "./settings.ts";
 
 describe("BannerContent", () => {
   const valid = { title: "新频道", subtitle: "每天更新", href: "https://t.me/new_channel" };
@@ -30,6 +37,32 @@ test("stored bot settings without the newer fields still parse through the defau
   const { reviewMode: _mode, dailyDigest: _digest, ...legacy } = settingsDefaults.bot;
   const merged = BotSettings.parse({ ...settingsDefaults.bot, ...legacy, reviewChatId: "-100" });
   expect(merged).toMatchObject({ reviewMode: "chat", dailyDigest: true, reviewChatId: "-100" });
+});
+
+test("stored site settings without the post moderation fields still parse through the defaults", () => {
+  const { postBlocklist: _list, hidePostMedia: _media, ...legacy } = settingsDefaults.site;
+  const merged = SiteSettings.parse({ ...settingsDefaults.site, ...legacy });
+  expect(merged).toMatchObject({ postBlocklist: [], hidePostMedia: false });
+  expect(SiteSettings.safeParse({ ...settingsDefaults.site, postBlocklist: [1] }).success).toBe(
+    false,
+  );
+  const tooMany = Array.from({ length: 101 }, (_v, i) => String(i));
+  expect(SiteSettings.safeParse({ ...settingsDefaults.site, postBlocklist: tooMany }).success).toBe(
+    false,
+  );
+});
+
+describe("shouldHidePost", () => {
+  test.each([
+    ["加微信领福利", ["加微信"], true],
+    ["Buy cheap FOLLOWERS here", ["followers"], true],
+    ["加微信领福利", ["加QQ"], false],
+    ["anything at all", [], false],
+    ["anything at all", ["   "], false],
+    ["每日更新", ["更新", "广告"], true],
+  ])("%s against %j → %s", (text, blocklist, hidden) => {
+    expect(shouldHidePost(text, blocklist)).toBe(hidden);
+  });
 });
 
 describe("reviewRecipients", () => {

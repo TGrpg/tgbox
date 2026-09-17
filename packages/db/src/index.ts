@@ -5,6 +5,8 @@ export * from "./admin-blacklist.ts";
 export * from "./admin-entries.ts";
 export * from "./admin-review.ts";
 export * from "./admin-taxonomy.ts";
+export * from "./prefs.ts";
 export * from "./promotions.ts";
 export * from "./schema.ts";
 export * from "./settings.ts";
+export * from "./support.ts";

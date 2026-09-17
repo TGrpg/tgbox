@@ -9,6 +9,7 @@ export const queryKeys = {
   taxonomy: ["taxonomy"],
   entries: ["entries"],
   entryTags: ["entry-tags"],
+  entryPosts: ["entry-posts"],
   audit: ["audit"],
   adminStats: ["admin-stats"],
   dashboardActivity: ["dashboard-activity"],

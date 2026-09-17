@@ -6,7 +6,13 @@ import {
   tableFeatures,
   useTable,
 } from "@tanstack/react-table";
-import { BadgeCheckIcon, ChevronLeftIcon, ChevronRightIcon, StarIcon } from "lucide-react";
+import {
+  BadgeCheckIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  MessageSquareOffIcon,
+  StarIcon,
+} from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/coss/ui/avatar.tsx";
@@ -39,6 +45,7 @@ import {
   statusLabel,
   statusVariant,
 } from "./labels.ts";
+import { EntryPostsSheet } from "./posts-sheet.tsx";
 import { RowActions } from "./row-actions.tsx";
 import { ENTRIES_PAGE_SIZE, type EntriesSearch } from "./search.ts";
 
@@ -59,6 +66,7 @@ export function EntriesPage({
   const list = useQuery(entriesQueryOptions(search));
   const taxonomy = useQuery(taxonomyQueryOptions());
   const [editing, setEditing] = useState<EntryRow | null>(null);
+  const [managingPosts, setManagingPosts] = useState<EntryRow | null>(null);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const siteUrl = list.data?.siteUrl ?? "";
 
@@ -142,6 +150,16 @@ export function EntriesPage({
               />
             ) : null,
         }),
+        helper.accessor("hidePosts", {
+          header: "消息",
+          cell: ({ getValue }) =>
+            getValue() ? (
+              <MessageSquareOffIcon
+                className="size-4 text-muted-foreground"
+                aria-label="最近消息已隐藏"
+              />
+            ) : null,
+        }),
         helper.accessor("listedAt", {
           header: "收录",
           cell: ({ getValue }) => formatDate(getValue()),
@@ -154,7 +172,12 @@ export function EntriesPage({
           id: "actions",
           header: () => <span className="sr-only">操作</span>,
           cell: ({ row }) => (
-            <RowActions entry={row.original} siteUrl={siteUrl} onEdit={setEditing} />
+            <RowActions
+              entry={row.original}
+              siteUrl={siteUrl}
+              onEdit={setEditing}
+              onManagePosts={setManagingPosts}
+            />
           ),
         }),
       ]),
@@ -275,7 +298,12 @@ export function EntriesPage({
                         <div className="min-w-0 flex-1">
                           <EntryIdentity entry={row.original} />
                         </div>
-                        <RowActions entry={row.original} siteUrl={siteUrl} onEdit={setEditing} />
+                        <RowActions
+                          entry={row.original}
+                          siteUrl={siteUrl}
+                          onEdit={setEditing}
+                          onManagePosts={setManagingPosts}
+                        />
                       </div>
                       <div className="flex flex-wrap items-center gap-1.5 text-muted-foreground text-xs">
                         <Badge variant={statusVariant[row.original.status]}>
@@ -285,6 +313,7 @@ export function EntriesPage({
                           {livenessLabel[row.original.liveness]}
                         </Badge>
                         {row.original.promoted && <Badge variant="warning">推广</Badge>}
+                        {row.original.hidePosts && <Badge variant="outline">消息已隐藏</Badge>}
                         <span>{kindLabel[row.original.kind]}</span>·
                         <span>{names.categories.get(row.original.categoryId) ?? "—"}</span>·
                         <span className="tabular-nums">
@@ -336,6 +365,7 @@ export function EntriesPage({
         onClear={clearSelection}
       />
       <EditEntrySheet entry={editing} onClose={() => setEditing(null)} />
+      <EntryPostsSheet entry={managingPosts} onClose={() => setManagingPosts(null)} />
     </>
   );
 }

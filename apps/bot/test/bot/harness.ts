@@ -106,6 +106,9 @@ export async function startHarness() {
       "bot_chats",
       "orders",
       "promotions",
+      "user_prefs",
+      "support_threads",
+      "hidden_posts",
     ].map((table) => env.DB.prepare(`DELETE FROM ${table}`)),
   );
   await syncTaxonomy(db);
@@ -114,6 +117,9 @@ export async function startHarness() {
   const tme: string[] = [];
   const cryptoPay: { url: string; body: Record<string, unknown> }[] = [];
   let nextMessageId = 5000;
+  let nextTopicId = 100;
+  // Bot API methods that must answer with an error once (topic closed, user blocked the bot…).
+  const forcedErrors = new Map<string, string>();
   // While set, t.me requests stay pending until the test calls the release function.
   let tmeGate: Promise<void> | null = null;
   // While true, the Bot API rejects every call like it does for a user who blocked the bot.
@@ -129,6 +135,11 @@ export async function startHarness() {
       const method = url.pathname.split("/").pop() ?? "";
       const payload: Record<string, unknown> = body ? JSON.parse(body) : {};
       telegram.push({ method, payload });
+      const forced = forcedErrors.get(method);
+      if (forced !== undefined) {
+        forcedErrors.delete(method);
+        return Response.json({ ok: false, error_code: 400, description: forced }, { status: 400 });
+      }
       if (telegramRejects) {
         return Response.json(
           { ok: false, error_code: 403, description: "Forbidden: bot was blocked by the user" },
@@ -143,7 +154,11 @@ export async function startHarness() {
               chat: { id: payload.chat_id, type: "private" },
               text: payload.text,
             }
-          : true;
+          : method === "createForumTopic"
+            ? { message_thread_id: ++nextTopicId, name: payload.name, icon_color: 0 }
+            : method === "copyMessage"
+              ? { message_id: ++nextMessageId }
+              : true;
       return Response.json({ ok: true, result });
     }
     if (url.hostname === "t.me") {
@@ -198,9 +213,18 @@ export async function startHarness() {
     from: From,
     text: string,
     chat: Record<string, unknown> = { id: from.id, type: "private" },
+    extra: Record<string, unknown> = {},
   ) {
     return {
-      message: { message_id: updateId, date: 0, chat, from, text, ...commandEntities(text) },
+      message: {
+        message_id: updateId,
+        date: 0,
+        chat,
+        from,
+        text,
+        ...commandEntities(text),
+        ...extra,
+      },
     };
   }
 
@@ -263,8 +287,14 @@ export async function startHarness() {
       cryptoPay.length = 0;
       site.length = 0;
     },
-    message: (from: From, text: string, chat?: Record<string, unknown>) =>
-      send(message(from, text, chat)),
+    message: (
+      from: From,
+      text: string,
+      chat?: Record<string, unknown>,
+      extra?: Record<string, unknown>,
+    ) => send(message(from, text, chat, extra)),
+    /** Makes the next call to `method` answer with a Bot API error. */
+    failOnce: (method: string, description: string) => forcedErrors.set(method, description),
     /** Like `message`, but resolves with the webhook response before background work finishes. */
     startMessage: (from: From, text: string) => start(message(from, text)),
     rejectTelegram: () => {

@@ -9,7 +9,7 @@ import {
 import { getSubmission } from "@tgbox/db";
 import { Composer, type Context, InlineKeyboard } from "grammy";
 import type { App } from "./app.ts";
-import { i18n, messages } from "./i18n/index.ts";
+import { messages } from "./i18n/index.ts";
 
 export function reviewKeyboard(submissionId: number) {
   const m = messages("zh").admin;
@@ -22,8 +22,8 @@ export function reviewKeyboard(submissionId: number) {
  * A review button on a copy that was already handled (another admin's private copy or a double
  * tap): tell the admin and drop the stale buttons from this message only.
  */
-export async function answerAlreadyHandled(ctx: Context) {
-  await ctx.answerCallbackQuery({ text: i18n(ctx).alreadyHandled, show_alert: true });
+export async function answerAlreadyHandled(app: App, ctx: Context) {
+  await ctx.answerCallbackQuery({ text: (await app.m(ctx)).alreadyHandled, show_alert: true });
   await ctx
     .editMessageReplyMarkup({ reply_markup: undefined })
     .catch((error: unknown) => console.error("clearing stale review buttons failed", error));
@@ -38,7 +38,7 @@ export function review(app: App) {
 
   composer.callbackQuery(/^r[ajrb]:/, async (ctx, next) => {
     if (await app.isAdmin(ctx)) return next();
-    await ctx.answerCallbackQuery({ text: i18n(ctx).noPermission, show_alert: true });
+    await ctx.answerCallbackQuery({ text: (await app.m(ctx)).noPermission, show_alert: true });
   });
 
   async function closeReview(ctx: Context, status: string) {
@@ -58,7 +58,7 @@ export function review(app: App) {
       actor: tgActor(ctx.from.id),
     });
     if (!submission) {
-      await answerAlreadyHandled(ctx);
+      await answerAlreadyHandled(app, ctx);
       return;
     }
     // t.me fetches can take seconds; the webhook must answer within 10 s, so finish in waitUntil.
@@ -81,7 +81,7 @@ export function review(app: App) {
     const id = Number(ctx.match[1]);
     const submission = await getSubmission(app.db, id);
     if (submission?.status !== "pending") {
-      await answerAlreadyHandled(ctx);
+      await answerAlreadyHandled(app, ctx);
       return;
     }
     await ctx.answerCallbackQuery();
@@ -112,7 +112,7 @@ export function review(app: App) {
       actor: tgActor(ctx.from.id),
     });
     if (!submission) {
-      await answerAlreadyHandled(ctx);
+      await answerAlreadyHandled(app, ctx);
       return;
     }
     await notifySubmitter(ctx, submission.tgUserId, notice.rejected(submission.username, reason));

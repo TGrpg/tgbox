@@ -9,6 +9,8 @@ export const auditActions = [
   "entry.category",
   "entry.tags",
   "entry.promote",
+  "entry.posts",
+  "post.hidden",
   "entry.refresh",
   "build.trigger",
   "blacklist.add",

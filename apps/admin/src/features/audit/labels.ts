@@ -8,6 +8,8 @@ export const auditActionLabels: Record<AuditAction, string> = {
   "entry.category": "修改分类",
   "entry.tags": "修改标签",
   "entry.promote": "推荐设置",
+  "entry.posts": "消息显示",
+  "post.hidden": "隐藏消息",
   "entry.refresh": "刷新条目",
   "build.trigger": "触发构建",
   "blacklist.add": "加入黑名单",

@@ -1,9 +1,10 @@
 import { background, type CoreContext, getSettings } from "@tgbox/core";
-import { createDb, type Db } from "@tgbox/db";
-import { type ReviewMode, reviewRecipients, type Settings } from "@tgbox/shared";
+import { createDb, type Db, getUserLocale } from "@tgbox/db";
+import { type Locale, type ReviewMode, reviewRecipients, type Settings } from "@tgbox/shared";
 import { type EntrySnapshot, fetchEntrySnapshot, type SnapshotOptions } from "@tgbox/telegram";
 import { Api, type Context } from "grammy";
 import type { Message } from "grammy/types";
+import { localeOf, type Messages, messages } from "./i18n/index.ts";
 
 export type BotEnv = Env & {
   /** Public bot username (without @); used to match `/command@bot` in groups. */
@@ -30,6 +31,10 @@ export type App = {
   background: (task: () => Promise<unknown>) => Promise<void>;
   /** Admin settings, read at most once per update. */
   settings: () => Promise<Settings>;
+  /** Stored `/lang` preference, else the client language heuristic. Read at most once per update. */
+  locale: (ctx: Context) => Promise<Locale>;
+  /** Bot copy in the user's language. */
+  m: (ctx: Context) => Promise<Messages>;
   /**
    * Sends a review message to the review chat, or a private copy to each admin (settings
    * `reviewMode`, or no review chat configured). Failed copies are logged; returns the sent ones.
@@ -77,6 +82,15 @@ export function createApp(env: BotEnv, deps: BotDeps): App {
     return loaded;
   };
 
+  // One update is always one user, so the preference is read once per request.
+  let storedLocale: Promise<Locale | null> | undefined;
+  const locale = async (ctx: Context) => {
+    const userId = ctx.from?.id;
+    if (userId === undefined) return localeOf(ctx);
+    storedLocale ??= getUserLocale(db, userId);
+    return (await storedLocale) ?? localeOf(ctx);
+  };
+
   const api = new Api(env.BOT_TOKEN, { fetch: deps.fetch });
 
   return {
@@ -88,6 +102,8 @@ export function createApp(env: BotEnv, deps: BotDeps): App {
     now,
     background: (task) => background(core, task),
     settings,
+    locale,
+    m: async (ctx) => messages(await locale(ctx)),
     sendReview: async (text, options) => {
       const { mode, chatIds } = reviewRecipients((await settings()).bot, env);
       const results = await Promise.allSettled(

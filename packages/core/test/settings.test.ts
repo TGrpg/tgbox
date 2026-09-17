@@ -52,7 +52,10 @@ describe("settings", () => {
     expect((await getSettings(ctx)).bot).toEqual(bot);
     expect(dispatches).toEqual([]);
 
-    const site = { announcement: { enabled: true, zh: "公告", en: "News", href: null } };
+    const site = {
+      ...settingsDefaults.site,
+      announcement: { enabled: true, zh: "公告", en: "News", href: null },
+    };
     await updateSettings(ctx, { key: "site", value: site, actor });
     expect(await getSiteState(db, "dirty_since")).toBe(String(NOW));
     expect(dispatches).toHaveLength(1);

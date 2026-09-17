@@ -14,8 +14,9 @@ import {
 import { type EntryKind, entryKinds, type Locale, MAX_TAGS, parseTelegramRef } from "@tgbox/shared";
 import { Composer, type Context, InlineKeyboard } from "grammy";
 import type { App } from "./app.ts";
-import { localeOf, messages } from "./i18n/index.ts";
+import { messages } from "./i18n/index.ts";
 import { reviewKeyboard } from "./review.ts";
+import { relayEnabled } from "./support.ts";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const TAGS_PER_PAGE = 10;
@@ -198,15 +199,18 @@ export function submit(app: App) {
 
   composer.on("message:text", async (ctx, next) => {
     if (ctx.message.text.startsWith("/")) return next();
-    const locale = localeOf(ctx);
+    const locale = await app.locale(ctx);
     const m = messages(locale);
-    if (!(await app.settings()).bot.submissionsOpen) {
-      await ctx.reply(m.submissionsClosed);
-      return;
-    }
+    const settings = (await app.settings()).bot;
     const username = parseTelegramRef(ctx.message.text);
     if (!username) {
+      // With the support relay on, anything that isn't a link is a question for the support staff.
+      if (relayEnabled(settings)) return next();
       await ctx.reply(m.invalidLink);
+      return;
+    }
+    if (!settings.submissionsOpen) {
+      await ctx.reply(m.submissionsClosed);
       return;
     }
     if (await getBlacklistEntry(app.db, "username", username)) return;
@@ -252,7 +256,7 @@ export function submit(app: App) {
 
   composer.callbackQuery(/^(s[cdtoegx]):([0-9a-z]+):(.*)$/, async (ctx) => {
     const [, action = "", v = "", arg = ""] = ctx.match;
-    const locale = localeOf(ctx);
+    const locale = await app.locale(ctx);
     const m = messages(locale);
     const userId = ctx.from.id;
     const row = await getBotDraft(app.db, userId, app.now());

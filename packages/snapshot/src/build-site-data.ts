@@ -8,6 +8,8 @@ import {
   PostView,
   SiteData,
   SiteSettings,
+  settingsDefaults,
+  shouldHidePost,
 } from "@tgbox/shared";
 
 export type BuildSiteDataOptions = {
@@ -82,9 +84,13 @@ export async function buildSiteData(options: BuildSiteDataOptions): Promise<Site
       .all();
 
     const nowMs = now.getTime();
-    // Exports taken before migration 0005 have no settings/promotions tables.
+    // Exports taken before migration 0005 have no settings/promotions tables, and ones taken
+    // before 0006 have no hidden_posts table or entries.hide_posts column.
     const hasTable = (name: string) =>
       db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(name) !==
+      undefined;
+    const hasColumn = (table: string, column: string) =>
+      db.prepare("SELECT 1 FROM pragma_table_info(?) WHERE name = ?").get(table, column) !==
       undefined;
     const hasPromotions = hasTable("promotions");
 
@@ -110,6 +116,25 @@ export async function buildSiteData(options: BuildSiteDataOptions): Promise<Site
       .all()) {
       const id = int(row.entry_id);
       tagsByEntry.set(id, [...(tagsByEntry.get(id) ?? []), text(row.slug)]);
+    }
+
+    // Post visibility, set by the operator in the admin: whole entry, or single posts.
+    const entriesHidingPosts = new Set(
+      hasColumn("entries", "hide_posts")
+        ? db
+            .prepare("SELECT id FROM entries WHERE hide_posts = 1")
+            .all()
+            .map((row) => int(row.id))
+        : [],
+    );
+    const hiddenPostsByEntry = new Map<number, Set<number>>();
+    if (hasTable("hidden_posts")) {
+      for (const row of db.prepare("SELECT entry_id, post_id FROM hidden_posts").all()) {
+        const id = int(row.entry_id);
+        const ids = hiddenPostsByEntry.get(id) ?? new Set<number>();
+        ids.add(int(row.post_id));
+        hiddenPostsByEntry.set(id, ids);
+      }
     }
 
     const entries = rows.map((row) => {
@@ -176,15 +201,17 @@ export async function buildSiteData(options: BuildSiteDataOptions): Promise<Site
     const siteRow = hasTable("settings")
       ? db.prepare("SELECT value FROM settings WHERE key = 'site'").get()
       : undefined;
-    const site = SiteSettings.safeParse(jsonOrNull(siteRow?.value ?? null));
-    const announcement =
-      site.success && site.data.announcement.enabled
-        ? {
-            zh: site.data.announcement.zh,
-            en: site.data.announcement.en,
-            href: site.data.announcement.href,
-          }
-        : null;
+    // Merge over the defaults so a row stored before a field existed keeps the rest of its values.
+    const stored = jsonOrNull(siteRow?.value ?? null);
+    const parsed = SiteSettings.safeParse(
+      typeof stored === "object" && stored !== null
+        ? { ...settingsDefaults.site, ...stored }
+        : stored,
+    );
+    const site = parsed.success ? parsed.data : settingsDefaults.site;
+    const announcement = site.announcement.enabled
+      ? { zh: site.announcement.zh, en: site.announcement.en, href: site.announcement.href }
+      : null;
 
     const usernamesOf = (kind: EntryKind) =>
       entries.filter((e) => e.kind === kind).map((e) => e.username);
@@ -215,7 +242,7 @@ export async function buildSiteData(options: BuildSiteDataOptions): Promise<Site
       // zod strips the internal id/categoryId fields.
       entries: entries.map((entry) => ({
         ...entry,
-        posts: media.get(entry.username)?.posts ?? [],
+        posts: visiblePosts(entry),
         memberHistory: media.get(entry.username)?.memberHistory ?? [],
         related: {
           channels: related(entry, "channel"),
@@ -231,6 +258,20 @@ export async function buildSiteData(options: BuildSiteDataOptions): Promise<Site
       announcement,
       promos,
     });
+
+    /** Applies the operator's post filters: whole entry, single posts, keywords, media. */
+    function visiblePosts(entry: (typeof entries)[number]): PostView[] {
+      if (entriesHidingPosts.has(entry.id)) return [];
+      const hidden = hiddenPostsByEntry.get(entry.id);
+      return (media.get(entry.username)?.posts ?? [])
+        .filter((post) => !hidden?.has(post.id))
+        .filter((post) => !shouldHidePost(post.text, site.postBlocklist))
+        .map((post) => {
+          if (!site.hidePostMedia) return post;
+          const { mediaThumb, ...rest } = post;
+          return rest;
+        });
+    }
 
     function related(self: (typeof entries)[number], kind: EntryKind): string[] {
       const selfTags = new Set(self.tags);
