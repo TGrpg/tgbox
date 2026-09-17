@@ -205,7 +205,12 @@ export function submit(app: App) {
     const username = parseTelegramRef(ctx.message.text);
     if (!username) {
       // With the support relay on, anything that isn't a link is a question for the support staff.
-      if (relayEnabled(settings)) return next();
+      if (relayEnabled(settings)) {
+        // …except a mistyped username or link, which would otherwise vanish into the relay with no
+        // sign that the submission never happened. Point at /submit, then relay it anyway.
+        if (looksLikeSubmission(ctx.message.text)) await ctx.reply(m.maybeSubmission);
+        return next();
+      }
       await ctx.reply(m.invalidLink);
       return;
     }
@@ -404,6 +409,12 @@ function profileText(locale: Locale, draft: Draft) {
   if (draft.members !== null) lines.push(`${m.members}: ${draft.members.toLocaleString("en")}`);
   if (draft.description) lines.push(truncate(draft.description, 300));
   return lines.join("\n");
+}
+
+/** A private message the relay is about to swallow that was probably meant as a submission. */
+function looksLikeSubmission(text: string) {
+  const value = text.trim();
+  return value.startsWith("@") || /t\.me\//i.test(value);
 }
 
 export function truncate(text: string, max: number) {

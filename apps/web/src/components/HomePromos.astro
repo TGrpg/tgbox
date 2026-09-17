@@ -2,7 +2,7 @@
 import Ad from "@tabler/icons/outline/ad-2.svg";
 import Speakerphone from "@tabler/icons/outline/speakerphone.svg";
 import X from "@tabler/icons/outline/x.svg";
-import type { Locale } from "@tgbox/shared";
+import { type Locale, promoClickUrl } from "@tgbox/shared";
 import { ui } from "@/i18n/ui.ts";
 import { homeUi } from "@/i18n/ui-home.ts";
 import { promoSlots, promoteUrl } from "@/lib/promos.ts";
@@ -75,19 +75,23 @@ const promoteHref = promoteUrl(botUsername);
           >
             {promo.type === "paid" ? (
               <a
-                href={promo.href}
+                href={promoClickUrl(promo.id)}
                 data-hover-lift
                 data-press
                 data-promo-sponsored
                 rel="sponsored noopener"
                 target="_blank"
+                data-promo-image={promo.imageUrl ?? undefined}
                 class="home-promo group relative flex aspect-[16/10] flex-col justify-end overflow-hidden rounded-2xl p-3 text-white shadow-card outline-none focus-visible:ring-4 focus-visible:ring-outline/50 sm:p-4"
                 style={`background:${promo.background}`}
               >
-                <Speakerphone
-                  class="absolute -top-3 -right-3 size-24 rotate-12 opacity-25 transition-transform duration-500 group-hover:rotate-0 group-hover:scale-110 sm:size-28"
-                  aria-hidden="true"
-                />
+                {/* The decorative megaphone is for gradient-only cards; an image fills the card itself. */}
+                {!promo.imageUrl && (
+                    <Speakerphone
+                      class="absolute -top-3 -right-3 size-24 rotate-12 opacity-25 transition-transform duration-500 group-hover:rotate-0 group-hover:scale-110 sm:size-28"
+                      aria-hidden="true"
+                    />
+                  )}
                 <span class="absolute top-2.5 left-2.5 rounded-md bg-black/30 px-1.5 py-0.5 text-[0.7rem] font-semibold backdrop-blur-sm sm:top-3 sm:left-3">
                   {entry.ad}
                 </span>
@@ -142,6 +146,10 @@ const promoteHref = promoteUrl(botUsername);
     color-mix(in oklab, var(--primary) 7%, transparent),
     transparent 70%
   );
+}
+/* A photo needs a deeper scrim than a gradient before the title reads over it. */
+.home-promo[data-promo-image]::before {
+  background: linear-gradient(to top, rgb(0 0 0 / 0.72), rgb(0 0 0 / 0.25) 55%, rgb(0 0 0 / 0.1));
 }
 /* Grain + bottom scrim keep overlay text readable on any gradient. */
 .home-promo::before {

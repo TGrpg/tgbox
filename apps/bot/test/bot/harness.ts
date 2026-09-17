@@ -22,12 +22,30 @@ export const ADMIN = { id: 900, is_bot: false, first_name: "Alice", username: "a
 export const ADMIN_2 = { id: 901, is_bot: false, first_name: "Bob" };
 export const ADMIN_CHAT_ID = -100500;
 
+/** What the fake Workers AI binding was asked to do, and what it answers. */
+export type AiCall = { model: string; inputs: Record<string, unknown> };
+
+/** Never the real Workers AI: tests record the calls and script the answers. */
+function fakeAi(calls: AiCall[], respond: () => { translated_text?: string }) {
+  return {
+    run: async (model: string, inputs: Record<string, unknown>) => {
+      calls.push({ model, inputs });
+      return respond();
+    },
+  };
+}
+
+const aiCalls: AiCall[] = [];
+let aiRespond: () => { translated_text?: string } = () => ({ translated_text: "translated" });
+
 // Vars are empty in wrangler.jsonc (typed as ""), so tests layer their own values on top.
 const testEnv: Env = Object.assign({}, env, {
   ADMIN_IDS: `${ADMIN.id}, ${ADMIN_2.id}`,
   ADMIN_CHAT_ID: String(ADMIN_CHAT_ID),
   GITHUB_REPO: "owner/tgbox",
   SITE_URL: "https://tgbox.test",
+  R2_PUBLIC_URL: "https://media.tgbox.test",
+  AI: fakeAi(aiCalls, () => aiRespond()) as unknown as Ai,
 });
 
 export const db = createDb(env.DB);
@@ -111,6 +129,9 @@ export async function startHarness() {
       "hidden_posts",
     ].map((table) => env.DB.prepare(`DELETE FROM ${table}`)),
   );
+  // R2 persists between tests as well, and order ids restart at 1 in every test.
+  const promos = await env.MEDIA.list({ prefix: "promos/" });
+  if (promos.objects.length > 0) await env.MEDIA.delete(promos.objects.map((row) => row.key));
   await syncTaxonomy(db);
   const telegram: TelegramCall[] = [];
   const dispatches: { url: string; body: string }[] = [];
@@ -124,6 +145,9 @@ export async function startHarness() {
   let tmeGate: Promise<void> | null = null;
   // While true, the Bot API rejects every call like it does for a user who blocked the bot.
   let telegramRejects = false;
+  // Telegram file downloads (banner images): requested paths and the response for them.
+  const files: string[] = [];
+  let fileResponse: () => Response = () => new Response("image-bytes", { status: 200 });
   // The static site (SITE_URL): requested paths and the response for them.
   const site: string[] = [];
   let siteResponse: () => Response = () => new Response("Not found", { status: 404 });
@@ -132,6 +156,11 @@ export async function startHarness() {
     const url = new URL(input instanceof Request ? input.url : input);
     const body = typeof init?.body === "string" ? init.body : "";
     if (url.hostname === "api.telegram.org") {
+      // File downloads (`/file/bot<token>/<path>`) are not Bot API method calls.
+      if (url.pathname.includes("/file/bot")) {
+        files.push(url.pathname);
+        return fileResponse();
+      }
       const method = url.pathname.split("/").pop() ?? "";
       const payload: Record<string, unknown> = body ? JSON.parse(body) : {};
       telegram.push({ method, payload });
@@ -158,7 +187,9 @@ export async function startHarness() {
             ? { message_thread_id: ++nextTopicId, name: payload.name, icon_color: 0 }
             : method === "copyMessage"
               ? { message_id: ++nextMessageId }
-              : true;
+              : method === "getFile"
+                ? { file_id: payload.file_id, file_unique_id: "u1", file_path: "photos/file_1.jpg" }
+                : true;
       return Response.json({ ok: true, result });
     }
     if (url.hostname === "t.me") {
@@ -236,12 +267,26 @@ export async function startHarness() {
     language_code?: string;
   };
 
+  aiCalls.length = 0;
+  aiRespond = () => ({ translated_text: "translated" });
+
   return {
     telegram,
     dispatches,
     tme,
     cryptoPay,
     site,
+    files,
+    /** Workers AI calls, in order. */
+    aiCalls,
+    /** Scripts what the fake Workers AI binding answers (or throws). */
+    answerAi: (respond: () => { translated_text?: string }) => {
+      aiRespond = respond;
+    },
+    /** Serves the next Telegram file download. */
+    serveFile: (respond: () => Response) => {
+      fileResponse = respond;
+    },
     /** Serves the static site (SITE_URL) responses. */
     serveSite: (respond: () => Response) => {
       siteResponse = respond;
@@ -286,6 +331,8 @@ export async function startHarness() {
       tme.length = 0;
       cryptoPay.length = 0;
       site.length = 0;
+      files.length = 0;
+      aiCalls.length = 0;
     },
     message: (
       from: From,
@@ -293,6 +340,17 @@ export async function startHarness() {
       chat?: Record<string, unknown>,
       extra?: Record<string, unknown>,
     ) => send(message(from, text, chat, extra)),
+    /** A private message carrying a photo or a document instead of text. */
+    media: (from: From, media: Record<string, unknown>) =>
+      send({
+        message: {
+          message_id: updateId,
+          date: 0,
+          chat: { id: from.id, type: "private" },
+          from,
+          ...media,
+        },
+      }),
     /** Makes the next call to `method` answer with a Bot API error. */
     failOnce: (method: string, description: string) => forcedErrors.set(method, description),
     /** Like `message`, but resolves with the webhook response before background work finishes. */

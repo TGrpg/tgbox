@@ -81,6 +81,38 @@ describe("buildSiteData", () => {
     expect(entry(data, "worldnews").verified).toBe(true);
   });
 
+  test("carries the machine translations of a description, null where there is none", async () => {
+    const data = await buildSiteData({ dbPath: fixtureDb(), mediaDir: tempDir(), now: fixtureNow });
+
+    expect(entry(data, "techdaily")).toMatchObject({
+      description: "每天分享开发与科技新闻",
+      descriptionZh: "每天分享开发与科技新闻",
+      descriptionEn: "Daily development and tech news.",
+    });
+    expect(entry(data, "devnotes")).toMatchObject({
+      description: "Notes about programming",
+      descriptionZh: null,
+      descriptionEn: null,
+    });
+  });
+
+  test("an export taken before the translation columns existed reads them as null", async () => {
+    const dbPath = fixtureDb();
+    const db = new DatabaseSync(dbPath);
+    db.exec("ALTER TABLE entries DROP COLUMN description_zh");
+    db.exec("ALTER TABLE entries DROP COLUMN description_en");
+    db.close();
+
+    const data = await buildSiteData({ dbPath, mediaDir: tempDir(), now: fixtureNow });
+
+    expect(entry(data, "techdaily")).toMatchObject({
+      description: "每天分享开发与科技新闻",
+      descriptionZh: null,
+      descriptionEn: null,
+    });
+    expect(SiteData.safeParse(data).success).toBe(true);
+  });
+
   test("ranks related entries by same category then shared tags, ties by members", async () => {
     const data = await buildSiteData({ dbPath: fixtureDb(), mediaDir: tempDir(), now: fixtureNow });
 
@@ -194,15 +226,22 @@ describe("buildSiteData", () => {
     const dbPath = fixtureDb();
     const now = fixtureNow.getTime();
     const db = new DatabaseSync(dbPath);
-    const banner = (title: string) =>
-      JSON.stringify({ title, subtitle: "副标题", href: "https://t.me/techdaily" });
+    const banner = (title: string, imageUrl?: string) =>
+      JSON.stringify({ title, subtitle: "副标题", href: "https://t.me/techdaily", imageUrl });
     db.prepare("INSERT INTO settings (key, value, updated_at) VALUES ('site', ?, 0)").run(
       JSON.stringify({ announcement: { enabled: true, zh: "公告", en: "Notice", href: null } }),
     );
     const insert = db.prepare(
       "INSERT INTO promotions (id, kind, entry_username, banner, starts_at, ends_at, created_at) VALUES (?, ?, ?, ?, ?, ?, 0)",
     );
-    insert.run(1, "banner", null, banner("后开始"), now - 1000, now + 1000);
+    insert.run(
+      1,
+      "banner",
+      null,
+      banner("后开始", "https://media.example.com/promos/1.jpg"),
+      now - 1000,
+      now + 1000,
+    );
     insert.run(2, "banner", null, banner("先开始"), now - 2000, now + 1000);
     insert.run(3, "banner", null, banner("已过期"), now - 3000, now);
     insert.run(4, "banner", null, "{broken", now - 3000, now + 1000);
@@ -219,6 +258,8 @@ describe("buildSiteData", () => {
         title: "先开始",
         subtitle: "副标题",
         href: "https://t.me/techdaily",
+        // Banners sold before image upload existed carry no imageUrl at all.
+        imageUrl: null,
         sponsored: true,
       },
       {
@@ -226,6 +267,7 @@ describe("buildSiteData", () => {
         title: "后开始",
         subtitle: "副标题",
         href: "https://t.me/techdaily",
+        imageUrl: "https://media.example.com/promos/1.jpg",
         sponsored: true,
       },
     ]);

@@ -11,9 +11,27 @@ export const promoBackgrounds = [
 ];
 
 export type PromoSlot =
-  | { type: "paid"; id: string; title: string; subtitle: string; href: string; background: string }
+  | {
+      type: "paid";
+      id: string;
+      title: string;
+      subtitle: string;
+      href: string;
+      /** Uploaded card image layered over the gradient; null keeps the gradient alone. */
+      imageUrl: string | null;
+      /** Ready-to-use CSS `background` value: image layer first, gradient behind it. */
+      background: string;
+    }
   /** "Ad space available" card linking to the bot's promote flow. */
   | { type: "placeholder"; id: string };
+
+/**
+ * Card images come from the admin's media host, but they end up inside a `style` attribute, so
+ * only a plain https URL with no CSS-breaking characters is accepted.
+ */
+function safeImageUrl(url: string | null | undefined): string | null {
+  return typeof url === "string" && /^https:\/\/[^\s"'()\\]+$/i.test(url) ? url : null;
+}
 
 /** Deep link that opens the bot's promotion purchase flow. */
 export function promoteUrl(botUsername: string) {
@@ -29,17 +47,21 @@ export function promoSlots(paid: PromoView[], slots: number, emptySlots: number)
   const paidSlots = paid
     .filter((promo) => /^https?:\/\//i.test(promo.href))
     .slice(0, slots)
-    .map(
-      (promo): PromoSlot => ({
+    .map((promo): PromoSlot => {
+      const gradient =
+        promoBackgrounds[Number.parseInt(hashText(promo.id), 36) % promoBackgrounds.length] ?? "";
+      const imageUrl = safeImageUrl(promo.imageUrl);
+      return {
         type: "paid",
         id: promo.id,
         title: promo.title,
         subtitle: promo.subtitle,
         href: promo.href,
-        background:
-          promoBackgrounds[Number.parseInt(hashText(promo.id), 36) % promoBackgrounds.length] ?? "",
-      }),
-    );
+        imageUrl,
+        // The gradient stays behind the image, so a broken or transparent image still reads.
+        background: imageUrl ? `url("${imageUrl}") center/cover no-repeat, ${gradient}` : gradient,
+      };
+    });
   const total = paidSlots.length === 0 ? Math.min(slots, emptySlots) : slots;
   const placeholders = Array.from(
     { length: total - paidSlots.length },

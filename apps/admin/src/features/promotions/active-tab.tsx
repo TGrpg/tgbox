@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarPlusIcon, RocketIcon, SquareIcon } from "lucide-react";
+import { ArrowDownWideNarrowIcon, CalendarPlusIcon, RocketIcon, SquareIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { type FormEvent, useState } from "react";
 import {
@@ -51,6 +51,7 @@ import {
   type PromotionRow,
 } from "@/functions/promotions.ts";
 import { invalidate } from "@/lib/query-keys.ts";
+import { ClickBadge, ClickCount, ClickHistory } from "./clicks.tsx";
 import { PromotionContent } from "./content.tsx";
 import { dateTime, productKindLabels, remainingDays } from "./labels.ts";
 
@@ -59,6 +60,9 @@ const ease = [0.16, 1, 0.3, 1] as const;
 export function ActiveTab() {
   const list = useQuery(activePromotionsQueryOptions());
   const [extending, setExtending] = useState<PromotionRow | null>(null);
+  const [detail, setDetail] = useState<PromotionRow | null>(null);
+  // Off by default so the table keeps its chronological order; on, the best performer comes first.
+  const [byClicks, setByClicks] = useState(false);
   const end = useEndPromotion();
 
   if (list.isPending) {
@@ -88,6 +92,9 @@ export function ActiveTab() {
   }
 
   const now = Date.now();
+  const rows = byClicks
+    ? [...list.data.rows].sort((a, b) => b.clicks.total - a.clicks.total)
+    : list.data.rows;
   const actions = (promotion: PromotionRow, wide?: boolean) => (
     <div className={wide ? "flex gap-2 *:flex-1" : "flex justify-end gap-2"}>
       <Button
@@ -145,6 +152,20 @@ export function ActiveTab() {
               <TableHead>开始</TableHead>
               <TableHead>结束</TableHead>
               <TableHead className="text-right">剩余</TableHead>
+              <TableHead className="text-right">
+                <button
+                  type="button"
+                  onClick={() => setByClicks(!byClicks)}
+                  aria-pressed={byClicks}
+                  className="inline-flex items-center gap-1 hover:text-foreground"
+                >
+                  点击
+                  <ArrowDownWideNarrowIcon
+                    className={byClicks ? "size-3.5" : "size-3.5 opacity-40"}
+                    aria-hidden
+                  />
+                </button>
+              </TableHead>
               <TableHead className="pr-4 text-right">
                 <span className="sr-only">操作</span>
               </TableHead>
@@ -152,7 +173,7 @@ export function ActiveTab() {
           </TableHeader>
           <TableBody>
             <AnimatePresence initial={false}>
-              {list.data.rows.map((promotion, index) => (
+              {rows.map((promotion, index) => (
                 <motion.tr
                   key={promotion.id}
                   layout="position"
@@ -183,6 +204,16 @@ export function ActiveTab() {
                   <TableCell className="text-right tabular-nums">
                     {remainingDays(promotion.endsAt, now)} 天
                   </TableCell>
+                  <TableCell className="text-right">
+                    <button
+                      type="button"
+                      onClick={() => setDetail(promotion)}
+                      className="cursor-pointer rounded px-1 hover:bg-muted"
+                      aria-label={`查看推广 #${promotion.id} 的每日点击`}
+                    >
+                      <ClickCount clicks={promotion.clicks} />
+                    </button>
+                  </TableCell>
                   <TableCell className="pr-4">{actions(promotion)}</TableCell>
                 </motion.tr>
               ))}
@@ -193,7 +224,7 @@ export function ActiveTab() {
 
       <ul className="flex flex-col gap-2 md:hidden">
         <AnimatePresence initial={false}>
-          {list.data.rows.map((promotion, index) => (
+          {rows.map((promotion, index) => (
             <motion.li
               key={promotion.id}
               layout="position"
@@ -215,8 +246,13 @@ export function ActiveTab() {
                   </span>
                 </div>
                 <PromotionContent username={promotion.entryUsername} banner={promotion.banner} />
-                <div className="text-muted-foreground text-xs">
-                  {dateTime(promotion.startsAt)} – {dateTime(promotion.endsAt)}
+                <div className="flex flex-wrap items-center justify-between gap-2 text-muted-foreground text-xs">
+                  <span>
+                    {dateTime(promotion.startsAt)} – {dateTime(promotion.endsAt)}
+                  </span>
+                  <button type="button" onClick={() => setDetail(promotion)}>
+                    <ClickBadge clicks={promotion.clicks} />
+                  </button>
                 </div>
                 {actions(promotion, true)}
               </Card>
@@ -226,7 +262,41 @@ export function ActiveTab() {
       </ul>
 
       <ExtendDialog promotion={extending} onClose={() => setExtending(null)} />
+      <ClickDialog promotion={detail} onClose={() => setDetail(null)} />
     </>
+  );
+}
+
+function ClickDialog({
+  promotion,
+  onClose,
+}: {
+  promotion: PromotionRow | null;
+  onClose: () => void;
+}) {
+  return (
+    <Dialog open={promotion !== null} onOpenChange={(open) => !open && onClose()}>
+      <DialogPopup>
+        {promotion && (
+          <>
+            <DialogHeader>
+              <DialogTitle>推广点击 #{promotion.id}</DialogTitle>
+              <DialogDescription>
+                {productKindLabels[promotion.kind]} · 累计 {promotion.clicks.total} 次点击，来自站点
+                /r/{promotion.id} 跳转。
+              </DialogDescription>
+            </DialogHeader>
+            <DialogPanel className="flex flex-col gap-3">
+              <PromotionContent username={promotion.entryUsername} banner={promotion.banner} />
+              <ClickHistory key={promotion.id} promotionId={promotion.id} />
+            </DialogPanel>
+            <DialogFooter>
+              <DialogClose render={<Button variant="ghost" />}>关闭</DialogClose>
+            </DialogFooter>
+          </>
+        )}
+      </DialogPopup>
+    </Dialog>
   );
 }
 

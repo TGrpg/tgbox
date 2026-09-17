@@ -13,6 +13,7 @@ import { supportGroup, supportRelay } from "./support.ts";
 
 export type { App, BotDeps, BotEnv } from "./app.ts";
 export { createApp } from "./app.ts";
+export { botCommands, setChatCommands } from "./commands.ts";
 
 export function createBot(
   env: BotEnv,

@@ -1,4 +1,4 @@
-import type { OrderStatus, ProductKind } from "@tgbox/shared";
+import type { BannerContent, OrderStatus, ProductKind } from "@tgbox/shared";
 import { and, asc, count, desc, eq, gt, inArray, isNull, lt, lte, min, sql } from "drizzle-orm";
 import type { Db } from "./access.ts";
 import { orders, products, promotions } from "./schema.ts";
@@ -70,6 +70,19 @@ export async function listOrders(
 }
 
 /** Records the provider invoice of a still-pending order. Returns true if updated. */
+/**
+ * Rewrites a pending order's banner. Used to attach the uploaded image, whose R2 key needs the
+ * order id and therefore can only be known once the order exists.
+ */
+export async function setOrderBanner(db: Db, id: number, banner: BannerContent) {
+  const result = await db
+    .update(orders)
+    .set({ banner })
+    .where(and(eq(orders.id, id), eq(orders.status, "pending")))
+    .run();
+  return result.meta.changes > 0;
+}
+
 export async function setOrderInvoice(db: Db, id: number, invoiceId: string) {
   const result = await db
     .update(orders)

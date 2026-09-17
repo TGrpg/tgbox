@@ -16,6 +16,7 @@ import DetailPromos from "@/components/DetailPromos.astro";
 import DetailStickyBar from "@/components/DetailStickyBar.astro";
 import DetailTrend from "@/components/DetailTrend.astro";
 import EntryCardCompact from "@/components/EntryCardCompact.astro";
+import JsonLd from "@/components/layout/JsonLd.astro";
 import ShareButton from "@/components/ShareButton.astro";
 import { htmlLang, localizePath } from "@/i18n/locale.ts";
 import { kindTitles, ui } from "@/i18n/ui.ts";
@@ -23,7 +24,9 @@ import { detailUi } from "@/i18n/ui-detail.ts";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import { activitySegments } from "@/lib/detail-trend.ts";
 import { fill, formatDate, formatNumber } from "@/lib/format.ts";
+import { breadcrumbJsonLd, entryJsonLd } from "@/lib/json-ld.ts";
 import { linkify } from "@/lib/linkify.ts";
+import { detailSeo, entrySummary, localizedDescription } from "@/lib/seo.ts";
 import { absoluteUrl } from "@/lib/site.ts";
 import { findCategory, findEntries, findTag, localName } from "@/lib/site-data.ts";
 
@@ -61,10 +64,6 @@ function languageName(code: string) {
 }
 
 const membersLabel = entry.kind === "bot" ? text.monthlyUsers : strings.entry.members[entry.kind];
-const membersText =
-  entry.members === null
-    ? null
-    : `${formatNumber(entry.members, locale)} ${strings.entry.members[entry.kind]}`;
 const tierLabel =
   entry.activityTier === null ? null : (detail.activityTier[entry.activityTier] ?? null);
 const segments = activitySegments(entry.activityTier);
@@ -72,53 +71,56 @@ const segments = activitySegments(entry.activityTier);
 const relatedChannels = findEntries(entry.related.channels);
 const relatedGroups = findEntries(entry.related.groups);
 
-const summary = entry.description.replace(/\s+/g, " ").trim().slice(0, 120);
-const metaDescription = fill(detail.metaDescription, {
+// The bot machine-translates descriptions; each locale reads its own, falling back to the original.
+const { text: description, translated } = localizedDescription(entry, locale);
+const languageLabel = entry.lang === null ? null : languageName(entry.lang);
+// "Telegram 科技频道" / "Telegram Tech Channel" — the phrase the H1 and the summary share.
+const kindPhrase =
+  locale === "zh"
+    ? `Telegram ${categoryName}${kindLabel}`
+    : `Telegram ${categoryName} ${kindLabel}`;
+const facts = {
   title: entry.title,
   username: entry.username,
-  kind: kindLabel,
-  members: membersText ?? detail.unknown,
-  description: summary,
-}).trim();
+  kindWord: locale === "zh" ? kindLabel : kindLabel.toLowerCase(),
+  categoryName,
+  members:
+    entry.members === null
+      ? null
+      : {
+          count: formatNumber(entry.members, locale),
+          noun: strings.entry.membersLong[entry.kind],
+        },
+  created: entry.tgCreatedAt === null ? null : formatDate(entry.tgCreatedAt, locale),
+  activity: tierLabel,
+  language: languageLabel,
+};
+const summary = entrySummary(locale, facts);
+const seo = detailSeo(locale, {
+  facts,
+  kind: entry.kind,
+  description,
+  tags: tags.map((tag) => tag.name),
+});
 
 const jsonLd = [
-  {
-    "@context": "https://schema.org",
-    "@type": "WebPage",
+  entryJsonLd({
     url: pageUrl,
     name: entry.title,
-    description: metaDescription,
+    description: seo.description,
     inLanguage: htmlLang[locale],
-    about: {
-      "@type": "Organization",
-      name: entry.title,
-      alternateName: `@${entry.username}`,
-      url: tmeUrl,
-      sameAs: [tmeUrl],
-      ...(entry.description ? { description: entry.description } : {}),
-      ...(entry.avatarUrl ? { logo: entry.avatarUrl, image: entry.avatarUrl } : {}),
-      ...(entry.tgCreatedAt ? { foundingDate: entry.tgCreatedAt.slice(0, 10) } : {}),
-      ...(entry.members !== null
-        ? {
-            interactionStatistic: {
-              "@type": "InteractionCounter",
-              interactionType: "https://schema.org/FollowAction",
-              userInteractionCount: entry.members,
-            },
-          }
-        : {}),
-    },
-  },
-  {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      { name: t(locale, "site.home"), item: absoluteUrl(localizePath("/", locale)) },
-      { name: kindTitle, item: absoluteUrl(kindHref) },
-      ...(categoryHref ? [{ name: categoryName, item: absoluteUrl(categoryHref) }] : []),
-      { name: entry.title },
-    ].map((item, index) => ({ "@type": "ListItem", position: index + 1, ...item })),
-  },
+    username: entry.username,
+    entryDescription: description,
+    avatarUrl: entry.avatarUrl,
+    tgCreatedAt: entry.tgCreatedAt,
+    members: entry.members,
+  }),
+  breadcrumbJsonLd([
+    { name: t(locale, "site.home"), url: absoluteUrl(localizePath("/", locale)) },
+    { name: kindTitle, url: absoluteUrl(kindHref) },
+    ...(categoryHref ? [{ name: categoryName, url: absoluteUrl(categoryHref) }] : []),
+    { name: entry.title },
+  ]),
 ];
 
 const badge =
@@ -131,19 +133,13 @@ const statCell =
 
 <BaseLayout
   locale={locale}
-  title={`${entry.title} (@${entry.username}) · ${kindLabel}`}
-  description={metaDescription}
+  title={seo.title}
+  description={seo.description}
+  keywords={seo.keywords}
   image={entry.avatarUrl ?? undefined}
   type="article"
 >
-  {jsonLd.map((item) => (
-      <script
-        is:inline
-        slot="head"
-        type="application/ld+json"
-        set:html={JSON.stringify(item).replace(/</g, "\\u003c")}
-      />
-    ))}
+  <JsonLd slot="head" data={jsonLd} />
 
   <DetailStickyBar locale={locale} entry={entry} goHref={goHref} />
 
@@ -190,6 +186,10 @@ const statCell =
                 {entry.verified && (
                     <RosetteCheck class="size-6 shrink-0 text-primary" aria-label={strings.entry.verified} role="img" />
                   )}
+                {/* Names what this page is, in the words people search for. */}
+                <span class="w-full text-sm font-normal text-muted-foreground sm:text-base">
+                  {kindPhrase}
+                </span>
               </h1>
               <p class="mt-1 font-mono text-sm text-muted-foreground" data-pagefind-ignore>
                 @{entry.username}
@@ -278,6 +278,11 @@ const statCell =
           </div>
         </header>
 
+        {/* Auto-written from the facts below, so the page opens with a sentence, not a table. */}
+        <p data-entry-summary class="mt-6 text-[0.95rem] leading-relaxed text-foreground/80">
+          {summary}
+        </p>
+
         <dl
           class="mt-6 grid grid-cols-2 border-y border-border sm:grid-cols-4"
           data-pagefind-ignore
@@ -345,12 +350,21 @@ const statCell =
           >
             <FileDescription class="size-5" aria-hidden="true" />
             {fill(text.about, { kind: kindLabel.toLowerCase() })}
+            {translated && (
+                <span
+                  data-auto-translated
+                  data-pagefind-ignore
+                  class="inline-flex h-5 items-center rounded-md bg-muted px-1.5 text-[0.7rem] font-normal text-muted-foreground"
+                >
+                  {strings.entry.autoTranslated}
+                </span>
+              )}
           </h2>
           <p
             class="mt-4 text-[0.95rem] leading-relaxed break-words whitespace-pre-line text-foreground/85 [&_a]:text-primary-accent [&_a]:underline [&_a]:underline-offset-4"
             dir="auto"
-            lang={entry.lang ?? undefined}
-            set:html={entry.description ? linkify(entry.description) : strings.entry.noDescription}
+            lang={translated ? htmlLang[locale] : (entry.lang ?? undefined)}
+            set:html={description ? linkify(description) : strings.entry.noDescription}
           />
           {tags.length > 0 && (
               <ul class="mt-5 flex flex-wrap gap-1.5 text-sm" aria-label={detail.tags}>

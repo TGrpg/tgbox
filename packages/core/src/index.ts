@@ -2,6 +2,13 @@ export { type EntryPreview, previewEntry } from "./add.ts";
 export { type AuditAction, auditActions } from "./audit.ts";
 export { addBlacklist, removeBlacklist } from "./blacklist.ts";
 export { dispatchStaleBuild, markDirtyAndDispatch, triggerBuild } from "./build.ts";
+export {
+  HISTORY_DAYS,
+  type PromotionClicks,
+  promotionClickHistory,
+  promotionClickTotals,
+  RECENT_DAYS,
+} from "./clicks.ts";
 export { type Actor, background, type CoreContext, emailActor, tgActor } from "./context.ts";
 export {
   type ListEntryError,

@@ -2,13 +2,17 @@ import { type Actor, approveBannerOrder, type CoreContext, rejectOrder } from "@
 import { listOrders, listProducts } from "@tgbox/db";
 import { OrderStatus, ProductKind } from "@tgbox/shared";
 import { z } from "zod";
+import { clicksByOrder } from "./clicks.ts";
 
 export const OrdersInput = z.object({
   status: OrderStatus.optional(),
   page: z.number().int().min(1),
 });
 
-/** One page of orders with product names; provider ids (invoice/charge) stay on the server. */
+/**
+ * One page of orders with product names and, for orders whose promotion is still running, what it
+ * delivered. Provider ids (invoice/charge) stay on the server.
+ */
 export async function loadOrders(
   core: CoreContext,
   input: z.infer<typeof OrdersInput> & { pageSize: number },
@@ -18,10 +22,16 @@ export async function loadOrders(
     listProducts(core.db),
   ]);
   const names = new Map(products.map((product) => [product.id, product.nameZh]));
+  const clicks = await clicksByOrder(
+    core,
+    rows.map((order) => order.id),
+  );
   return {
     rows: rows.map(({ invoiceId: _invoice, chargeId: _charge, ...order }) => ({
       ...order,
       productName: names.get(order.productId) ?? null,
+      /** null once the promotion has ended and its row is gone. */
+      clicks: clicks[order.id] ?? null,
     })),
     total,
   };

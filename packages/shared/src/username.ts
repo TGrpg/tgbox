@@ -1,4 +1,6 @@
-const USERNAME_RE = /^[a-zA-Z][a-zA-Z0-9_]{4,31}$/;
+// Telegram allows 5–32 characters for people to pick, but older/reserved names go down to 4
+// (e.g. @kuai). Accept 4–32 so a real bot is never refused as "not a link".
+const USERNAME_RE = /^[a-zA-Z][a-zA-Z0-9_]{3,31}$/;
 const HOSTS = new Set(["t.me", "telegram.me", "telegram.dog"]);
 
 /**

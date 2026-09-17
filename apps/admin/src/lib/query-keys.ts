@@ -20,6 +20,7 @@ export const queryKeys = {
   settings: ["settings"],
   orders: ["orders"],
   promotions: ["promotions"],
+  promotionClicks: ["promotion-clicks"],
   promotionCounts: ["promotion-counts"],
   products: ["products"],
 } as const;

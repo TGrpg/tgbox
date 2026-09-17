@@ -44,6 +44,7 @@ import {
   ordersQueryOptions,
 } from "@/functions/promotions.ts";
 import { invalidate } from "@/lib/query-keys.ts";
+import { ClickBadge, ClickCount } from "./clicks.tsx";
 import { PromotionContent } from "./content.tsx";
 import {
   dateTime,
@@ -140,6 +141,7 @@ export function OrdersTab() {
                   <TableHead>支付</TableHead>
                   <TableHead>买家</TableHead>
                   <TableHead>状态</TableHead>
+                  <TableHead className="text-right">点击</TableHead>
                   <TableHead>时间</TableHead>
                   <TableHead className="pr-4 text-right">
                     <span className="sr-only">操作</span>
@@ -183,6 +185,9 @@ export function OrdersTab() {
                       <TableCell>
                         <OrderStatusBadge order={order} />
                       </TableCell>
+                      <TableCell className="text-right">
+                        <ClickCount clicks={order.clicks} />
+                      </TableCell>
                       <TableCell className="whitespace-nowrap text-muted-foreground text-xs">
                         <OrderDates order={order} />
                       </TableCell>
@@ -217,12 +222,13 @@ export function OrdersTab() {
                       <OrderStatusBadge order={order} />
                     </div>
                     <PromotionContent username={order.targetUsername} banner={order.banner} />
-                    <div className="flex flex-wrap gap-x-3 gap-y-1 text-muted-foreground text-xs">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground text-xs">
                       <span className="tabular-nums">
                         {formatAmount(order.amount, order.currency)}
                         {order.provider && ` · ${providerLabels[order.provider]}`}
                       </span>
                       <span className="font-mono">买家 {order.tgUserId}</span>
+                      {order.clicks && <ClickBadge clicks={order.clicks} />}
                     </div>
                     <div className="text-muted-foreground text-xs">
                       <OrderDates order={order} />

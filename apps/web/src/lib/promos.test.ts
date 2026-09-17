@@ -3,7 +3,16 @@ import { describe, expect, test } from "vitest";
 import { promoBackgrounds, promoSlots, promoteUrl } from "./promos.ts";
 
 function paid(id: string, href = `https://t.me/sponsor${id}`): PromoView {
-  return { id, title: `Sponsor ${id}`, subtitle: "Join us", href, sponsored: true };
+  return { id, title: `Sponsor ${id}`, subtitle: "Join us", href, imageUrl: null, sponsored: true };
+}
+
+function withImage(id: string, imageUrl: string | null): PromoView {
+  return { ...paid(id), imageUrl };
+}
+
+function background(promo: PromoView): string {
+  const [card] = promoSlots([promo], 1, 1);
+  return card?.type === "paid" ? card.background : "";
 }
 
 const types = (slots: ReturnType<typeof promoSlots>) => slots.map((slot) => slot.type);
@@ -39,14 +48,32 @@ describe("promoSlots", () => {
   });
 
   test("paid banners get a gradient picked deterministically from the id", () => {
-    const background = (id: string) => {
-      const [card] = promoSlots([paid(id)], 1, 1);
-      return card?.type === "paid" ? card.background : undefined;
-    };
-    expect(promoBackgrounds).toContain(background("42"));
-    expect(background("42")).toBe(background("42"));
-    const picked = new Set(Array.from({ length: 20 }, (_, index) => background(String(index))));
+    expect(promoBackgrounds).toContain(background(paid("42")));
+    expect(background(paid("42"))).toBe(background(paid("42")));
+    const picked = new Set(
+      Array.from({ length: 20 }, (_, index) => background(paid(String(index)))),
+    );
     expect(picked.size).toBeGreaterThan(1);
+  });
+
+  test("an uploaded image covers the card, with the gradient left behind it as a fallback", () => {
+    const url = "https://media.tgbox.cc/promos/42.jpg";
+    const [card] = promoSlots([withImage("42", url)], 1, 1);
+    expect(card).toMatchObject({ type: "paid", imageUrl: url });
+    expect(background(withImage("42", url))).toBe(
+      `url("${url}") center/cover no-repeat, ${background(paid("42"))}`,
+    );
+  });
+
+  test.each([
+    { name: "missing", imageUrl: null },
+    { name: "plain http", imageUrl: "http://media.tgbox.cc/promos/1.jpg" },
+    { name: "a CSS-breaking quote", imageUrl: 'https://media.tgbox.cc/a".jpg' },
+    { name: "a url() injection", imageUrl: "https://x/a.jpg);background:url(evil" },
+  ])("an image that is $name leaves the gradient alone", ({ imageUrl }) => {
+    const [card] = promoSlots([withImage("42", imageUrl)], 1, 1);
+    expect(card).toMatchObject({ type: "paid", imageUrl: null });
+    expect(background(withImage("42", imageUrl))).toBe(background(paid("42")));
   });
 
   test("paid banners with a non-http link are dropped and don't count as paid", () => {

@@ -47,6 +47,14 @@ export const entries = sqliteTable("entries", {
   categoryId: integer("category_id").notNull(),
   title: text().notNull(),
   description: text().notNull().default(""),
+  /**
+   * Workers AI translations of `description`, written by the hourly cron. Both are cleared when
+   * the source description changes, so a stale translation never reaches the site.
+   */
+  descriptionZh: text("description_zh"),
+  descriptionEn: text("description_en"),
+  /** Last translation attempt, including the ones skipped as too short/long (so they aren't retried). */
+  descriptionTranslatedAt: integer("description_translated_at"),
   lang: text(),
   verified: integer({ mode: "boolean" }).notNull().default(false),
   avatarVersion: text("avatar_version"),
@@ -255,4 +263,24 @@ export const hiddenPosts = sqliteTable(
     createdAt: integer("created_at").notNull(),
   },
   (t) => [primaryKey({ columns: [t.entryId, t.postId] })],
+);
+
+/**
+ * Clicks on paid promotions, aggregated per UTC day. The public redirect route (`/r/:id`) upserts
+ * `clicks = clicks + 1`, so a click costs exactly one row written; the primary key is the only
+ * index, so there is no second row per write. Rows outlive the promotion they belong to: a
+ * promotion is deleted when it expires, but the advertiser's report must survive it.
+ *
+ * Migration 0008 creates the table `WITHOUT ROWID` (drizzle-kit can't express that): the
+ * primary key is then the table itself, so a click costs one row written instead of two.
+ */
+export const promotionClicks = sqliteTable(
+  "promotion_clicks",
+  {
+    promotionId: integer("promotion_id").notNull(),
+    /** UTC calendar day, `YYYY-MM-DD`. */
+    day: text().notNull(),
+    clicks: integer().notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.promotionId, t.day] })],
 );

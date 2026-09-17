@@ -2,6 +2,7 @@
 import ChevronRight from "@tabler/icons/outline/chevron-right.svg";
 import type { Locale } from "@tgbox/shared";
 import { ui } from "@/i18n/ui.ts";
+import { breadcrumbJsonLd } from "@/lib/json-ld.ts";
 import { absoluteUrl } from "@/lib/site.ts";
 
 interface Props {
@@ -11,16 +12,11 @@ interface Props {
 }
 
 const { locale, items } = Astro.props;
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  itemListElement: items.map((item, index) => ({
-    "@type": "ListItem",
-    position: index + 1,
-    name: item.label,
-    ...(item.href ? { item: absoluteUrl(item.href) } : {}),
-  })),
-};
+// The visible trail is the one page-level markup describes, so it emits the JSON-LD itself;
+// only pages without a breadcrumb nav (the detail page) build their own.
+const jsonLd = breadcrumbJsonLd(
+  items.map((item) => ({ name: item.label, url: item.href && absoluteUrl(item.href) })),
+);
 ---
 
 <nav aria-label={ui(locale).breadcrumbs.label}>

@@ -5,13 +5,17 @@ import KindGrid from "@/components/kind/KindGrid.astro";
 import KindListingShell from "@/components/kind/KindListingShell.astro";
 import KindPageHeader from "@/components/kind/KindPageHeader.astro";
 import KindSortTabs from "@/components/kind/KindSortTabs.astro";
+import JsonLd from "@/components/layout/JsonLd.astro";
 import Pagination from "@/components/Pagination.astro";
 import { localizePath } from "@/i18n/locale.ts";
 import { kindTitles, ui } from "@/i18n/ui.ts";
 import { kindUi } from "@/i18n/ui-kind.ts";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import { fill } from "@/lib/format.ts";
+import { itemListJsonLd } from "@/lib/json-ld.ts";
 import { categoryListingBase, type ListingSort, sortEntries } from "@/lib/kind-listing.ts";
+import { categorySeo } from "@/lib/seo.ts";
+import { absoluteUrl } from "@/lib/site.ts";
 import { getSiteData, localName, PAGE_SIZE, pageHref, pageSlice } from "@/lib/site-data.ts";
 
 interface Props {
@@ -35,16 +39,42 @@ const totalPages = Math.max(1, Math.ceil(entries.length / PAGE_SIZE));
 const base = localizePath(categoryListingBase(category.kind, category.slug, sort), locale);
 const sortSuffix = sort === "latest" ? ` · ${kindStrings.latestTitle}` : "";
 const pageSuffix = page > 1 ? ` · ${fill(strings.pagination.page, { n: page })}` : "";
-const title = `${name} · ${kindTitle}${sortSuffix}${pageSuffix}`;
-const description = fill(strings.listing.categoryDescription, {
+const visible = pageSlice(entries, page);
+const seo = categorySeo(locale, {
+  kind: category.kind,
+  kindWord: kindTitle,
   category: name,
-  kind: kindTitle,
-  n: entries.length,
+  count: entries.length,
+  page,
+  examples: visible.map((entry) => entry.title),
 });
+const title = `${seo.title}${sortSuffix}`;
+const description = seo.description;
+const pageUrl = absoluteUrl(
+  localizePath(pageHref(categoryListingBase(category.kind, category.slug, sort), page), locale),
+);
+// The breadcrumb JSON-LD comes from the visible trail in KindPageHeader.
+const jsonLd = [
+  itemListJsonLd({
+    name: `${name} · ${kindTitle}`,
+    url: pageUrl,
+    items: visible.map((entry) => ({
+      name: entry.title,
+      url: absoluteUrl(localizePath(`/detail/${entry.username}/`, locale)),
+    })),
+  }),
+];
 ---
 
 {/* The "latest" order duplicates the members order, so only the latter is indexed. */}
-<BaseLayout locale={locale} title={title} description={description} noindex={sort === "latest"}>
+<BaseLayout
+  locale={locale}
+  title={title}
+  description={description}
+  keywords={seo.keywords}
+  noindex={sort === "latest"}
+>
+  <JsonLd slot="head" data={jsonLd} />
   <KindListingShell locale={locale} kind={category.kind} current={category.slug}>
     <KindPageHeader
       locale={locale}
@@ -67,7 +97,7 @@ const description = fill(strings.listing.categoryDescription, {
         <KindSortTabs locale={locale} kind={category.kind} slug={category.slug} sort={sort} />
       </div>
     </KindPageHeader>
-    <KindGrid locale={locale} entries={pageSlice(entries, page)} eager={10} class="mt-6" />
+    <KindGrid locale={locale} entries={visible} eager={10} class="mt-6" />
     <Pagination
       locale={locale}
       current={page}

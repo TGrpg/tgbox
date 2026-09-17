@@ -76,6 +76,8 @@ const zh = {
     disclaimer:
       "本站仅收录公开的 Telegram 频道、群组和机器人，资料来自 Telegram 公开页面并定期自动更新。条目内容由其所有者负责，与本站无关；标有“推广”的条目为付费或合作展示。如发现违规内容或需要删除条目，请通过收录机器人联系我们。",
     rights: "保留所有权利。",
+    openSource: "开源于 GitHub",
+    licensed: "以 {licence} 许可证发布",
   },
   page: {
     enroll: "提交收录",
@@ -94,6 +96,12 @@ const zh = {
   entry: {
     kind: { channel: "频道", group: "群组", bot: "机器人" } satisfies Record<EntryKind, string>,
     members: { channel: "订阅", group: "成员", bot: "月活" } satisfies Record<EntryKind, string>,
+    /** Member noun as it reads inside a sentence, unlike the terse `members` stat label. */
+    membersLong: { channel: "名订阅者", group: "名成员", bot: "月活用户" } satisfies Record<
+      EntryKind,
+      string
+    >,
+    autoTranslated: "自动翻译",
     promoted: "推广",
     ad: "广告",
     verified: "已认证",
@@ -125,11 +133,7 @@ const zh = {
     top: "热门条目",
     count: "{n} 个条目",
     empty: "这里暂时还没有条目。",
-    kindDescription: "按分类浏览本站收录的 Telegram {kind}，按成员数排序，数据定期自动更新。",
-    categoryDescription:
-      "Telegram {category}{kind}列表，共 {n} 个，按成员数排序，含成员数、简介和活跃度。",
     tag: "标签",
-    tagDescription: "带有“{tag}”标签的 Telegram 频道、群组和机器人，共 {n} 个。",
   },
   detail: {
     join: "加入",
@@ -152,7 +156,6 @@ const zh = {
     history: "成员趋势",
     relatedChannels: "相关频道",
     relatedGroups: "相关群组",
-    metaDescription: "{title}（@{username}）是一个 Telegram {kind}，{members}。{description}",
   },
   meta: {
     description:
@@ -235,6 +238,8 @@ const en: typeof zh = {
     disclaimer:
       "We only list public Telegram channels, groups and bots. Data comes from public Telegram pages and is refreshed automatically. Listed owners are responsible for their content; entries marked “Promoted” are paid or partner placements. To report abuse or request removal, contact us through the submission bot.",
     rights: "All rights reserved.",
+    openSource: "Open source on GitHub",
+    licensed: "Released under {licence}",
   },
   page: {
     enroll: "Submit a listing",
@@ -253,6 +258,8 @@ const en: typeof zh = {
   entry: {
     kind: { channel: "Channel", group: "Group", bot: "Bot" },
     members: { channel: "subscribers", group: "members", bot: "monthly users" },
+    membersLong: { channel: "subscribers", group: "members", bot: "monthly users" },
+    autoTranslated: "Auto-translated",
     promoted: "Promoted",
     ad: "Ad",
     verified: "Verified",
@@ -284,12 +291,7 @@ const en: typeof zh = {
     top: "Top entries",
     count: "{n} entries",
     empty: "Nothing listed here yet.",
-    kindDescription:
-      "Browse Telegram {kind} by category, sorted by member count and refreshed automatically.",
-    categoryDescription:
-      "{n} Telegram {kind} in {category}, sorted by member count, with descriptions and activity levels.",
     tag: "Tag",
-    tagDescription: "{n} Telegram channels, groups and bots tagged “{tag}”.",
   },
   detail: {
     join: "Join",
@@ -312,7 +314,6 @@ const en: typeof zh = {
     history: "Member trend",
     relatedChannels: "Related channels",
     relatedGroups: "Related groups",
-    metaDescription: "{title} (@{username}) is a Telegram {kind} with {members}. {description}",
   },
   meta: {
     description:

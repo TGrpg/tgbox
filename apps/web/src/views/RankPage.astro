@@ -3,12 +3,16 @@ import Trophy from "@tabler/icons/outline/trophy.svg";
 import { entryKinds, type Locale, type RankItem, t } from "@tgbox/shared";
 import EntryListRow from "@/components/EntryListRow.astro";
 import KindPageHeader from "@/components/kind/KindPageHeader.astro";
+import JsonLd from "@/components/layout/JsonLd.astro";
 import { localizePath } from "@/i18n/locale.ts";
 import { kindTitles, ui } from "@/i18n/ui.ts";
 import { rankUi } from "@/i18n/ui-rank.ts";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import { fill, formatDate, formatNumber } from "@/lib/format.ts";
+import { itemListJsonLd } from "@/lib/json-ld.ts";
 import { buildRankings, formatGrowth } from "@/lib/rankings.ts";
+import { rankSeo } from "@/lib/seo.ts";
+import { absoluteUrl } from "@/lib/site.ts";
 import { findEntries, getSiteData } from "@/lib/site-data.ts";
 
 interface Props {
@@ -35,14 +39,35 @@ const kinds = [
 // RankItem carries only what the JSON consumers need; avatar, verified and promoted come from the entry.
 const rows = (items: RankItem[]) =>
   items.flatMap((item) => findEntries([item.username]).map((entry) => ({ item, entry })));
+
+const seo = rankSeo(locale);
+// Growth needs a week of samples; until it exists the newest list is what the page leads with.
+const listed = (rankings.weeklyGrowth.length > 0 ? rankings.weeklyGrowth : rankings.newest).slice(
+  0,
+  20,
+);
+// The breadcrumb JSON-LD comes from the visible trail in KindPageHeader.
+const jsonLd = [
+  itemListJsonLd({
+    name: strings.heading,
+    url: absoluteUrl(localizePath("/rank/", locale)),
+    items: listed.flatMap((item) =>
+      findEntries([item.username]).map((entry) => ({
+        name: entry.title,
+        url: absoluteUrl(localizePath(`/detail/${entry.username}/`, locale)),
+      })),
+    ),
+  }),
+];
 ---
 
-<BaseLayout locale={locale} title={strings.title} description={strings.description}>
+<BaseLayout locale={locale} title={seo.title} description={seo.description} keywords={seo.keywords}>
+  <JsonLd slot="head" data={jsonLd} />
   <div class="mx-auto max-w-3xl px-4 pt-6 pb-28 sm:px-6 sm:pt-8 md:pb-16">
     <KindPageHeader
       locale={locale}
       title={strings.heading}
-      description={strings.description}
+      description={seo.description}
       breadcrumbs={[{ label: t(locale, "site.home"), href: localizePath("/", locale) }, { label: strings.title }]}
     >
       <Trophy slot="icon" class="size-7 sm:size-8" aria-hidden="true" />

@@ -25,6 +25,13 @@ export const en: typeof zh = {
       : "Support isn't set up yet. Please try again later.",
   help: "Listing criteria: public channels, groups or bots with legal content, regular updates and no fake subscribers.\n\nHow to submit: send a t.me link or @username, then pick a category and tags.\nYou'll get a private message with the review result.\n\n/lang switches the language, /support reaches the team.",
   langButton: "🌐 语言 / Language",
+  commands: {
+    submit: "Submit a listing",
+    promote: "Buy promotion",
+    support: "Contact support",
+    lang: "切换语言 / Language",
+    help: "How it works",
+  },
   lang: {
     choose: "Choose the bot language:",
     zh: "中文",
@@ -42,6 +49,7 @@ export const en: typeof zh = {
     "Send the link of the channel, group or bot to submit (https://t.me/xxx, t.me/xxx or @xxx).",
   invalidLink:
     "That link wasn't recognized. Send a public username as https://t.me/xxx, t.me/xxx or @xxx (invite links aren't supported).",
+  maybeSubmission: "想收录这个链接？请用 /submit 提交。 / To submit a link, use /submit.",
   alreadyListed: (username: string) => `@${username} is already listed.`,
   alreadyPending: (username: string) => `@${username} is already awaiting review.`,
   dailyLimit: (limit: number) =>
@@ -90,12 +98,15 @@ export const en: typeof zh = {
     askTitle: "Send the banner title (1–20 characters):",
     askSubtitle: "Send the banner subtitle (1–40 characters):",
     askHref: "Send the banner link (starting with https://, t.me links work too):",
+    askImage: "Optional: send a banner image (jpg/png/webp, up to 1MB), or send /skip.",
     invalidTarget: "That wasn't recognized. Send an @username or t.me link.",
     targetNotListed: (username: string) =>
       `@${username} isn't listed yet; only listed entries can be pinned. Send /submit to submit it first.`,
     invalidTitle: "The title must be 1–20 characters. Please send it again.",
     invalidSubtitle: "The subtitle must be 1–40 characters. Please send it again.",
     invalidHref: "The link must start with https://. Please send it again.",
+    invalidImage: "Only jpg/png/webp images up to 1MB are supported. Send another one, or /skip.",
+    imageFailed: "The image could not be uploaded, so this banner goes out without one.",
     noSlots: (nextFreeAt: number | null) =>
       nextFreeAt
         ? `All slots are taken. The next one frees up on ${new Date(nextFreeAt).toISOString().slice(0, 10)}.`
@@ -187,6 +198,7 @@ export const en: typeof zh = {
         `Title: ${o.title}`,
         `Subtitle: ${o.subtitle}`,
         `Link: ${o.href}`,
+        ...(o.imageUrl ? [`Image: ${o.imageUrl}`] : []),
         `Paid: ${o.amount} ${o.currency}`,
         `Buyer: ${o.buyerId}`,
       ].join("\n"),

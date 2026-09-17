@@ -4,11 +4,19 @@ import type { EntryView, Locale } from "@tgbox/shared";
 import Avatar from "@/components/Avatar.astro";
 import { localizePath } from "@/i18n/locale.ts";
 import { ui } from "@/i18n/ui.ts";
+import { localizedDescription } from "@/lib/seo.ts";
 
 interface Props {
   entry: Pick<
     EntryView,
-    "username" | "title" | "description" | "verified" | "avatarUrl" | "isPromoted"
+    | "username"
+    | "title"
+    | "description"
+    | "descriptionZh"
+    | "descriptionEn"
+    | "verified"
+    | "avatarUrl"
+    | "isPromoted"
   >;
   locale: Locale;
   eagerAvatar?: boolean | undefined;
@@ -16,6 +24,7 @@ interface Props {
 
 const { entry, locale, eagerAvatar = false } = Astro.props;
 const strings = ui(locale).entry;
+const { text: description } = localizedDescription(entry, locale);
 ---
 
 <article
@@ -46,6 +55,6 @@ const strings = ui(locale).entry;
     </h3>
   </div>
   <p class="mt-2 truncate text-[0.825rem] text-muted-foreground" dir="auto">
-    {entry.description || strings.noDescription}
+    {description || strings.noDescription}
   </p>
 </article>

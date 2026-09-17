@@ -1,5 +1,6 @@
 import { getUserLocale, setUserLocale } from "@tgbox/db";
 import { beforeEach, describe, expect, test } from "vitest";
+import { botCommands } from "../../src/bot/index.ts";
 import { db, type Harness, startHarness } from "./harness.ts";
 
 const english = { id: 555, is_bot: false, first_name: "Ann", language_code: "en" };
@@ -53,6 +54,38 @@ describe("/lang", () => {
     expect(h.lastText()).toContain("Language set to English");
     await h.message(chinese, "/start");
     expect(h.lastText()).toContain("Welcome to the TGbox");
+  });
+
+  test("picking a language pushes a matching command menu for that chat only", async () => {
+    await h.callback(english, "lang:zh");
+    const [call] = h.calls("setMyCommands");
+    expect(call?.payload.scope).toEqual({ type: "chat", chat_id: english.id });
+    expect(call?.payload.commands).toEqual([
+      { command: "submit", description: "提交收录" },
+      { command: "promote", description: "购买推广" },
+      { command: "support", description: "联系客服" },
+      { command: "lang", description: "切换语言 / Language" },
+      { command: "help", description: "使用帮助" },
+    ]);
+
+    h.reset();
+    await h.callback(chinese, "lang:en");
+    expect(h.calls("setMyCommands")[0]?.payload.commands).toEqual(botCommands("en"));
+  });
+
+  test("auto removes the chat menu so the global lists apply again", async () => {
+    await h.callback(english, "lang:auto");
+    expect(h.calls("setMyCommands")).toEqual([]);
+    expect(h.calls("deleteMyCommands")[0]?.payload).toEqual({
+      scope: { type: "chat", chat_id: english.id },
+    });
+  });
+
+  test("a failing command menu update doesn't break the language switch", async () => {
+    h.failOnce("setMyCommands", "Bad Request: too many commands");
+    await h.callback(english, "lang:zh");
+    expect(h.lastText()).toContain("已切换到中文");
+    expect(await getUserLocale(db, english.id)).toBe("zh");
   });
 
   test("/start offers a language button that opens the picker", async () => {

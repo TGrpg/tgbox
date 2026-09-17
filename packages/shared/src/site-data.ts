@@ -39,6 +39,13 @@ export const EntryView = z.object({
   tags: z.array(z.string()),
   title: z.string(),
   description: z.string(),
+  /**
+   * Machine translation of `description` (Workers AI, hourly cron). Only the language the source
+   * text is *not* written in is filled in — the other stays null and `description` is the text to
+   * show. Both are null while no translation exists (too short, too long, or not translated yet).
+   */
+  descriptionZh: z.string().nullable().default(null),
+  descriptionEn: z.string().nullable().default(null),
   /** detected language code (e.g. "zh", "en"), null when unknown */
   lang: z.string().nullable(),
   verified: z.boolean(),
@@ -105,6 +112,8 @@ export const PromoView = z.object({
   title: z.string(),
   subtitle: z.string(),
   href: z.string(),
+  /** Absolute URL of the uploaded card image, null for banners sold without one. */
+  imageUrl: z.string().nullable().default(null),
   sponsored: z.literal(true),
 });
 export type PromoView = z.infer<typeof PromoView>;

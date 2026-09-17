@@ -158,5 +158,17 @@ export const BannerContent = z.object({
   subtitle: z.string().trim().min(1).max(40),
   /** https:// URL (t.me links included). */
   href: z.string().trim().max(300).refine(isHttpsUrl, "must be an https:// URL"),
+  /**
+   * Optional card image, uploaded to `promos/<order id>.jpg` under R2_PUBLIC_URL. Absent on
+   * every banner sold before image upload existed, so it stays optional everywhere.
+   * Validated loosely (https only): the media host is configuration, not user input.
+   */
+  imageUrl: z
+    .string()
+    .trim()
+    .max(300)
+    .refine(isHttpsUrl, "must be an https:// URL")
+    .nullable()
+    .optional(),
 });
 export type BannerContent = z.infer<typeof BannerContent>;

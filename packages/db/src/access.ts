@@ -176,6 +176,16 @@ export async function updateEntryCold(db: Db, id: number, fields: ColdFields, no
     ...fields,
     ...(fields.username === undefined ? {} : { username: canonical(fields.username) }),
   };
+  // A new description makes both machine translations wrong, so they are dropped in the same
+  // statement. The CASE keeps them when only another cold field moved.
+  const descriptionChanged = differs(entries.description, values.description);
+  const dropTranslations =
+    descriptionChanged === undefined
+      ? {}
+      : {
+          descriptionZh: sql`CASE WHEN ${descriptionChanged} THEN NULL ELSE ${entries.descriptionZh} END`,
+          descriptionEn: sql`CASE WHEN ${descriptionChanged} THEN NULL ELSE ${entries.descriptionEn} END`,
+        };
   const changed = or(
     differs(entries.username, values.username),
     differs(entries.title, values.title),
@@ -189,7 +199,7 @@ export async function updateEntryCold(db: Db, id: number, fields: ColdFields, no
 
   const update = db
     .update(entries)
-    .set({ ...values, updatedAt: now })
+    .set({ ...values, ...dropTranslations, updatedAt: now })
     .where(and(eq(entries.id, id), changed));
   const ftsChanged = or(
     differs(entriesFts.title, values.title),

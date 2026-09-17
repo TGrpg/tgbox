@@ -9,7 +9,14 @@ import {
 } from "@tgbox/db";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, test } from "vitest";
-import { ADMIN_CHAT_ID, buttons, db, type Harness, startHarness } from "./harness.ts";
+import {
+  ADMIN_CHAT_ID,
+  buttons,
+  db,
+  type Harness,
+  setBotSettings,
+  startHarness,
+} from "./harness.ts";
 
 const owner = {
   id: 42,
@@ -166,6 +173,42 @@ describe("submission flow", () => {
     await h.message(owner, link);
     expect(h.lastText()).toContain(expected);
     expect(await getBotDraft(db, owner.id, Date.now())).toBeUndefined();
+  });
+
+  test("a four-character username is a real link, not a support question", async () => {
+    await h.message(owner, "@kuai");
+    expect(h.tme).toEqual(["/kuai", "/s/kuai"]);
+    expect(h.lastButtons().some((b) => b.callback_data?.startsWith("sc:"))).toBe(true);
+  });
+
+  describe("with the support relay on", () => {
+    const SUPPORT_GROUP = -100777;
+    beforeEach(async () => {
+      await setBotSettings({ supportGroupId: String(SUPPORT_GROUP) });
+    });
+
+    test.each([
+      ["a too-short username", "@abc"],
+      ["a broken t.me link", "https://t.me/+AbCdEf123"],
+      ["a link with a typo", "t.me/ab"],
+    ])("%s is relayed, but the buyer is pointed at /submit first", async (_label, text) => {
+      await h.message(owner, text);
+      const replies = h.calls("sendMessage").filter((c) => c.payload.chat_id === owner.id);
+      expect(String(replies[0]?.payload.text)).toContain("/submit");
+      expect(String(replies[0]?.payload.text)).toContain("To submit a link");
+      // The message still reaches support: nothing is swallowed.
+      expect(h.calls("copyMessage")[0]?.payload).toMatchObject({
+        chat_id: String(SUPPORT_GROUP),
+        from_chat_id: owner.id,
+      });
+    });
+
+    test("an ordinary question is relayed without the hint", async () => {
+      await h.message(owner, "为什么我的频道被拒绝了？");
+      const texts = h.calls("sendMessage").map((c) => String(c.payload.text));
+      expect(texts.some((text) => text.includes("/submit"))).toBe(false);
+      expect(h.calls("copyMessage")).toHaveLength(1);
+    });
   });
 
   test("groups and bots get their own categories", async () => {

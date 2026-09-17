@@ -14,6 +14,8 @@ function entry(username: string, overrides: Partial<EntryView> = {}): EntryView 
     tags: [],
     title: username,
     description: "",
+    descriptionZh: null,
+    descriptionEn: null,
     lang: null,
     verified: false,
     avatarUrl: null,

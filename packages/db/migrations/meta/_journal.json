@@ -50,6 +50,20 @@
       "when": 1789639288003,
       "tag": "0006_support_prefs_hidden_posts",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1789649449642,
+      "tag": "0008_promotion_clicks",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1789649502984,
+      "tag": "0009_entry_translations",
+      "breakpoints": true
     }
   ]
 }

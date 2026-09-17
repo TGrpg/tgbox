@@ -7,6 +7,11 @@ export const GET: APIRoute = () =>
       "User-agent: *",
       "Allow: /",
       "Disallow: /api/",
+      // JSON pools, the Telegram redirect helper and the promo click counter hold no content.
+      "Disallow: /data/",
+      "Disallow: /go/",
+      "Disallow: /en/go/",
+      "Disallow: /r/",
       "",
       `Sitemap: ${absoluteUrl("/sitemap-index.xml")}`,
       "",

@@ -14,10 +14,12 @@ import {
   type Order,
   type Product,
   putBotDraft,
+  setOrderBanner,
   setOrderInvoice,
 } from "@tgbox/db";
 import { BannerContent, type Locale, parseTelegramRef } from "@tgbox/shared";
 import { Composer, type Context, InlineKeyboard } from "grammy";
+import type { Message, PhotoSize } from "grammy/types";
 import type { App } from "./app.ts";
 import { messages } from "./i18n/index.ts";
 
@@ -26,10 +28,11 @@ const promoteSteps = [
   "promote_title",
   "promote_subtitle",
   "promote_href",
+  "promote_image",
 ] as const;
 type PromoteStep = (typeof promoteSteps)[number];
 
-type PromoteDraft = { productId: number; title?: string; subtitle?: string };
+type PromoteDraft = { productId: number; title?: string; subtitle?: string; href?: string };
 
 /** Only drafts written by this flow; submission drafts are left to `submit`. */
 function parsePromoteDraft(step: string, payload: unknown) {
@@ -40,7 +43,35 @@ function parsePromoteDraft(step: string, payload: unknown) {
   const draft: PromoteDraft = { productId: p.productId };
   if (typeof p.title === "string") draft.title = p.title;
   if (typeof p.subtitle === "string") draft.subtitle = p.subtitle;
+  if (typeof p.href === "string") draft.href = p.href;
   return { step: promoteStep, draft };
+}
+
+/** Telegram re-encodes photos as JPEG; documents keep whatever the buyer sent. */
+const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+/** Preferred photo size: big enough for a card, small enough to download inside the webhook. */
+const PHOTO_TARGET_BYTES = 200 * 1024;
+/** Hard ceiling, checked on the declared size and again on the downloaded bytes. */
+const IMAGE_MAX_BYTES = 1024 * 1024;
+
+/** The largest size still under the target, else the smallest Telegram offers. */
+function pickPhoto(sizes: PhotoSize[]) {
+  const bySize = [...sizes].sort((a, b) => (a.file_size ?? 0) - (b.file_size ?? 0));
+  return bySize.filter((size) => (size.file_size ?? 0) <= PHOTO_TARGET_BYTES).at(-1) ?? bySize[0];
+}
+
+/** The image a buyer sent for the banner, or null when the message isn't a usable one. */
+function bannerImageOf(message: Message): { fileId: string; contentType: string } | null {
+  if (message.photo?.length) {
+    const photo = pickPhoto(message.photo);
+    if (!photo || (photo.file_size ?? 0) > IMAGE_MAX_BYTES) return null;
+    return { fileId: photo.file_id, contentType: "image/jpeg" };
+  }
+  const document = message.document;
+  const contentType = document?.mime_type ?? "";
+  if (!document || !IMAGE_TYPES.has(contentType)) return null;
+  if ((document.file_size ?? 0) > IMAGE_MAX_BYTES) return null;
+  return { fileId: document.file_id, contentType };
 }
 
 export const productName = (locale: Locale, product: Product) =>
@@ -135,8 +166,40 @@ export function promote(app: App) {
     await ctx.editMessageText((await app.m(ctx)).promote.cancelled).catch(() => {});
   });
 
-  composer.on("message:text", async (ctx, next) => {
-    if (ctx.message.text.startsWith("/")) return next();
+  /**
+   * Downloads the buyer's image and stores it under the order id. Returns the public URL, or null
+   * when anything failed — a banner without an image is still a valid banner.
+   */
+  async function storeBannerImage(
+    ctx: Context,
+    orderId: number,
+    image: { fileId: string; contentType: string },
+  ) {
+    try {
+      const { file_path } = await ctx.api.getFile(image.fileId);
+      if (!file_path) return null;
+      const res = await app.fetch(
+        `https://api.telegram.org/file/bot${app.env.BOT_TOKEN}/${file_path}`,
+      );
+      if (!res.ok) return null;
+      const body = await res.arrayBuffer();
+      // Telegram's declared size can be absent; the downloaded bytes are the real check.
+      if (body.byteLength === 0 || body.byteLength > IMAGE_MAX_BYTES) return null;
+      await app.env.MEDIA.put(`promos/${orderId}.jpg`, body, {
+        httpMetadata: { contentType: image.contentType },
+      });
+      return `${app.env.R2_PUBLIC_URL}/promos/${orderId}.jpg`;
+    } catch (error) {
+      console.error("banner image upload failed", orderId, error);
+      return null;
+    }
+  }
+
+  // Every step of the purchase, including the optional image, reads the draft once. A photo or a
+  // command that isn't part of this flow falls through to the submission and support composers.
+  composer.on("message", async (ctx, next) => {
+    const text = ctx.message.text?.trim();
+    if (text?.startsWith("/") && !/^\/skip(@\w+)?$/.test(text)) return next();
     const userId = ctx.from.id;
     const row = await getBotDraft(app.db, userId, app.now());
     const current = row ? parsePromoteDraft(row.step, row.payload) : null;
@@ -144,7 +207,6 @@ export function promote(app: App) {
 
     const locale = await app.locale(ctx);
     const m = messages(locale).promote;
-    const text = ctx.message.text.trim();
     const { step, draft } = current;
     const again = (message: string) => ctx.reply(message, { reply_markup: cancelKeyboard(locale) });
     const advance = async (nextStep: PromoteStep, next: PromoteDraft, prompt: string) => {
@@ -156,6 +218,48 @@ export function promote(app: App) {
       });
       await again(prompt);
     };
+
+    if (step === "promote_image") {
+      const skipped = text !== undefined && /^\/skip(@\w+)?$/.test(text);
+      const image = skipped ? null : bannerImageOf(ctx.message);
+      if (!skipped && !image) {
+        await again(m.invalidImage);
+        return;
+      }
+      // Title, subtitle and link were validated as they came in, so the order is created before
+      // the upload: the R2 key is the order id.
+      await deleteBotDraft(app.db, userId);
+      const created = await createOrder(app.core, {
+        tgUserId: userId,
+        productId: draft.productId,
+        banner: { title: draft.title, subtitle: draft.subtitle, href: draft.href },
+      });
+      if (!created.ok) {
+        await ctx.reply(
+          created.error === "no_slots"
+            ? m.noSlots(created.nextFreeAt)
+            : created.error === "product_unavailable"
+              ? m.productUnavailable
+              : m.invalidHref,
+        );
+        return;
+      }
+      let banner = created.order.banner;
+      if (image && banner) {
+        const imageUrl = await storeBannerImage(ctx, created.order.id, image);
+        if (imageUrl) {
+          banner = { ...banner, imageUrl };
+          await setOrderBanner(app.db, created.order.id, banner);
+        } else {
+          await ctx.reply(m.imageFailed);
+        }
+      }
+      await offerPayment(ctx, locale, { ...created.order, banner });
+      return;
+    }
+
+    // Every remaining step reads text; a photo sent to one of them is not ours.
+    if (text === undefined) return next();
 
     if (step === "promote_title") {
       const title = BannerContent.shape.title.safeParse(text);
@@ -173,13 +277,20 @@ export function promote(app: App) {
       }
       return advance("promote_href", { ...draft, subtitle: subtitle.data }, m.askHref);
     }
+    if (step === "promote_href") {
+      const href = BannerContent.shape.href.safeParse(text);
+      if (!href.success) {
+        await again(m.invalidHref);
+        return;
+      }
+      return advance("promote_image", { ...draft, href: href.data }, m.askImage);
+    }
 
+    // promote_target: the pin's entry, the only step that still creates the order from text.
     const result = await createOrder(app.core, {
       tgUserId: userId,
       productId: draft.productId,
-      ...(step === "promote_target"
-        ? { targetUsername: text }
-        : { banner: { title: draft.title, subtitle: draft.subtitle, href: text } }),
+      targetUsername: text,
     });
     if (!result.ok) {
       if (result.error === "no_slots" || result.error === "product_unavailable") {
@@ -193,32 +304,36 @@ export function promote(app: App) {
       await again(
         result.error === "target_not_listed"
           ? m.targetNotListed(parseTelegramRef(text) ?? text)
-          : result.error === "invalid_target"
-            ? m.invalidTarget
-            : m.invalidHref,
+          : m.invalidTarget,
       );
       return;
     }
     await deleteBotDraft(app.db, userId);
-    const product = await getProduct(app.db, result.order.productId);
+    await offerPayment(ctx, locale, result.order);
+  });
+
+  /** The order summary plus the payment buttons the settings allow. */
+  async function offerPayment(ctx: Context, locale: Locale, order: Order) {
+    const m = messages(locale).promote;
+    const product = await getProduct(app.db, order.productId);
     if (!product) return;
     const methods = await paymentMethods(app);
     const summary = m.order({
-      id: result.order.id,
+      id: order.id,
       product: productName(locale, product),
       stars: product.priceStars,
       usdt: product.priceUsdt,
-      ...orderTarget(result.order),
+      ...orderTarget(order),
     });
     if (!(methods.stars || methods.usdt)) {
       await ctx.reply(`${summary}\n\n${m.noPaymentMethod}`);
       return;
     }
     const keyboard = new InlineKeyboard();
-    if (methods.stars) keyboard.text(m.payStars(product.priceStars), `ps:${result.order.id}`).row();
-    if (methods.usdt) keyboard.text(m.payUsdt(product.priceUsdt), `pu:${result.order.id}`);
+    if (methods.stars) keyboard.text(m.payStars(product.priceStars), `ps:${order.id}`).row();
+    if (methods.usdt) keyboard.text(m.payUsdt(product.priceUsdt), `pu:${order.id}`);
     await ctx.reply(`${summary}\n\n${m.choosePayment}`, { reply_markup: keyboard });
-  });
+  }
 
   /** The caller's own pending order with its product, or null after telling them it's gone. */
   async function pendingOrder(ctx: Context & { from: { id: number } }, orderId: number) {

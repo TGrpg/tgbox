@@ -5,12 +5,22 @@
   "compatibility_date": "2026-09-15",
   "compatibility_flags": ["nodejs_compat"],
   "routes": [{ "pattern": "tgbox.cc", "custom_domain": true }],
+  // Only /r/* reads it: the promo click redirect counts the click before sending the visitor on.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "tgbox",
+      "database_id": "c208e71c-9155-458f-9744-2e20f09e866b",
+      "migrations_dir": "../../packages/db/migrations"
+    }
+  ],
   "assets": {
     // Astro writes static pages to dist/client; its build also emits dist/server/wrangler.json, which
     // `wrangler deploy` picks up via .wrangler/deploy/config.json.
     "directory": "./dist/client",
-    // Public pages never hit the Worker; only dynamic API routes do.
-    "run_worker_first": ["/api/*"],
+    // Public pages never hit the Worker; only dynamic API routes and the promo click redirect do.
+    // /r/* costs one Worker request per click out of the 100k/day free allowance.
+    "run_worker_first": ["/api/*", "/r/*"],
     "not_found_handling": "404-page"
   }
 }

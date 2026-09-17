@@ -2,7 +2,7 @@
 import ArrowRight from "@tabler/icons/outline/arrow-right.svg";
 import ClockIcon from "@tabler/icons/outline/clock.svg";
 import Trophy from "@tabler/icons/outline/trophy.svg";
-import { entryKinds, type Locale } from "@tgbox/shared";
+import { entryKinds, type Locale, t } from "@tgbox/shared";
 import EntryCardCompact from "@/components/EntryCardCompact.astro";
 import HomeCta from "@/components/HomeCta.astro";
 import HomeHero from "@/components/HomeHero.astro";
@@ -10,10 +10,14 @@ import HomeHotColumn from "@/components/HomeHotColumn.astro";
 import HomePromos from "@/components/HomePromos.astro";
 import HomeSectionHeader from "@/components/HomeSectionHeader.astro";
 import HomeStats from "@/components/HomeStats.astro";
-import { localizePath } from "@/i18n/locale.ts";
+import JsonLd from "@/components/layout/JsonLd.astro";
+import { htmlLang, localizePath } from "@/i18n/locale.ts";
 import { homeUi } from "@/i18n/ui-home.ts";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import { latestEntries } from "@/lib/home.ts";
+import { organizationJsonLd, websiteJsonLd } from "@/lib/json-ld.ts";
+import { homeSeo } from "@/lib/seo.ts";
+import { absoluteUrl, botUrl, repoUrl, siteUrl } from "@/lib/site.ts";
 import { getSiteData } from "@/lib/site-data.ts";
 
 interface Props {
@@ -24,9 +28,32 @@ const strings = homeUi(locale);
 const data = getSiteData();
 const hotKinds = entryKinds.filter((kind) => data.entries.some((entry) => entry.kind === kind));
 const latest = latestEntries(data.entries, 12);
+const seo = homeSeo(locale, data.stats);
+const siteName = t(locale, "site.title");
+const homeUrl = absoluteUrl(localizePath("/", locale));
+// Both entities live on the home page only; every other page just references them by URL.
+const jsonLd = [
+  organizationJsonLd({
+    siteUrl,
+    name: siteName,
+    description: seo.description,
+    logo: absoluteUrl("/icons/icon-180.png"),
+    sameAs: [repoUrl, botUrl],
+  }),
+  websiteJsonLd({
+    siteUrl,
+    url: homeUrl,
+    name: siteName,
+    description: seo.description,
+    inLanguage: htmlLang[locale],
+    // `?q=` opens the site search with the term prefilled (see SearchDialog).
+    searchUrlTemplate: `${homeUrl}?q={search_term_string}`,
+  }),
+];
 ---
 
-<BaseLayout locale={locale}>
+<BaseLayout locale={locale} title={seo.title} description={seo.description} keywords={seo.keywords}>
+  <JsonLd slot="head" data={jsonLd} />
   <HomeHero locale={locale} />
   <HomePromos locale={locale} />
 

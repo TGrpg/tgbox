@@ -9,6 +9,8 @@ interface Props {
   /** Page title without the site suffix; omit on the home page. */
   title?: string | undefined;
   description?: string | undefined;
+  /** Comma-separated `<meta name="keywords">`; built by `src/lib/seo.ts`. */
+  keywords?: string | undefined;
   /** Path of this page in either locale; used for canonical + hreflang. */
   path: string;
   image?: string | undefined;
@@ -16,9 +18,18 @@ interface Props {
   noindex?: boolean | undefined;
 }
 
-const { locale, title, description, path, image, type = "website", noindex = false } = Astro.props;
+const {
+  locale,
+  title,
+  description,
+  keywords,
+  path,
+  image,
+  type = "website",
+  noindex = false,
+} = Astro.props;
 const siteName = t(locale, "site.title");
-const fullTitle = title ? `${title} · ${siteName}` : `${siteName} — ${t(locale, "site.tagline")}`;
+const fullTitle = title ? `${title} | ${siteName}` : `${siteName} — ${t(locale, "site.tagline")}`;
 const metaDescription = description ?? ui(locale).meta.description;
 const alternates = alternatePaths(path);
 const canonical = absoluteUrl(alternates[locale]);
@@ -28,6 +39,7 @@ const ogImage = absoluteUrl(image ?? "/og-default.svg");
 
 <title>{fullTitle}</title>
 <meta name="description" content={metaDescription}>
+{keywords && <meta name="keywords" content={keywords}>}
 {noindex ? <meta name="robots" content="noindex, follow"> : <link rel="canonical" href={canonical}>}
 {!noindex && (
     <>

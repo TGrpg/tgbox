@@ -5,6 +5,11 @@ export const botUsername = (import.meta.env.PUBLIC_BOT_USERNAME ?? "tgboxccbot")
 
 export const botUrl = `https://t.me/${botUsername}`;
 
+/** Public source repository; shown in the footer and claimed in the Organization JSON-LD. */
+export const repoUrl = "https://github.com/TGrpg/tgbox";
+
+export const licence = { name: "AGPL-3.0", url: `${repoUrl}/blob/main/LICENSE` };
+
 export function absoluteUrl(path: string) {
   return new URL(path, `${siteUrl}/`).toString();
 }

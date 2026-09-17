@@ -1,0 +1,17 @@
+---
+import type { JsonLd } from "@/lib/json-ld.ts";
+
+/** Place with `slot="head"` inside a layout so the scripts land in <head>. */
+interface Props {
+  data: JsonLd[];
+}
+const { data } = Astro.props;
+---
+
+{data.map((item) => (
+    <script
+      is:inline
+      type="application/ld+json"
+      set:html={JSON.stringify(item).replace(/</g, "\\u003c")}
+    />
+  ))}

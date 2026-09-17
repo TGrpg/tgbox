@@ -11,16 +11,29 @@ interface Props {
   locale: Locale;
   title: string;
   description: string;
+  keywords?: string | undefined;
+  /** Title for `<title>`/OG when the on-page H1 is shorter than the search-facing one. */
+  metaTitle?: string | undefined;
+  /** Meta description when the visible lead paragraph isn't the right length for search. */
+  metaDescription?: string | undefined;
   /** Short label above the title, e.g. "Guide". */
   eyebrow?: string | undefined;
   /** ISO date the copy was last reviewed. */
   updated?: string | undefined;
 }
 
-const { locale, title, description, eyebrow, updated } = Astro.props;
+const { locale, title, description, keywords, metaTitle, metaDescription, eyebrow, updated } =
+  Astro.props;
 ---
 
-<BaseLayout locale={locale} title={title} description={description} type="article">
+<BaseLayout
+  locale={locale}
+  title={metaTitle ?? title}
+  description={metaDescription ?? description}
+  keywords={keywords}
+  type="article"
+>
+  <slot name="head" slot="head" />
   <div class="relative isolate overflow-hidden border-b border-border">
     <div class="paper-grid absolute inset-0 -z-10" aria-hidden="true"></div>
     <div class="mx-auto max-w-7xl px-4 sm:px-6 pt-8 pb-12 sm:pt-10 sm:pb-16">

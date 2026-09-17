@@ -16,6 +16,9 @@ export type FixtureEntry = {
   tags: string[];
   title: string;
   description?: string;
+  /** Machine translations written by the bot (migration 0009); absent on most fixture entries. */
+  descriptionZh?: string;
+  descriptionEn?: string;
   lang?: string;
   status?: EntryStatus;
   verified?: boolean;
@@ -35,6 +38,8 @@ export const fixtureEntries: FixtureEntry[] = [
     tags: ["programming", "chinese"],
     title: "每日科技",
     description: "每天分享开发与科技新闻",
+    descriptionZh: "每天分享开发与科技新闻",
+    descriptionEn: "Daily development and tech news.",
     lang: "zh",
     avatarVersion: "a1",
     members: 5000,
@@ -183,9 +188,10 @@ export function buildFixtureDb(dbPath: string, entries: FixtureEntry[] = fixture
     }
 
     const insertEntry = db.prepare(
-      `INSERT INTO entries (username, kind, category_id, title, description, lang, verified,
-         avatar_version, tg_created_at, listed_at, status, is_promoted, updated_at)
-       VALUES (?, ?, (SELECT id FROM categories WHERE kind = ? AND slug = ?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO entries (username, kind, category_id, title, description, description_zh,
+         description_en, lang, verified, avatar_version, tg_created_at, listed_at, status,
+         is_promoted, updated_at)
+       VALUES (?, ?, (SELECT id FROM categories WHERE kind = ? AND slug = ?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        RETURNING id`,
     );
     const insertStats = db.prepare(
@@ -204,6 +210,8 @@ export function buildFixtureDb(dbPath: string, entries: FixtureEntry[] = fixture
         e.category,
         e.title,
         e.description ?? "",
+        e.descriptionZh ?? null,
+        e.descriptionEn ?? null,
         e.lang ?? null,
         e.verified ? 1 : 0,
         e.avatarVersion ?? null,

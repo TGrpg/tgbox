@@ -3,13 +3,17 @@ import Hash from "@tabler/icons/outline/hash.svg";
 import { type Locale, type TagView, t } from "@tgbox/shared";
 import KindGrid from "@/components/kind/KindGrid.astro";
 import KindPageHeader from "@/components/kind/KindPageHeader.astro";
+import JsonLd from "@/components/layout/JsonLd.astro";
 import Pagination from "@/components/Pagination.astro";
 import { localizePath } from "@/i18n/locale.ts";
 import { ui } from "@/i18n/ui.ts";
 import { kindUi } from "@/i18n/ui-kind.ts";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import { fill } from "@/lib/format.ts";
+import { itemListJsonLd } from "@/lib/json-ld.ts";
 import { relatedTags } from "@/lib/kind-listing.ts";
+import { MIN_INDEXED_TAG_ENTRIES, tagSeo } from "@/lib/seo.ts";
+import { absoluteUrl } from "@/lib/site.ts";
 import {
   byMembers,
   getSiteData,
@@ -34,11 +38,37 @@ const related = relatedTags(data, tag.slug);
 const totalPages = Math.max(1, Math.ceil(entries.length / PAGE_SIZE));
 const base = localizePath(`/tag/${tag.slug}/`, locale);
 const pageSuffix = page > 1 ? ` · ${fill(strings.pagination.page, { n: page })}` : "";
-const title = `${strings.listing.tag}: ${name}${pageSuffix}`;
-const description = fill(strings.listing.tagDescription, { tag: name, n: entries.length });
+const visible = pageSlice(entries, page);
+const seo = tagSeo(locale, {
+  tag: name,
+  count: entries.length,
+  page,
+  examples: visible.map((entry) => entry.title),
+});
+const description = seo.description;
+const pageUrl = absoluteUrl(localizePath(pageHref(`/tag/${tag.slug}/`, page), locale));
+// The breadcrumb JSON-LD comes from the visible trail in KindPageHeader.
+const jsonLd = [
+  itemListJsonLd({
+    name: `#${name}`,
+    url: pageUrl,
+    items: visible.map((entry) => ({
+      name: entry.title,
+      url: absoluteUrl(localizePath(`/detail/${entry.username}/`, locale)),
+    })),
+  }),
+];
 ---
 
-<BaseLayout locale={locale} title={title} description={description}>
+{/* A tag with only one or two entries is thin duplicate content; it stays crawlable, not indexed. */}
+<BaseLayout
+  locale={locale}
+  title={seo.title}
+  description={description}
+  keywords={seo.keywords}
+  noindex={entries.length < MIN_INDEXED_TAG_ENTRIES}
+>
+  <JsonLd slot="head" data={jsonLd} />
   <div class="mx-auto max-w-7xl px-4 pt-5 sm:px-6 md:pt-8">
     <KindPageHeader
       locale={locale}
@@ -76,13 +106,7 @@ const description = fill(strings.listing.tagDescription, { tag: name, n: entries
           </nav>
         )}
     </KindPageHeader>
-    <KindGrid
-      locale={locale}
-      entries={pageSlice(entries, page)}
-      eager={12}
-      variant="wide"
-      class="mt-6"
-    />
+    <KindGrid locale={locale} entries={visible} eager={12} variant="wide" class="mt-6" />
     <Pagination
       locale={locale}
       current={page}

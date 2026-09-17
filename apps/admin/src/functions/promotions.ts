@@ -1,14 +1,10 @@
 import { keepPreviousData, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { createManualPromotion, endPromotion, extendPromotion, upsertProduct } from "@tgbox/core";
-import {
-  countActivePromotions,
-  countPaidOrders,
-  listActivePromotions,
-  listProducts,
-} from "@tgbox/db";
+import { countActivePromotions, countPaidOrders, listProducts } from "@tgbox/db";
 import type { OrderStatus } from "@tgbox/shared";
 import { queryKeys } from "@/lib/query-keys.ts";
+import { ClickHistoryInput, loadActivePromotions, loadClickHistory } from "@/server/clicks.ts";
 import { adminMiddleware } from "@/server/middleware.ts";
 import {
   approveOrder,
@@ -61,10 +57,7 @@ export const $rejectOrder = createServerFn({ method: "POST" })
 
 const $listActivePromotions = createServerFn({ method: "GET" })
   .middleware([adminMiddleware])
-  .handler(async ({ context }) => {
-    const now = context.core.now();
-    return { now, rows: await listActivePromotions(context.core.db, now) };
-  });
+  .handler(({ context }) => loadActivePromotions(context.core));
 
 export const activePromotionsQueryOptions = () =>
   queryOptions({
@@ -73,6 +66,21 @@ export const activePromotionsQueryOptions = () =>
   });
 
 export type PromotionRow = Awaited<ReturnType<typeof $listActivePromotions>>["rows"][number];
+
+/** Daily clicks of one promotion, for the detail dialog. */
+const $getClickHistory = createServerFn({ method: "GET" })
+  .middleware([adminMiddleware])
+  .inputValidator(ClickHistoryInput)
+  .handler(({ data, context }) => loadClickHistory(context.core, data));
+
+export const clickHistoryQueryOptions = (promotionId: number) =>
+  queryOptions({
+    queryKey: [...queryKeys.promotionClicks, promotionId],
+    queryFn: ({ signal }) => $getClickHistory({ data: { promotionId }, signal }),
+    staleTime: 60_000,
+  });
+
+export type ClickPoint = Awaited<ReturnType<typeof $getClickHistory>>[number];
 
 export const $endPromotion = createServerFn({ method: "POST" })
   .middleware([adminMiddleware])

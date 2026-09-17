@@ -1,8 +1,10 @@
 ---
+import BrandGithub from "@tabler/icons/outline/brand-github.svg";
 import { type Locale, t } from "@tgbox/shared";
 import { localizePath } from "@/i18n/locale.ts";
 import { ui } from "@/i18n/ui.ts";
-import { botUrl, botUsername } from "@/lib/site.ts";
+import { fill } from "@/lib/format.ts";
+import { botUrl, botUsername, licence, repoUrl } from "@/lib/site.ts";
 import LangSwitch from "./LangSwitch.astro";
 import Logo from "./Logo.astro";
 
@@ -80,7 +82,25 @@ const year = new Date().getUTCFullYear();
       class="mx-auto max-w-7xl space-y-2 px-4 py-6 text-xs leading-relaxed text-muted-foreground sm:px-6"
     >
       <p class="max-w-4xl">{strings.footer.disclaimer}</p>
-      <p>© {year} {t(locale, "site.title")}. {strings.footer.rights}</p>
+      <p class="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span>© {year} {t(locale, "site.title")}. {strings.footer.rights}</span>
+        <a
+          href={repoUrl}
+          rel="noopener"
+          target="_blank"
+          class="inline-flex items-center gap-1 transition-colors hover:text-primary"
+        >
+          <BrandGithub class="size-3.5" aria-hidden="true" />
+          {strings.footer.openSource}
+        </a>
+        <a
+          href={licence.url}
+          rel="noopener"
+          target="_blank"
+          class="transition-colors hover:text-primary"
+          >{fill(strings.footer.licensed, { licence: licence.name })}</a
+        >
+      </p>
     </div>
   </div>
 </footer>

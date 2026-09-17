@@ -1,7 +1,13 @@
 import { categories, type EntryView, type SiteData, tags } from "@tgbox/shared";
 
-type DevEntry = Omit<EntryView, "posts" | "memberHistory" | "related" | "tgCreatedAt"> &
-  Partial<Pick<EntryView, "posts" | "memberHistory" | "related" | "tgCreatedAt">>;
+type Optional =
+  | "posts"
+  | "memberHistory"
+  | "related"
+  | "tgCreatedAt"
+  | "descriptionZh"
+  | "descriptionEn";
+type DevEntry = Omit<EntryView, Optional> & Partial<Pick<EntryView, Optional>>;
 
 /** Tiny built-in dataset so `astro dev` / `astro build` work on a fresh clone without a snapshot. */
 const devEntries: DevEntry[] = [
@@ -61,6 +67,8 @@ const devEntries: DevEntry[] = [
     tags: ["programming", "chinese"],
     title: "开发者日报",
     description: "每天精选开发、开源和科技新闻。",
+    descriptionZh: "每天精选开发、开源和科技新闻。",
+    descriptionEn: "A daily pick of development, open-source and tech news.",
     lang: "zh",
     verified: false,
     avatarUrl: null,
@@ -123,6 +131,8 @@ const devEntries: DevEntry[] = [
 const entries: EntryView[] = devEntries
   .map((entry) => ({
     tgCreatedAt: null,
+    descriptionZh: null,
+    descriptionEn: null,
     posts: [],
     memberHistory: [],
     related: { channels: [], groups: [] },

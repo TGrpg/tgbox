@@ -1,5 +1,6 @@
 import { type EntryKind, entryKinds, type Locale, locales } from "@tgbox/shared";
 import { alternatePaths } from "../i18n/locale.ts";
+import { MIN_INDEXED_TAG_ENTRIES } from "./seo.ts";
 import { absoluteUrl } from "./site.ts";
 import { getSiteData, PAGE_SIZE, pageHref } from "./site-data.ts";
 
@@ -68,8 +69,9 @@ export function sitemapIndex() {
 
 /** Home, content pages and tag listings in both locales. */
 export function pagesSitemap() {
+  // Tags below the threshold are noindexed (see MIN_INDEXED_TAG_ENTRIES), so don't advertise them.
   const tagPaths = getSiteData()
-    .tags.filter((tag) => tag.count > 0)
+    .tags.filter((tag) => tag.count >= MIN_INDEXED_TAG_ENTRIES)
     .flatMap((tag) => pagedPaths(`/tag/${tag.slug}/`, tag.count));
   const paths = [...STATIC_PAGES, ...tagPaths];
   return urlset(locales.flatMap((locale) => urls(paths, locale)));

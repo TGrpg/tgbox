@@ -1,7 +1,7 @@
 ---
 import Ad from "@tabler/icons/outline/ad-2.svg";
 import Speakerphone from "@tabler/icons/outline/speakerphone.svg";
-import type { Locale } from "@tgbox/shared";
+import { type Locale, promoClickUrl } from "@tgbox/shared";
 import { ui } from "@/i18n/ui.ts";
 import { detailUi } from "@/i18n/ui-detail.ts";
 import { promoSlots, promoteUrl } from "@/lib/promos.ts";
@@ -29,18 +29,21 @@ const promoteHref = promoteUrl(botUsername);
           <li class="min-w-0">
             {promo.type === "paid" ? (
               <a
-                href={promo.href}
+                href={promoClickUrl(promo.id)}
                 data-press
                 data-promo-sponsored
                 rel="sponsored noopener"
                 target="_blank"
-                class="group relative flex h-20 flex-col justify-end overflow-hidden rounded-xl p-2.5 text-white outline-none focus-visible:ring-3 focus-visible:ring-outline/50 sm:h-24 sm:p-3"
+                data-promo-image={promo.imageUrl ?? undefined}
+                class="detail-promo group relative flex h-20 flex-col justify-end overflow-hidden rounded-xl p-2.5 text-white outline-none focus-visible:ring-3 focus-visible:ring-outline/50 sm:h-24 sm:p-3"
                 style={`background:${promo.background}`}
               >
-                <Speakerphone
-                  class="absolute -top-2 -right-2 size-16 opacity-25 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6 sm:size-20"
-                  aria-hidden="true"
-                />
+                {!promo.imageUrl && (
+                    <Speakerphone
+                      class="absolute -top-2 -right-2 size-16 opacity-25 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6 sm:size-20"
+                      aria-hidden="true"
+                    />
+                  )}
                 <span class="absolute top-2 left-2 rounded-md bg-black/25 px-1.5 text-[0.65rem] font-medium backdrop-blur-sm">
                   {entry.ad}
                 </span>
@@ -85,6 +88,14 @@ const promoteHref = promoteUrl(botUsername);
   )}
 
 <style>
+/* Same card size either way; the image just gets a scrim so the title stays readable. */
+.detail-promo[data-promo-image]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgb(0 0 0 / 0.7), rgb(0 0 0 / 0.15) 60%, transparent);
+  pointer-events: none;
+}
 .ad-slot {
   background: linear-gradient(
     135deg,

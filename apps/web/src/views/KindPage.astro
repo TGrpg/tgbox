@@ -9,7 +9,8 @@ import { kindUi } from "@/i18n/ui-kind.ts";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import { fill } from "@/lib/format.ts";
 import { kindSections } from "@/lib/kind-listing.ts";
-import { getSiteData } from "@/lib/site-data.ts";
+import { kindSeo } from "@/lib/seo.ts";
+import { byMembers, getSiteData } from "@/lib/site-data.ts";
 
 interface Props {
   locale: Locale;
@@ -17,11 +18,19 @@ interface Props {
 }
 const { locale, kind } = Astro.props;
 const title = kindTitles(locale)[kind];
-const description = fill(ui(locale).listing.kindDescription, { kind: title });
-const sections = kindSections(getSiteData(), kind);
+const data = getSiteData();
+const sections = kindSections(data, kind);
+const entries = data.entries.filter((entry) => entry.kind === kind);
+const seo = kindSeo(locale, kind, {
+  count: entries.length,
+  examples: byMembers(entries)
+    .slice(0, 3)
+    .map((entry) => entry.title),
+});
+const description = seo.description;
 ---
 
-<BaseLayout locale={locale} title={title} description={description}>
+<BaseLayout locale={locale} title={seo.title} description={seo.description} keywords={seo.keywords}>
   <KindListingShell locale={locale} kind={kind}>
     <KindPageHeader
       locale={locale}

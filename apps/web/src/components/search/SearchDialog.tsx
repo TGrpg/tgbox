@@ -109,6 +109,12 @@ export default function SearchDialog({
   const [highlighted, setHighlighted] = useState<string | undefined>();
 
   useEffect(() => {
+    // `/?q=term` opens the dialog prefilled — the URL the WebSite SearchAction points at.
+    const initial = new URLSearchParams(window.location.search).get("q")?.trim();
+    if (initial) {
+      setQuery(initial);
+      setOpen(true);
+    }
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();

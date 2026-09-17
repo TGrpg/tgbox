@@ -2,6 +2,7 @@ import { clearUserLocale, deleteBotDraft, setUserLocale } from "@tgbox/db";
 import { type Locale, locales } from "@tgbox/shared";
 import { Composer, type Context, InlineKeyboard } from "grammy";
 import type { App } from "./app.ts";
+import { setChatCommands } from "./commands.ts";
 import { localeOf, messages } from "./i18n/index.ts";
 import { relayEnabled } from "./support.ts";
 
@@ -59,6 +60,10 @@ export function startHelp(app: App) {
     if (picked) await setUserLocale(app.db, ctx.from.id, picked, app.now());
     else await clearUserLocale(app.db, ctx.from.id);
     await ctx.answerCallbackQuery();
+    // The command menu follows the Telegram app language, so it is overridden for this chat only.
+    await setChatCommands(ctx.api, ctx.from.id, picked ?? null).catch((error: unknown) =>
+      console.error("setting the chat command menu failed", error),
+    );
     // Confirmed in the language the user just chose ("auto" falls back to the client language).
     const m = messages(picked ?? localeOf(ctx));
     await ctx.editMessageText(picked ? m.lang.saved : m.lang.savedAuto).catch(() => {});

@@ -1,5 +1,7 @@
+import { env } from "cloudflare:workers";
 import { createOrder, markOrderPaid } from "@tgbox/core";
 import {
+  getBotDraft,
   getOrder,
   getSiteState,
   insertApprovedEntry,
@@ -95,6 +97,129 @@ const invoicePaid = (orderId: number, amount = "20") =>
       payload: `order:${orderId}`,
     },
   });
+
+describe("buying a home banner", () => {
+  const photo = (fileSize: number) => ({
+    photo: [
+      { file_id: "small", file_unique_id: "s", width: 90, height: 60, file_size: 2000 },
+      { file_id: "big", file_unique_id: "b", width: 1280, height: 720, file_size: fileSize },
+    ],
+  });
+
+  /** Walks the banner steps up to the image prompt and returns nothing. */
+  async function fillBanner() {
+    await h.message(buyer, "/promote");
+    await press("pp:3");
+    await h.message(buyer, banner.title);
+    await h.message(buyer, banner.subtitle);
+    await h.message(buyer, banner.href);
+  }
+
+  test("the image is asked for after the link and stored under the order id", async () => {
+    await fillBanner();
+    expect(h.lastText()).toContain("/skip");
+
+    h.serveFile(() => new Response(new Uint8Array([1, 2, 3]), { status: 200 }));
+    await h.media(buyer, photo(150_000));
+
+    // The largest size under ~200KB is the one downloaded.
+    expect(h.calls("getFile")[0]?.payload).toEqual({ file_id: "big" });
+    expect(h.files[0]).toContain("photos/file_1.jpg");
+
+    const orderId = Number(String(h.lastButtons()[0]?.callback_data).slice(3));
+    expect(await getOrder(db, orderId)).toMatchObject({
+      status: "pending",
+      banner: { ...banner, imageUrl: `https://media.tgbox.test/promos/${orderId}.jpg` },
+    });
+    const stored = await env.MEDIA.get(`promos/${orderId}.jpg`);
+    expect(stored?.httpMetadata?.contentType).toBe("image/jpeg");
+    expect(new Uint8Array(await (stored as R2ObjectBody).arrayBuffer())).toEqual(
+      new Uint8Array([1, 2, 3]),
+    );
+  });
+
+  test("/skip creates the same order without an image", async () => {
+    await fillBanner();
+    await h.message(buyer, "/skip");
+
+    expect(h.calls("getFile")).toEqual([]);
+    const orderId = Number(String(h.lastButtons()[0]?.callback_data).slice(3));
+    const order = await getOrder(db, orderId);
+    expect(order).toMatchObject({ status: "pending", banner });
+    expect(order?.banner?.imageUrl ?? null).toBeNull();
+    expect(h.lastText()).toContain("请选择支付方式");
+  });
+
+  test.each([
+    [
+      "a document that isn't an image",
+      {
+        document: {
+          file_id: "d",
+          file_unique_id: "d",
+          mime_type: "application/pdf",
+          file_size: 1000,
+        },
+      },
+    ],
+    [
+      "an image over 1MB",
+      {
+        document: {
+          file_id: "d",
+          file_unique_id: "d",
+          mime_type: "image/png",
+          file_size: 2_000_000,
+        },
+      },
+    ],
+    ["a plain text answer", undefined],
+  ])("%s is refused and the step is asked again", async (_label, media) => {
+    await fillBanner();
+    if (media) await h.media(buyer, media);
+    else await h.message(buyer, "没有图片");
+
+    expect(h.lastText()).toContain("只支持 jpg/png/webp");
+    expect(await getBotDraft(db, buyer.id, Date.now())).toMatchObject({ step: "promote_image" });
+
+    // The buyer can still finish by skipping.
+    await h.message(buyer, "/skip");
+    expect(h.lastText()).toContain("请选择支付方式");
+  });
+
+  test("a png document is accepted with its own content type", async () => {
+    await fillBanner();
+    await h.media(buyer, {
+      document: { file_id: "png", file_unique_id: "p", mime_type: "image/png", file_size: 50_000 },
+    });
+    const orderId = Number(String(h.lastButtons()[0]?.callback_data).slice(3));
+    expect((await env.MEDIA.get(`promos/${orderId}.jpg`))?.httpMetadata?.contentType).toBe(
+      "image/png",
+    );
+  });
+
+  test("a failed download leaves a working banner without an image", async () => {
+    await fillBanner();
+    h.serveFile(() => new Response("gone", { status: 404 }));
+    await h.media(buyer, photo(150_000));
+
+    const texts = h.calls("sendMessage").map((c) => String(c.payload.text));
+    expect(texts.some((text) => text.includes("图片上传失败"))).toBe(true);
+    const orderId = Number(String(h.lastButtons()[0]?.callback_data).slice(3));
+    expect((await getOrder(db, orderId))?.banner?.imageUrl ?? null).toBeNull();
+    expect(await env.MEDIA.get(`promos/${orderId}.jpg`)).toBeNull();
+  });
+
+  test("an invalid link is refused before the image step", async () => {
+    await h.message(buyer, "/promote");
+    await press("pp:3");
+    await h.message(buyer, banner.title);
+    await h.message(buyer, banner.subtitle);
+    await h.message(buyer, "http://not-https.example");
+    expect(h.lastText()).toContain("https://");
+    expect(await getBotDraft(db, buyer.id, Date.now())).toMatchObject({ step: "promote_href" });
+  });
+});
 
 describe("buying a pin with Stars", () => {
   test("/promote → product → @username → Stars sends an XTR invoice for the order", async () => {

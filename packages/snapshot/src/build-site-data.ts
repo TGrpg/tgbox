@@ -41,6 +41,10 @@ function intOrNull(value: unknown): number | null {
   return value === null ? null : int(value);
 }
 
+function textOrNull(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+
 function jsonOrNull(value: unknown): unknown {
   if (typeof value !== "string") return null;
   try {
@@ -70,9 +74,25 @@ export async function buildSiteData(options: BuildSiteDataOptions): Promise<Site
   }
 
   async function build(db: DatabaseSync): Promise<SiteData> {
+    const nowMs = now.getTime();
+    // Exports taken before migration 0005 have no settings/promotions tables, ones taken before
+    // 0006 have no hidden_posts table or entries.hide_posts column, and ones before 0009 have no
+    // description_zh/description_en columns.
+    const hasTable = (name: string) =>
+      db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(name) !==
+      undefined;
+    const hasColumn = (table: string, column: string) =>
+      db.prepare("SELECT 1 FROM pragma_table_info(?) WHERE name = ?").get(table, column) !==
+      undefined;
+    const hasPromotions = hasTable("promotions");
+    const translationColumns = hasColumn("entries", "description_zh")
+      ? "e.description_zh, e.description_en"
+      : "NULL AS description_zh, NULL AS description_en";
+
     const rows = db
       .prepare(
         `SELECT e.id, e.username, e.kind, e.category_id, c.slug AS category, e.title, e.description,
+           ${translationColumns},
            e.lang, e.verified, e.avatar_version, e.tg_created_at, e.listed_at, e.is_promoted,
            s.members, s.online, s.activity_tier
          FROM entries e
@@ -82,17 +102,6 @@ export async function buildSiteData(options: BuildSiteDataOptions): Promise<Site
          ORDER BY e.listed_at DESC, e.username`,
       )
       .all();
-
-    const nowMs = now.getTime();
-    // Exports taken before migration 0005 have no settings/promotions tables, and ones taken
-    // before 0006 have no hidden_posts table or entries.hide_posts column.
-    const hasTable = (name: string) =>
-      db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(name) !==
-      undefined;
-    const hasColumn = (table: string, column: string) =>
-      db.prepare("SELECT 1 FROM pragma_table_info(?) WHERE name = ?").get(table, column) !==
-      undefined;
-    const hasPromotions = hasTable("promotions");
 
     const pinned = new Set(
       hasPromotions
@@ -151,6 +160,8 @@ export async function buildSiteData(options: BuildSiteDataOptions): Promise<Site
         tags: tagsByEntry.get(id) ?? [],
         title: text(row.title),
         description: text(row.description),
+        descriptionZh: textOrNull(row.description_zh),
+        descriptionEn: textOrNull(row.description_en),
         lang: row.lang === null ? null : text(row.lang),
         verified: int(row.verified) === 1,
         avatarUrl:
@@ -193,7 +204,15 @@ export async function buildSiteData(options: BuildSiteDataOptions): Promise<Site
           .flatMap((row) => {
             const banner = BannerContent.safeParse(jsonOrNull(row.banner));
             return banner.success
-              ? [{ id: String(int(row.id)), ...banner.data, sponsored: true }]
+              ? [
+                  {
+                    id: String(int(row.id)),
+                    ...banner.data,
+                    // Banners sold before image upload existed have no imageUrl at all.
+                    imageUrl: banner.data.imageUrl ?? null,
+                    sponsored: true,
+                  },
+                ]
               : [];
           })
       : [];

@@ -18,6 +18,8 @@
     }
   ],
   "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "tgbox-media" }],
+  // Workers AI (free allocation): description translations in the hourly cron.
+  "ai": { "binding": "AI" },
   "vars": {
     "SITE_URL": "https://tgbox.cc",
     "R2_PUBLIC_URL": "https://media.tgbox.cc",

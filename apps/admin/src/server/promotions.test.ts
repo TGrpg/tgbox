@@ -1,14 +1,22 @@
 import type { CoreContext } from "@tgbox/core";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-const core = vi.hoisted(() => ({ approveBannerOrder: vi.fn(), rejectOrder: vi.fn() }));
-const db = vi.hoisted(() => ({ listOrders: vi.fn(), listProducts: vi.fn() }));
+const core = vi.hoisted(() => ({
+  approveBannerOrder: vi.fn(),
+  rejectOrder: vi.fn(),
+  promotionClickTotals: vi.fn(),
+}));
+const db = vi.hoisted(() => ({
+  listOrders: vi.fn(),
+  listProducts: vi.fn(),
+  listActivePromotions: vi.fn(),
+}));
 vi.mock("@tgbox/core", () => core);
 vi.mock("@tgbox/db", () => db);
 
 const { loadOrders, rejectPaidOrder, approveOrder } = await import("./promotions.ts");
 
-const ctx = {} as CoreContext;
+const ctx = { now: () => Date.UTC(2026, 8, 17) } as CoreContext;
 
 beforeEach(() => vi.clearAllMocks());
 
@@ -60,18 +68,37 @@ test("approveOrder reports orders already handled", async () => {
   });
 });
 
-test("loadOrders names products and keeps provider ids on the server", async () => {
+test("loadOrders names products, counts clicks and keeps provider ids on the server", async () => {
   db.listOrders.mockResolvedValue({
-    rows: [{ id: 1, productId: 2, invoiceId: "inv", chargeId: "charge", status: "paid" }],
-    total: 1,
+    rows: [
+      { id: 1, productId: 2, invoiceId: "inv", chargeId: "charge", status: "active" },
+      { id: 9, productId: 2, invoiceId: null, chargeId: null, status: "expired" },
+    ],
+    total: 2,
   });
   db.listProducts.mockResolvedValue([{ id: 2, nameZh: "首页横幅 7 天" }]);
+  db.listActivePromotions.mockResolvedValue([{ id: 41, orderId: 1 }]);
+  core.promotionClickTotals.mockResolvedValue({ 41: { total: 128, recent: 30 } });
 
-  const result = await loadOrders(ctx, { status: "paid", page: 2, pageSize: 20 });
+  const result = await loadOrders(ctx, { status: undefined, page: 2, pageSize: 20 });
 
-  expect(db.listOrders).toHaveBeenCalledWith(undefined, { status: "paid", page: 2, pageSize: 20 });
+  expect(db.listOrders).toHaveBeenCalledWith(undefined, {
+    status: undefined,
+    page: 2,
+    pageSize: 20,
+  });
   expect(result).toEqual({
-    rows: [{ id: 1, productId: 2, status: "paid", productName: "首页横幅 7 天" }],
-    total: 1,
+    rows: [
+      {
+        id: 1,
+        productId: 2,
+        status: "active",
+        productName: "首页横幅 7 天",
+        clicks: { total: 128, recent: 30 },
+      },
+      // The promotion of order 9 is over and its row is gone, so there is nothing to report.
+      { id: 9, productId: 2, status: "expired", productName: "首页横幅 7 天", clicks: null },
+    ],
+    total: 2,
   });
 });

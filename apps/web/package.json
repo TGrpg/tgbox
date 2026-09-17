@@ -7,6 +7,7 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "wrangler dev --local",
+    "types": "wrangler types",
     "typecheck": "astro check",
     "test": "vitest run --passWithNoTests",
     "test:e2e": "playwright test"
@@ -19,6 +20,7 @@
     "@tabler/icons": "catalog:",
     "@tailwindcss/forms": "catalog:",
     "@tailwindcss/vite": "catalog:",
+    "@tgbox/db": "workspace:*",
     "@tgbox/shared": "workspace:*",
     "astro": "catalog:",
     "class-variance-authority": "catalog:",

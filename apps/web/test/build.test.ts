@@ -49,13 +49,16 @@ const announcement = {
   en: "Spring promo slots are open",
   href: "https://t.me/tgbox_support",
 };
+const promoImage = `${mediaBaseUrl}/promos/41.jpg`;
 const paidPromo = {
   id: "41",
   title: "Rocket <VPN> & Proxy",
   subtitle: "Fast nodes worldwide",
   href: "https://t.me/rocketvpn",
+  imageUrl: promoImage,
   sponsored: true as const,
 };
+const repoUrl = "https://github.com/TGrpg/tgbox";
 
 // devnotes has posts in R2, but the operator turned them off for that entry.
 const hiddenPosts = [{ id: 7, date: "2026-08-29T12:00:00.000Z", text: "被隐藏的消息", views: 9 }];
@@ -71,6 +74,12 @@ function allFiles(dir: string): string[] {
   return readdirSync(dir, { recursive: true, withFileTypes: true })
     .filter((item) => item.isFile())
     .map((item) => path.join(item.parentPath, item.name));
+}
+
+function types(page: string): unknown[] {
+  return jsonLd(page).map((item) =>
+    typeof item === "object" && item !== null && "@type" in item ? item["@type"] : null,
+  );
 }
 
 function jsonLd(page: string): unknown[] {
@@ -123,12 +132,46 @@ afterAll(() => {
 
 describe("site build from snapshot data", () => {
   test.each(approved)("zh + en detail pages exist for $username", (entry) => {
-    for (const prefix of ["", "en/"]) {
+    for (const [prefix, description] of [
+      ["", entry.descriptionZh ?? entry.description],
+      ["en/", entry.descriptionEn ?? entry.description],
+    ] as const) {
       const page = html(`${prefix}detail/${entry.username}`);
       expect(page).toContain(entry.title);
-      if (entry.description) expect(page).toContain(entry.description);
+      if (description) expect(page).toContain(description);
       if (entry.members !== undefined) expect(page).toContain(entry.members.toLocaleString("en"));
     }
+  });
+
+  test("each locale reads its own translated description, or the original when there is none", () => {
+    // techdaily is written in Chinese and has an English translation.
+    const zh = html("detail/techdaily");
+    const en = html("en/detail/techdaily");
+    expect(zh).toContain("每天分享开发与科技新闻");
+    expect(zh).not.toContain("自动翻译");
+    expect(en).toContain("Daily development and tech news.");
+    expect(en).toContain("Auto-translated");
+    expect(en).toMatch(/data-auto-translated/);
+    // devnotes has no translation at all, so both locales show the original text and no hint.
+    for (const route of ["detail/devnotes", "en/detail/devnotes"]) {
+      expect(html(route), route).toContain("Notes about programming");
+      expect(html(route), route).not.toContain("data-auto-translated");
+    }
+  });
+
+  test("detail pages open with an H1 and a sentence naming the entry, kind and category", () => {
+    const zh = html("detail/techdaily");
+    expect(zh).toMatch(/<h1[\s\S]*?每日科技[\s\S]*?Telegram 开发编程频道[\s\S]*?<\/h1>/);
+    expect(zh).toMatch(
+      /data-entry-summary[^>]*>\s*每日科技（@techdaily）是 TGbox 收录的 Telegram 开发编程频道，目前有 5,000 名订阅者/,
+    );
+    const en = html("en/detail/techdaily");
+    expect(en).toMatch(/<h1[\s\S]*?Telegram Development Channel[\s\S]*?<\/h1>/);
+    expect(en).toMatch(
+      /data-entry-summary[^>]*>\s*每日科技 \(@techdaily\) is a Telegram Development channel listed on TGbox, with 5,000 subscribers/,
+    );
+    // The same sentence leads the meta description.
+    expect(en).toMatch(/<meta name="description" content="每日科技 \(@techdaily\) is a Telegram/);
   });
 
   test("channel detail shows recent posts, stats and related entries", () => {
@@ -197,12 +240,118 @@ describe("site build from snapshot data", () => {
         `<link rel="alternate" hreflang="en" href="${siteUrl}/en/detail/devnotes/">`,
       );
     }
-    const types = jsonLd(zh).map((item) =>
-      typeof item === "object" && item && "@type" in item ? item["@type"] : null,
-    );
-    expect(types).toContain("WebPage");
-    expect(types).toContain("BreadcrumbList");
+    expect(types(zh)).toEqual(["WebPage", "BreadcrumbList"]);
     expect(JSON.stringify(jsonLd(zh))).toContain('"userInteractionCount":3000');
+  });
+
+  test("every page type emits parseable JSON-LD for what it actually shows", () => {
+    for (const prefix of ["", "en/"]) {
+      // Home: the site entity plus the Organization every other page's publisher points at.
+      const home = jsonLd(html(prefix));
+      expect(types(html(prefix))).toEqual(["Organization", "WebSite"]);
+      const [organization, website] = home as Record<string, unknown>[];
+      expect(organization).toMatchObject({
+        "@id": `${siteUrl}/#organization`,
+        url: `${siteUrl}/`,
+        sameAs: [repoUrl, "https://t.me/tgboxccbot"],
+      });
+      expect(website).toMatchObject({
+        url: `${siteUrl}/${prefix}`,
+        publisher: { "@id": `${siteUrl}/#organization` },
+        potentialAction: {
+          "@type": "SearchAction",
+          target: {
+            "@type": "EntryPoint",
+            urlTemplate: `${siteUrl}/${prefix}?q={search_term_string}`,
+          },
+        },
+      });
+
+      // Category: the entries rendered on the page, plus the trail the breadcrumb nav describes.
+      const category = html(`${prefix}channel/tech`);
+      expect(types(category)).toEqual(["ItemList", "BreadcrumbList"]);
+      const [list, breadcrumb] = jsonLd(category) as Record<string, unknown>[];
+      expect(breadcrumb?.itemListElement).toMatchObject([
+        { position: 1, item: `${siteUrl}/${prefix}` },
+        { position: 2, item: `${siteUrl}/${prefix}channel/` },
+        { position: 3 },
+      ]);
+      expect(list).toMatchObject({
+        numberOfItems: 2,
+        itemListElement: [
+          { position: 1, name: "每日科技", url: `${siteUrl}/${prefix}detail/techdaily/` },
+          { position: 2, name: "Dev Notes", url: `${siteUrl}/${prefix}detail/devnotes/` },
+        ],
+      });
+
+      expect(types(html(`${prefix}channel`))).toEqual(["BreadcrumbList"]);
+      expect(types(html(`${prefix}rank`))).toEqual(["ItemList", "BreadcrumbList"]);
+      expect(types(html(`${prefix}tag/programming`))).toEqual(["ItemList", "BreadcrumbList"]);
+      expect(types(html(`${prefix}about`))).toEqual(["FAQPage", "BreadcrumbList"]);
+    }
+  });
+
+  test("listing and detail pages carry keyword meta aimed at their own page type", () => {
+    const keywords = (page: string) =>
+      page.match(/<meta name="keywords" content="([^"]*)"/)?.[1] ?? "";
+    expect(keywords(html(""))).toContain("电报频道大全");
+    expect(keywords(html("channel"))).toContain("电报频道大全");
+    expect(keywords(html("group"))).toContain("电报群组");
+    expect(keywords(html("en/bot"))).toContain("telegram bots list");
+    expect(keywords(html("rank"))).toContain("电报频道排名");
+    expect(keywords(html("detail/techdaily"))).toMatch(/^每日科技, @techdaily, 开发编程频道/);
+    expect(keywords(html("en/channel/tech"))).toContain("telegram channels list");
+  });
+
+  test("thin tag pages stay crawlable but are kept out of the index and the sitemap", () => {
+    // "programming" has 4 entries, "movies" only 1.
+    expect(html("tag/programming")).not.toContain('<meta name="robots"');
+    expect(html("tag/movies")).toContain('<meta name="robots" content="noindex, follow">');
+    const sitemap = readFileSync(path.join(client, "sitemap-pages.xml"), "utf8");
+    expect(sitemap).toContain(`<loc>${siteUrl}/tag/programming/</loc>`);
+    expect(sitemap).not.toContain("/tag/movies/");
+  });
+
+  test("the footer credits the open-source repo and the licence on every page", () => {
+    for (const [route, label, licence] of [
+      ["", "开源于 GitHub", "以 AGPL-3.0 许可证发布"],
+      ["en/", "Open source on GitHub", "Released under AGPL-3.0"],
+      ["detail/techdaily", "开源于 GitHub", "以 AGPL-3.0 许可证发布"],
+    ] as const) {
+      const footer = html(route).split("<footer")[1]?.split("</footer>")[0] ?? "";
+      expect(footer, route).toMatch(
+        new RegExp(`<a[^>]*href="${repoUrl}"[^>]*rel="noopener"[^>]*>[\\s\\S]*?${label}`),
+      );
+      expect(footer, route).toContain(licence);
+      expect(footer, route).toContain(`© ${new Date().getUTCFullYear()} TGbox`);
+    }
+  });
+
+  test("the about page answers the questions people search, with FAQPage markup", () => {
+    for (const [route, heading, question] of [
+      ["about", "常见问题", "怎么找 Telegram 频道？"],
+      ["en/about", "Frequently asked questions", "How do I find good Telegram channels?"],
+    ] as const) {
+      const page = html(route);
+      expect(page, route).toContain(heading);
+      expect(page, route).toMatch(new RegExp(`<h3[^>]*>${question.replace(/\?/g, "\\?")}`));
+      expect(page, route).toContain("AGPL-3.0");
+      expect(page, route).toContain(repoUrl);
+      const faq = jsonLd(page).find(
+        (item): item is Record<string, unknown> =>
+          typeof item === "object" &&
+          item !== null &&
+          "@type" in item &&
+          item["@type"] === "FAQPage",
+      );
+      const questions = Array.isArray(faq?.mainEntity) ? faq.mainEntity : [];
+      expect(questions.length, route).toBeGreaterThanOrEqual(3);
+      expect(questions[0]).toMatchObject({
+        "@type": "Question",
+        name: question,
+        acceptedAnswer: { "@type": "Answer" },
+      });
+    }
   });
 
   test("detail pages load only the shared motion module, the sticky bar module and no page-specific islands", () => {
@@ -297,7 +446,9 @@ describe("site build from snapshot data", () => {
       const promos = page.slice(start).split(/<\/section>|<\/aside>/)[0] ?? "";
       const links = [...promos.matchAll(/<a\s[^>]*>/g)].map((match) => match[0]);
       expect(links, route).toHaveLength(cards);
-      expect(links[0]).toContain(`href="${paidPromo.href}"`);
+      // Paid cards go through the click counter, which redirects to the advertiser's own link.
+      expect(links[0]).toContain(`href="/r/${paidPromo.id}"`);
+      expect(links[0]).not.toContain(paidPromo.href);
       expect(links[0]).toContain('rel="sponsored noopener"');
       expect(links[0]).toContain('target="_blank"');
       expect(promos).toContain(`>${label}<`);
@@ -313,6 +464,34 @@ describe("site build from snapshot data", () => {
     // Dismissing the lineup is keyed by the paid banner ids only.
     expect(html("")).toMatch(/storageKey = "home-promos:41"/);
     expect(html("")).toContain("data-promos-dismiss");
+  });
+
+  test("the promo click counter is the only outgoing link on a paid card", () => {
+    for (const route of ["", "en/", "detail/techdaily"]) {
+      const card = html(route).match(/<a[^>]*data-promo-sponsored[^>]*>/)?.[0] ?? "";
+      expect(card, route).toContain(`href="/r/${paidPromo.id}"`);
+      expect(card, route).toContain('target="_blank"');
+      // Placeholder cards still deep-link into the bot's purchase flow.
+      const slot = html(route).match(/<a[^>]*data-promo-slot[^>]*>/)?.[0] ?? "";
+      expect(slot, route).toMatch(/href="https:\/\/t\.me\/\w+\?start=promote"/);
+    }
+    // robots.txt keeps the counter out of the index.
+    expect(readFileSync(path.join(client, "robots.txt"), "utf8")).toContain("Disallow: /r/");
+  });
+
+  test("a banner with an image uses it as the card background, keeping the gradient behind it", () => {
+    for (const route of ["", "detail/techdaily"]) {
+      const page = html(route);
+      const card = page.match(/<a[^>]*data-promo-sponsored[^>]*>/)?.[0] ?? "";
+      expect(card, route).toContain(`data-promo-image="${promoImage}"`);
+      expect(card, route).toContain(
+        `background:url(&quot;${promoImage}&quot;) center/cover no-repeat,`,
+      );
+      // The gradient is still the last layer, so a broken image leaves a readable card.
+      expect(card, route).toMatch(/no-repeat, radial-gradient\(/);
+    }
+    // Placeholder cards are unaffected and keep their own background.
+    expect(html("")).toMatch(/<a[^>]*data-promo-slot[^>]*class="ad-slot/);
   });
 
   test("promoted entries lead listings and hot columns with a promoted badge", () => {
@@ -383,7 +562,7 @@ describe("site build from snapshot data", () => {
       // Header nav and mobile tab bar link the page.
       expect(html(prefix)).toContain(`href="/${prefix}rank/"`);
     }
-    expect(html("rank")).toContain("<title>排行榜");
+    expect(html("rank")).toContain("<title>电报频道排名 · Telegram 群组与机器人排行榜 | TGbox<");
     expect(html("")).toMatch(/data-home-rankings[^>]*>|href="\/rank\/"[^>]*data-home-rankings/);
     const sitemap = readFileSync(path.join(client, "sitemap-pages.xml"), "utf8");
     expect(sitemap).toContain(`<loc>${siteUrl}/rank/</loc>`);
@@ -413,7 +592,8 @@ describe("site build from snapshot data", () => {
       const page = readFileSync(file, "utf8").replace(/<template[\s\S]*?<\/template>/g, "");
       for (const [, href = ""] of page.matchAll(/\shref="(\/(?!\/)[^"]*)"/g)) {
         const target = href.split(/[?#]/)[0] ?? "";
-        if (/^\/(go|pagefind|data)\//.test(target)) continue;
+        // /go/ query links, the Pagefind bundle, JSON pools and the promo counter aren't pages.
+        if (/^\/(go|pagefind|data|r)\//.test(target)) continue;
         const resolved = path.join(client, target.endsWith("/") ? `${target}index.html` : target);
         if (!existsSync(resolved)) missing.add(`${path.relative(client, file)} → ${href}`);
       }

@@ -10,6 +10,9 @@ export default defineConfig(async () => {
     plugins: [
       cloudflareTest({
         wrangler: { configPath: "./wrangler.jsonc" },
+        // The `ai` binding would otherwise open a remote proxy session against Cloudflare on
+        // startup. Tests are local only; `AI` is faked in the harness env.
+        remoteBindings: false,
         miniflare: {
           // The pool bundles an older workerd (miniflare 5.20260815) that rejects newer dates.
           compatibilityDate: "2026-08-15",

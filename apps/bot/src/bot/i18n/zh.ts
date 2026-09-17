@@ -32,6 +32,8 @@ export type BannerOrderSummary = {
   title: string;
   subtitle: string;
   href: string;
+  /** Absent on banners bought without an image. */
+  imageUrl?: string | null;
   amount: string;
   currency: string;
   buyerId: number;
@@ -71,6 +73,14 @@ export const zh = {
     username ? `客服联系方式：@${username}` : "暂未设置客服，请稍后再试。",
   help: "收录标准：公开的频道、群组或机器人，内容合法、持续更新、无刷粉。\n\n提交方式：发送 t.me 链接或 @用户名，按提示选择分类和标签。\n审核结果会通过私信通知。\n\n/lang 切换语言，/support 联系客服。",
   langButton: "🌐 语言 / Language",
+  /** Telegram's command menu (`setMyCommands`); one source of truth for the bot and the deploy script. */
+  commands: {
+    submit: "提交收录",
+    promote: "购买推广",
+    support: "联系客服",
+    lang: "切换语言 / Language",
+    help: "使用帮助",
+  },
   lang: {
     choose: "请选择机器人语言：",
     zh: "中文",
@@ -88,6 +98,8 @@ export const zh = {
   sendLink: "请发送要提交的频道、群组或机器人链接（https://t.me/xxx、t.me/xxx 或 @xxx）。",
   invalidLink:
     "无法识别链接。请发送 https://t.me/xxx、t.me/xxx 或 @xxx 格式的公开用户名（邀请链接不支持）。",
+  /** Bilingual on purpose: shown before a message that looked like a link is relayed to support. */
+  maybeSubmission: "想收录这个链接？请用 /submit 提交。 / To submit a link, use /submit.",
   alreadyListed: (username: string) => `@${username} 已经收录，无需重复提交。`,
   alreadyPending: (username: string) => `@${username} 已在审核中，请耐心等待。`,
   dailyLimit: (limit: number) => `今天的提交次数已达上限（${limit} 次），请明天再试。`,
@@ -132,12 +144,15 @@ export const zh = {
     askTitle: "请发送横幅标题（1–20 字）：",
     askSubtitle: "请发送横幅副标题（1–40 字）：",
     askHref: "请发送横幅链接（https:// 开头，可以是 t.me 链接）：",
+    askImage: "可选：发送一张横幅图片（jpg/png/webp，1MB 以内），或发送 /skip 跳过。",
     invalidTarget: "无法识别，请发送 @用户名或 t.me 链接。",
     targetNotListed: (username: string) =>
       `@${username} 还没有被收录，只能置顶已收录的条目。可以先发送 /submit 提交收录。`,
     invalidTitle: "标题需要 1–20 个字，请重新发送。",
     invalidSubtitle: "副标题需要 1–40 个字，请重新发送。",
     invalidHref: "链接需要以 https:// 开头，请重新发送。",
+    invalidImage: "只支持 jpg/png/webp 图片，且不超过 1MB。请重新发送，或 /skip 跳过。",
+    imageFailed: "图片上传失败，本次横幅将不带图片。",
     noSlots: (nextFreeAt: number | null) =>
       nextFreeAt
         ? `名额已满，最早 ${utcDate(nextFreeAt)} 有空位，届时再来吧。`
@@ -227,6 +242,7 @@ export const zh = {
         `标题：${o.title}`,
         `副标题：${o.subtitle}`,
         `链接：${o.href}`,
+        ...(o.imageUrl ? [`图片：${o.imageUrl}`] : []),
         `支付：${o.amount} ${o.currency}`,
         `买家：${o.buyerId}`,
       ].join("\n"),

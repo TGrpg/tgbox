@@ -47,6 +47,15 @@ export const dateTime = (ms: number | null) =>
 export const shortDate = (ms: number) =>
   new Date(ms).toLocaleDateString("zh-CN", { month: "numeric", day: "numeric" });
 
+/** `YYYY-MM-DD` (UTC day key of promotion_clicks) as `M/D`, without re-parsing it as local time. */
+export const shortDay = (day: string) => {
+  const [, month = "", date = ""] = day.split("-");
+  return `${Number(month)}/${Number(date)}`;
+};
+
+/** Window shown next to the lifetime total; must match RECENT_DAYS in @tgbox/core. */
+export const RECENT_LABEL = "近 7 天";
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** Whole days left, rounded up; a promotion ending in 2 hours still has "1 day". */
