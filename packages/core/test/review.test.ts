@@ -1,5 +1,13 @@
+import { env } from "cloudflare:workers";
 import { approveSubmissions, previewSubmission, rejectSubmissions } from "@tgbox/core";
-import { createSubmission, getEntryByUsername, getSiteState, getSubmission } from "@tgbox/db";
+import {
+  createSubmission,
+  getEntryByUsername,
+  getSiteState,
+  getSubmission,
+  upsertSetting,
+} from "@tgbox/db";
+import { settingsDefaults } from "@tgbox/shared";
 import { describe, expect, test } from "vitest";
 import { actor, auditRows, db, NOW, setup } from "./fake.ts";
 
@@ -66,5 +74,35 @@ describe("admin review queue", () => {
     expect(tme).toEqual(["/live_channel", "/s/live_channel"]);
     expect(await getEntryByUsername(db, "live_channel")).toBeUndefined();
     expect(await auditRows()).toEqual([]);
+  });
+
+  test("approving from the admin posts each new entry to the publish channel", async () => {
+    const { ctx, telegram } = await setup({ BOT_TOKEN: "1:t", SITE_URL: "https://tgbox.test/" });
+    const bot = { ...settingsDefaults.bot, publishChannelId: "-100999" };
+    await upsertSetting(db, "bot", JSON.stringify(bot), NOW);
+    const id = await pending("fresh_one");
+
+    await approveSubmissions(ctx, { ids: [id], actor });
+
+    expect(telegram).toHaveLength(1);
+    expect(telegram[0]).toMatchObject({ method: "sendMessage", body: { chat_id: "-100999" } });
+    const body = telegram[0]?.body as { text: string; reply_markup: unknown };
+    expect(body.text).toContain("🆕 新收录 · 频道");
+    expect(body.text).toContain("@fresh_one");
+    expect(body.text).toContain("https://tgbox.test/detail/fresh_one/");
+    expect(JSON.stringify(body.reply_markup)).toContain("https://t.me/fresh_one");
+  });
+
+  test("no channel post without a publish channel or when the entry already existed", async () => {
+    const { ctx, telegram } = await setup({ BOT_TOKEN: "1:t", SITE_URL: "https://tgbox.test" });
+    await approveSubmissions(ctx, { ids: [await pending("quiet_one")], actor });
+    expect(telegram).toEqual([]);
+
+    const bot = { ...settingsDefaults.bot, publishChannelId: "-100999" };
+    await upsertSetting(db, "bot", JSON.stringify(bot), NOW);
+    // A second submission of a leftover entry relists nothing new.
+    await env.DB.prepare("UPDATE submissions SET status = 'rejected'").run();
+    await approveSubmissions(ctx, { ids: [await pending("quiet_one")], actor });
+    expect(telegram).toEqual([]);
   });
 });

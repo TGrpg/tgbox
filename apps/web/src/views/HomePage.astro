@@ -1,5 +1,7 @@
 ---
+import ArrowRight from "@tabler/icons/outline/arrow-right.svg";
 import ClockIcon from "@tabler/icons/outline/clock.svg";
+import Trophy from "@tabler/icons/outline/trophy.svg";
 import { entryKinds, type Locale } from "@tgbox/shared";
 import EntryCardCompact from "@/components/EntryCardCompact.astro";
 import HomeCta from "@/components/HomeCta.astro";
@@ -8,6 +10,7 @@ import HomeHotColumn from "@/components/HomeHotColumn.astro";
 import HomePromos from "@/components/HomePromos.astro";
 import HomeSectionHeader from "@/components/HomeSectionHeader.astro";
 import HomeStats from "@/components/HomeStats.astro";
+import { localizePath } from "@/i18n/locale.ts";
 import { homeUi } from "@/i18n/ui-home.ts";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import { latestEntries } from "@/lib/home.ts";
@@ -28,9 +31,22 @@ const latest = latestEntries(data.entries, 12);
   <HomePromos locale={locale} />
 
   {hotKinds.length > 0 && (
+      <>
       <div class="mx-auto grid max-w-7xl grid-cols-1 gap-4 px-4 pt-8 sm:px-6 md:grid-cols-2 lg:grid-cols-3 lg:gap-5 [&>*]:min-w-0">
         {hotKinds.map((kind) => <HomeHotColumn locale={locale} kind={kind} />)}
       </div>
+      <div class="mx-auto flex max-w-7xl justify-end px-4 pt-3 sm:px-6">
+        <a
+          href={localizePath("/rank/", locale)}
+          data-home-rankings
+          class="group inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-sm font-medium text-muted-foreground transition-colors outline-none hover:text-primary-accent focus-visible:ring-3 focus-visible:ring-outline/40"
+        >
+          <Trophy class="size-4" aria-hidden="true" />
+          {strings.rankings}
+          <ArrowRight class="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+        </a>
+      </div>
+      </>
     )}
 
   {latest.length > 0 && (

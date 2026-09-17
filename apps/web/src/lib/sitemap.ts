@@ -44,6 +44,7 @@ function urlset(items: string[]) {
 
 const STATIC_PAGES = [
   "/",
+  "/rank/",
   "/random/",
   "/enroll/",
   "/about/",

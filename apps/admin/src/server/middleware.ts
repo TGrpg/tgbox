@@ -29,6 +29,7 @@ export const adminMiddleware = createMiddleware({ type: "function" })
         GITHUB_REPO: env.GITHUB_REPO,
         GITHUB_DISPATCH_TOKEN: env.GITHUB_DISPATCH_TOKEN,
         BOT_TOKEN: env.BOT_TOKEN,
+        SITE_URL: env.SITE_URL,
         SETTINGS_KEY: env.SETTINGS_KEY,
       },
       waitUntil,

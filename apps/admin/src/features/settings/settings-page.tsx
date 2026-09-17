@@ -165,6 +165,11 @@ function SaveButton({
 
 /* --------------------------------------------------------------------- bot */
 
+const reviewModeOptions = [
+  { value: "chat", label: "群组" },
+  { value: "admins", label: "每位管理员私聊" },
+];
+
 function BotSection({ view }: { view: SettingsView }) {
   const initial = view.settings.bot;
   const [value, setValue] = useState<BotSettings>(initial);
@@ -189,14 +194,31 @@ function BotSection({ view }: { view: SettingsView }) {
       onSubmit={() => save.mutate({ key: "bot", value: candidate })}
       footer={<SaveButton dirty={dirty} pending={save.isPending} disabled={!valid} />}
     >
-      <ChatField
-        label="审核群"
-        value={value.reviewChatId}
-        chats={view.reviewChats}
-        emptyLabel="未设置 · 使用默认 ADMIN_CHAT_ID"
-        hint="新投稿发到这个群。也可以在群里发 /setreview 绑定。"
-        onChange={(reviewChatId) => patch({ reviewChatId })}
-      />
+      <Field
+        label="审核消息发送到"
+        hint={
+          value.reviewMode === "admins"
+            ? "投稿、横幅审核和系统通知私信给每位管理员（最多 10 位，需先私聊过机器人）。任一管理员处理后，其他人的副本按钮失效。"
+            : "发到下面的审核群；未设置审核群时自动改为私信每位管理员。"
+        }
+      >
+        <OptionSelect
+          label="审核消息发送到"
+          value={value.reviewMode}
+          options={reviewModeOptions}
+          onChange={(next) => (next === "chat" || next === "admins") && patch({ reviewMode: next })}
+        />
+      </Field>
+      {value.reviewMode === "chat" && (
+        <ChatField
+          label="审核群"
+          value={value.reviewChatId}
+          chats={view.reviewChats}
+          emptyLabel="未设置 · 使用默认 ADMIN_CHAT_ID"
+          hint="新投稿发到这个群。也可以在群里发 /setreview 绑定。"
+          onChange={(reviewChatId) => patch({ reviewChatId })}
+        />
+      )}
       <ChatField
         label="发布频道"
         value={value.publishChannelId}
@@ -204,6 +226,16 @@ function BotSection({ view }: { view: SettingsView }) {
         emptyLabel="不发布"
         hint="审核通过的新条目会发到这个频道（机器人需要是频道管理员）。"
         onChange={(publishChannelId) => patch({ publishChannelId })}
+      />
+      <SwitchRow
+        label="频道日报"
+        hint={
+          value.publishChannelId
+            ? "每天 09:00（北京时间）在发布频道发送新收录和本周涨粉榜。"
+            : "需要先设置发布频道。"
+        }
+        checked={value.dailyDigest}
+        onChange={(dailyDigest) => patch({ dailyDigest })}
       />
       <AdminIdsField
         value={value.extraAdminIds}

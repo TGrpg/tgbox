@@ -4,7 +4,6 @@ import {
   type OrderSummary,
   type ProductLabel,
   type PromotionTarget,
-  type PublishSummary,
   type SubmissionSummary,
   utcTime,
   type zh,
@@ -163,16 +162,6 @@ export const en: typeof zh = {
       `❌ Rejected (${name})${refunded ? ", refunded automatically" : `, refund ${amount} by hand`}`,
     orphanPayment: (orderId: number, provider: string, chargeId: string, amount: string) =>
       `⚠️ Payment for invalid order #${orderId} (${provider} ${chargeId}, ${amount}). Check and refund by hand.`,
-    publish: (p: PublishSummary) =>
-      [
-        `🆕 New · ${p.kind} · ${p.category}`,
-        "",
-        p.title,
-        `@${p.username}`,
-        ...(p.description ? ["", p.description] : []),
-        "",
-        p.url,
-      ].join("\n"),
     banUsage: "Usage: /ban <userId|@username> [reason]",
     unbanUsage: "Usage: /unban <userId|@username>",
     banned: (target: string) => `Banned ${target}`,

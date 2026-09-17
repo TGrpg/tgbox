@@ -6,17 +6,27 @@ import {
   rejectSubmission,
   tgActor,
 } from "@tgbox/core";
-import { getEntryByUsername, getSubmission, listCategories } from "@tgbox/db";
+import { getSubmission } from "@tgbox/db";
 import { Composer, type Context, InlineKeyboard } from "grammy";
 import type { App } from "./app.ts";
 import { i18n, messages } from "./i18n/index.ts";
-import { truncate } from "./submit.ts";
 
 export function reviewKeyboard(submissionId: number) {
   const m = messages("zh").admin;
   return new InlineKeyboard()
     .text(m.approve, `ra:${submissionId}`)
     .text(m.reject, `rj:${submissionId}`);
+}
+
+/**
+ * A review button on a copy that was already handled (another admin's private copy or a double
+ * tap): tell the admin and drop the stale buttons from this message only.
+ */
+export async function answerAlreadyHandled(ctx: Context) {
+  await ctx.answerCallbackQuery({ text: i18n(ctx).alreadyHandled, show_alert: true });
+  await ctx
+    .editMessageReplyMarkup({ reply_markup: undefined })
+    .catch((error: unknown) => console.error("clearing stale review buttons failed", error));
 }
 
 const reviewerName = (ctx: Context) =>
@@ -48,26 +58,21 @@ export function review(app: App) {
       actor: tgActor(ctx.from.id),
     });
     if (!submission) {
-      await ctx.answerCallbackQuery({ text: i18n(ctx).alreadyHandled, show_alert: true });
+      await answerAlreadyHandled(ctx);
       return;
     }
     // t.me fetches can take seconds; the webhook must answer within 10 s, so finish in waitUntil.
     // Queued before answering the callback: the submission is already approved, so a failed
     // answer (query too old) must not leave it without an entry.
     await app.background(async () => {
-      const { created } = await listApprovedSubmission(app.core, submission);
+      // Also announces a new entry in the publish channel (see core).
+      await listApprovedSubmission(app.core, submission);
       await closeReview(ctx, admin.approvedBy(reviewerName(ctx))).catch((error: unknown) =>
         console.error("closing review failed", error),
       );
       await ctx.api
         .sendMessage(submission.tgUserId, notice.approved(submission.username))
         .catch((error: unknown) => console.error("approval notice failed", error));
-      const { publishChannelId } = (await app.settings()).bot;
-      if (publishChannelId && created) {
-        await publishEntry(app, publishChannelId, submission.username).catch((error: unknown) =>
-          console.error("publishing entry failed", error),
-        );
-      }
     });
     await ctx.answerCallbackQuery();
   });
@@ -76,7 +81,7 @@ export function review(app: App) {
     const id = Number(ctx.match[1]);
     const submission = await getSubmission(app.db, id);
     if (submission?.status !== "pending") {
-      await ctx.answerCallbackQuery({ text: i18n(ctx).alreadyHandled, show_alert: true });
+      await answerAlreadyHandled(ctx);
       return;
     }
     await ctx.answerCallbackQuery();
@@ -107,7 +112,7 @@ export function review(app: App) {
       actor: tgActor(ctx.from.id),
     });
     if (!submission) {
-      await ctx.answerCallbackQuery({ text: i18n(ctx).alreadyHandled, show_alert: true });
+      await answerAlreadyHandled(ctx);
       return;
     }
     await notifySubmitter(ctx, submission.tgUserId, notice.rejected(submission.username, reason));
@@ -116,31 +121,6 @@ export function review(app: App) {
   });
 
   return composer;
-}
-
-/** Announces a newly listed entry in the publish channel (Chinese, the site's default locale). */
-async function publishEntry(app: App, channelId: string, username: string) {
-  const entry = await getEntryByUsername(app.db, username);
-  if (!entry) return;
-  const category = (await listCategories(app.db)).find((row) => row.id === entry.categoryId);
-  const m = messages("zh");
-  const url = `${app.env.SITE_URL.replace(/\/$/, "")}/detail/${entry.username}/`;
-  await app.api.sendMessage(
-    channelId,
-    m.admin.publish({
-      kind: m.kinds[entry.kind],
-      category: category?.nameZh ?? "",
-      title: entry.title,
-      username: entry.username,
-      description: truncate(entry.description, 200),
-      url,
-    }),
-    {
-      reply_markup: new InlineKeyboard()
-        .url(m.openTelegram, `https://t.me/${entry.username}`)
-        .url(m.openSite, url),
-    },
-  );
 }
 
 // We don't know the submitter's language at review time, so notices are bilingual.

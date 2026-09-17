@@ -11,7 +11,7 @@ import {
   updateEntryCold,
   upsertEntryStats,
 } from "@tgbox/db";
-import { type Liveness, MemberPoint, type PostView } from "@tgbox/shared";
+import { type Liveness, MemberPoint, type PostView, reviewRecipients } from "@tgbox/shared";
 import { type EntrySnapshot, fetchEntrySnapshot } from "@tgbox/telegram";
 import { getSettings } from "./settings.ts";
 
@@ -39,6 +39,7 @@ const DEFAULT_BATCH_SIZE = 6;
 
 // Free plan: 50 subrequests per invocation (fetch + D1 + R2). Stay under 45.
 const SUBREQUEST_BUDGET = 45;
+const SUBREQUEST_LIMIT = 50;
 // Worst case for one entry: 3 t.me pages + avatar get/put + posts head/put
 // + history get/put + cold, stats and liveness writes.
 const ENTRY_WORST_CASE = 12;
@@ -66,6 +67,7 @@ type RefreshEnv = {
   MEDIA: MediaBucket;
   BOT_TOKEN: string;
   ADMIN_CHAT_ID: string;
+  ADMIN_IDS?: string;
   REFRESH_BATCH_SIZE?: string;
 };
 
@@ -203,10 +205,11 @@ export async function runRefresh(
     result.subrequests++;
   }
   if (result.hidden.length > 0) {
-    // The review chat set in the admin wins over the env fallback; only read when there is news.
-    const chatId = (await getSettings({ db })).bot.reviewChatId ?? env.ADMIN_CHAT_ID;
+    // Settings decide the review chat or private copies; only read when there is news.
+    const { chatIds } = reviewRecipients((await getSettings({ db })).bot, env);
     result.subrequests++;
-    if (chatId) {
+    // Private copies beyond the reserved one use whatever is left of the hard limit.
+    for (const chatId of chatIds.slice(0, SUBREQUEST_LIMIT - result.subrequests)) {
       await notifyAdmins(env.BOT_TOKEN, chatId, deps, pending, result.hidden);
       result.subrequests++;
     }

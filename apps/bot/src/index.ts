@@ -2,6 +2,7 @@ import { runRefresh } from "@tgbox/core";
 import { webhookCallback } from "grammy";
 import { createApp, createBot } from "./bot/index.ts";
 import { handleCryptoPayWebhook } from "./cryptopay.ts";
+import { DIGEST_UTC_HOUR, runDailyDigest } from "./digest.ts";
 import { runHourlyMaintenance } from "./maintenance.ts";
 
 /** Second cron trigger in wrangler.jsonc; a separate invocation with its own subrequest budget. */
@@ -42,6 +43,13 @@ export default {
           console.log("maintenance", JSON.stringify(result)),
         ),
       );
+      if (new Date(controller.scheduledTime).getUTCHours() === DIGEST_UTC_HOUR) {
+        ctx.waitUntil(
+          runDailyDigest(app, controller.scheduledTime)
+            .then((result) => console.log("digest", JSON.stringify(result)))
+            .catch((error: unknown) => console.error("daily digest failed", error)),
+        );
+      }
       return;
     }
     ctx.waitUntil(

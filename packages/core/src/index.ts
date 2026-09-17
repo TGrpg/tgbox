@@ -30,6 +30,7 @@ export {
   runPromotionMaintenance,
   upsertProduct,
 } from "./promotions.ts";
+export { publishEntryToChannel } from "./publish.ts";
 export { type MediaBucket, runRefresh } from "./refresh.ts";
 export { approveSubmissions, previewSubmission, rejectSubmissions } from "./review.ts";
 export {

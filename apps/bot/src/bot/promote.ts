@@ -92,6 +92,10 @@ export function promote(app: App) {
   }
 
   composer.command("promote", showProducts);
+  // Deep link https://t.me/<bot>?start=promote; `startHelp` passes it on.
+  composer.command("start", async (ctx, next) =>
+    ctx.match === "promote" ? showProducts(ctx) : next(),
+  );
   composer.callbackQuery("promote", async (ctx) => {
     await ctx.answerCallbackQuery();
     await showProducts(ctx);

@@ -42,7 +42,7 @@ export function admin(app: App) {
     const bot = (await app.settings()).bot;
     const result = await updateSettings(app.core, {
       key: "bot",
-      value: { ...bot, reviewChatId: String(ctx.chat.id) },
+      value: { ...bot, reviewMode: "chat", reviewChatId: String(ctx.chat.id) },
       actor: actorOf(ctx),
     });
     if (result.ok) await ctx.reply(i18n(ctx).admin.reviewChatSet);

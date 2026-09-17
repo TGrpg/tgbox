@@ -37,15 +37,6 @@ export type BannerOrderSummary = {
   buyerId: number;
 };
 
-export type PublishSummary = {
-  kind: string;
-  category: string;
-  title: string;
-  username: string;
-  description: string;
-  url: string;
-};
-
 /** YYYY-MM-DD HH:mm in UTC */
 export const utcTime = (ms: number) =>
   `${new Date(ms).toISOString().slice(0, 16).replace("T", " ")} UTC`;
@@ -102,7 +93,7 @@ export const zh = {
   expired: "按钮已过期，请重新发送链接开始。",
   submitted: "已提交，等待审核。审核结果会私信通知你。",
   noPermission: "没有权限。",
-  alreadyHandled: "已处理。",
+  alreadyHandled: "已被处理。",
   approvedNotice: (username: string) =>
     `🎉 你提交的 @${username} 已通过审核并收录，网站几分钟后更新。`,
   rejectedNotice: (username: string, reason: string) =>
@@ -203,16 +194,6 @@ export const zh = {
       `❌ 已拒绝（${name}）${refunded ? "，已自动退款" : `，需人工退款 ${amount}`}`,
     orphanPayment: (orderId: number, provider: string, chargeId: string, amount: string) =>
       `⚠️ 收到无效订单 #${orderId} 的付款（${provider} ${chargeId}，${amount}），请人工核对并退款。`,
-    publish: (p: PublishSummary) =>
-      [
-        `🆕 新收录 · ${p.kind} · ${p.category}`,
-        "",
-        p.title,
-        `@${p.username}`,
-        ...(p.description ? ["", p.description] : []),
-        "",
-        p.url,
-      ].join("\n"),
     banUsage: "用法：/ban <用户ID|@用户名> [原因]",
     unbanUsage: "用法：/unban <用户ID|@用户名>",
     banned: (target: string) => `已拉黑 ${target}`,

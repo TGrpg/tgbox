@@ -1,8 +1,9 @@
 import { background, type CoreContext, getSettings } from "@tgbox/core";
 import { createDb, type Db } from "@tgbox/db";
-import type { Settings } from "@tgbox/shared";
+import { type ReviewMode, reviewRecipients, type Settings } from "@tgbox/shared";
 import { type EntrySnapshot, fetchEntrySnapshot, type SnapshotOptions } from "@tgbox/telegram";
 import { Api, type Context } from "grammy";
+import type { Message } from "grammy/types";
 
 export type BotEnv = Env & {
   /** Public bot username (without @); used to match `/command@bot` in groups. */
@@ -29,8 +30,14 @@ export type App = {
   background: (task: () => Promise<unknown>) => Promise<void>;
   /** Admin settings, read at most once per update. */
   settings: () => Promise<Settings>;
-  /** Review chat from the settings, falling back to env ADMIN_CHAT_ID; null when neither is set. */
-  reviewChatId: () => Promise<string | null>;
+  /**
+   * Sends a review message to the review chat, or a private copy to each admin (settings
+   * `reviewMode`, or no review chat configured). Failed copies are logged; returns the sent ones.
+   */
+  sendReview: (
+    text: string,
+    options?: Parameters<Api["sendMessage"]>[2],
+  ) => Promise<{ mode: ReviewMode; sent: Message.TextMessage[] }>;
   /** env ADMIN_IDS (super admins) ∪ settings extraAdminIds */
   isAdmin: (ctx: Context) => Promise<boolean>;
   snapshot: (
@@ -57,6 +64,7 @@ export function createApp(env: BotEnv, deps: BotDeps): App {
       GITHUB_REPO: env.GITHUB_REPO,
       GITHUB_DISPATCH_TOKEN: env.GITHUB_DISPATCH_TOKEN,
       BOT_TOKEN: env.BOT_TOKEN,
+      SITE_URL: env.SITE_URL,
       SETTINGS_KEY: env.SETTINGS_KEY,
     },
     waitUntil: deps.waitUntil,
@@ -69,16 +77,30 @@ export function createApp(env: BotEnv, deps: BotDeps): App {
     return loaded;
   };
 
+  const api = new Api(env.BOT_TOKEN, { fetch: deps.fetch });
+
   return {
     env,
     db,
     core,
-    api: new Api(env.BOT_TOKEN, { fetch: deps.fetch }),
+    api,
     fetch: deps.fetch,
     now,
     background: (task) => background(core, task),
     settings,
-    reviewChatId: async () => (await settings()).bot.reviewChatId ?? (env.ADMIN_CHAT_ID || null),
+    sendReview: async (text, options) => {
+      const { mode, chatIds } = reviewRecipients((await settings()).bot, env);
+      const results = await Promise.allSettled(
+        chatIds.map((chatId) => api.sendMessage(chatId, text, options)),
+      );
+      const sent: Message.TextMessage[] = [];
+      results.forEach((result, index) => {
+        if (result.status === "fulfilled") sent.push(result.value);
+        else console.error("review message failed", chatIds[index], result.reason);
+      });
+      if (chatIds.length === 0) console.error("no review chat or admins configured");
+      return { mode, sent };
+    },
     isAdmin: async (ctx) => {
       if (ctx.from === undefined) return false;
       const id = String(ctx.from.id);

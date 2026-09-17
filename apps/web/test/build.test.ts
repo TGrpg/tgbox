@@ -11,6 +11,7 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { gzipSync } from "node:zlib";
+import { RankingsData } from "@tgbox/shared";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { buildSiteData } from "../../../packages/snapshot/src/index.ts";
 import {
@@ -79,10 +80,20 @@ beforeAll(async () => {
     ...fixtureEntries,
     ...gameChannels,
   ]);
+  const mediaDir = writeFixtureMedia(path.join(work, "media"));
+  // devnotes (3,000 members now) grew over the last week and month; techdaily is flat week over week.
+  writeFileSync(
+    path.join(mediaDir, "history/devnotes.json"),
+    JSON.stringify([
+      { t: "2026-07-28T00:00:00.000Z", members: 2000 },
+      { t: "2026-08-18T00:00:00.000Z", members: 2500 },
+      { t: "2026-08-25T00:00:00.000Z", members: 2900 },
+    ]),
+  );
   const data = await buildSiteData({
     dbPath,
     mediaBaseUrl,
-    mediaDir: writeFixtureMedia(path.join(work, "media")),
+    mediaDir,
     now: fixtureNow,
   });
   // Admin-managed content is layered on here; "aiwatch" is the fixture's promoted entry.
@@ -249,7 +260,7 @@ describe("site build from snapshot data", () => {
     expect(zh).toMatch(/dismissKey = "announcement:[0-9a-z]+"/);
   });
 
-  test("paid banners lead the home and detail promos with an ad badge and sponsored links", () => {
+  test("paid banners lead the home and detail promos, ad-space cards fill the other slots", () => {
     for (const [route, label, cards] of [
       ["", "广告", 5],
       ["en/", "Ad", 5],
@@ -265,9 +276,17 @@ describe("site build from snapshot data", () => {
       expect(links[0]).toContain('target="_blank"');
       expect(promos).toContain(`>${label}<`);
       expect(promos).toContain("Rocket &lt;VPN&gt; &amp; Proxy");
+      for (const slot of links.slice(1)) {
+        expect(slot).toMatch(/href="https:\/\/t\.me\/\w+\?start=promote"/);
+        expect(slot).toContain('rel="noopener"');
+        expect(slot).toContain('target="_blank"');
+      }
     }
-    // Dismissing the lineup is keyed by every card id, the paid banner included.
-    expect(html("")).toMatch(/storageKey = "home-promos:41,enroll-bot,/);
+    expect(html("")).toContain("广告位招租");
+    expect(html("en/")).toContain("Ad space available");
+    // Dismissing the lineup is keyed by the paid banner ids only.
+    expect(html("")).toMatch(/storageKey = "home-promos:41"/);
+    expect(html("")).toContain("data-promos-dismiss");
   });
 
   test("promoted entries lead listings and hot columns with a promoted badge", () => {
@@ -318,6 +337,46 @@ describe("site build from snapshot data", () => {
       );
       expect(latest).toContain('<meta name="robots" content="noindex, follow">');
     }
+  });
+
+  test("rankings page exists in both locales with tabs, kind filter and ranked rows", () => {
+    for (const prefix of ["", "en/"]) {
+      const page = html(`${prefix}rank`);
+      expect(page).toContain(`<link rel="canonical" href="${siteUrl}/${prefix}rank/">`);
+      expect(page).toContain(`<link rel="alternate" hreflang="en" href="${siteUrl}/en/rank/">`);
+      expect(page).toMatch(/<meta name="description" content="[^"]+"/);
+      for (const tab of ["weekly", "monthly", "newest", "active"]) {
+        expect(page).toContain(`data-rank-panel="${tab}"`);
+      }
+      for (const kind of ["all", "channel", "group", "bot"]) {
+        expect(page).toContain(`data-rank-kind="${kind}"`);
+      }
+      const weekly = page.split('data-rank-panel="weekly"')[1]?.split("data-rank-panel=")[0] ?? "";
+      expect(weekly).toMatch(/data-entry-row="devnotes"[\s\S]*?\+100 \(\+3\.4%\)/);
+      expect(weekly).not.toContain('data-entry-row="techdaily"');
+      // Header nav and mobile tab bar link the page.
+      expect(html(prefix)).toContain(`href="/${prefix}rank/"`);
+    }
+    expect(html("rank")).toContain("<title>排行榜");
+    expect(html("")).toMatch(/data-home-rankings[^>]*>|href="\/rank\/"[^>]*data-home-rankings/);
+    const sitemap = readFileSync(path.join(client, "sitemap-pages.xml"), "utf8");
+    expect(sitemap).toContain(`<loc>${siteUrl}/rank/</loc>`);
+    expect(sitemap).toContain(`<loc>${siteUrl}/en/rank/</loc>`);
+  });
+
+  test("rankings JSON validates and ranks growth from member history", () => {
+    const rankings = RankingsData.parse(
+      JSON.parse(readFileSync(path.join(client, "data/rankings.json"), "utf8")),
+    );
+    expect(rankings.weeklyGrowth.map((item) => item.username)).toEqual(["devnotes"]);
+    expect(rankings.weeklyGrowth[0]).toMatchObject({ growth: 100, growthPct: 3.4, members: 3000 });
+    expect(rankings.monthlyGrowth[0]).toMatchObject({
+      username: "devnotes",
+      growth: 1000,
+      growthPct: 50,
+    });
+    expect(rankings.newest).toHaveLength(Math.min(50, approved.length + gameChannels.length));
+    expect(rankings.active[0]?.activityTier).toBe(4);
   });
 
   test("every internal link on every page points to a built file", () => {

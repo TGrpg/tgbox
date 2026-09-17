@@ -1,17 +1,12 @@
 ---
 import Ad from "@tabler/icons/outline/ad-2.svg";
-import Bottle from "@tabler/icons/outline/bottle.svg";
-import Category from "@tabler/icons/outline/category-2.svg";
-import Heart from "@tabler/icons/outline/heart-handshake.svg";
-import Info from "@tabler/icons/outline/info-circle.svg";
-import Robot from "@tabler/icons/outline/robot.svg";
 import Speakerphone from "@tabler/icons/outline/speakerphone.svg";
 import X from "@tabler/icons/outline/x.svg";
 import type { Locale } from "@tgbox/shared";
-import { promos } from "@/data/promos.ts";
 import { ui } from "@/i18n/ui.ts";
 import { homeUi } from "@/i18n/ui-home.ts";
-import { mergePromos, type PromoCard } from "@/lib/promos.ts";
+import { promoSlots, promoteUrl } from "@/lib/promos.ts";
+import { botUsername } from "@/lib/site.ts";
 import { getSiteData } from "@/lib/site-data.ts";
 
 interface Props {
@@ -19,21 +14,12 @@ interface Props {
 }
 const { locale } = Astro.props;
 const strings = homeUi(locale);
-const icons = {
-  robot: Robot,
-  bottle: Bottle,
-  category: Category,
-  info: Info,
-  heart: Heart,
-  ad: Speakerphone,
-} satisfies Record<PromoCard["icon"], unknown>;
-const adLabel = ui(locale).entry.ad;
-const items = mergePromos(getSiteData().promos, promos, locale, 5).map((promo) => ({
-  ...promo,
-  Icon: icons[promo.icon],
-}));
-// New promo lineups (including each paid banner id) get a new key, so an earlier dismissal doesn't hide them.
-const storageKey = `home-promos:${items.map((promo) => promo.id).join(",")}`;
+const { entry, adSlot } = ui(locale);
+const items = promoSlots(getSiteData().promos, 5, 2);
+const paidIds = items.flatMap((promo) => (promo.type === "paid" ? [promo.id] : []));
+// Only real banners can be dismissed; each new paid lineup gets a new key so an earlier dismissal doesn't hide it.
+const storageKey = paidIds.length > 0 ? `home-promos:${paidIds.join(",")}` : "";
+const promoteHref = promoteUrl(botUsername);
 ---
 
 {items.length > 0 && (
@@ -43,7 +29,7 @@ const storageKey = `home-promos:${items.map((promo) => promo.id).join(",")}`;
       class="mx-auto max-w-7xl px-4 pt-2 sm:px-6"
     >
       {/* Hides the section before its cards paint; runs before the button is parsed, so it listens on the section. */}
-      <script is:inline define:vars={{ storageKey }}>
+      {storageKey && <script is:inline define:vars={{ storageKey }}>
       (() => {
         const section = document.currentScript?.closest("[data-home-promos]");
         if (!section) return;
@@ -58,48 +44,85 @@ const storageKey = `home-promos:${items.map((promo) => promo.id).join(",")}`;
           } catch {}
         });
       })();
-      </script>
+      </script>}
       <div class="mb-3 flex items-center justify-between">
         <span class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-2 py-0.5 text-xs font-medium text-muted-foreground shadow-card">
           <Ad class="size-3.5" aria-hidden="true" />
           {strings.sponsored}
         </span>
-        <button
+        {storageKey && <button
           type="button"
           data-promos-dismiss
           aria-label={strings.dismissPromos}
           class="inline-grid size-8 place-items-center rounded-full border border-border bg-card text-muted-foreground shadow-card transition-colors outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-outline/40"
         >
           <X class="size-4" aria-hidden="true" />
-        </button>
+        </button>}
       </div>
-      <ul class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
+      <ul
+        class:list={[
+          "grid gap-3 sm:gap-4",
+          storageKey ? "grid-cols-2 lg:grid-cols-5" : "grid-cols-1 sm:grid-cols-2",
+        ]}
+      >
         {items.map((promo, index) => (
-          <li data-reveal class:list={["min-w-0", index === items.length - 1 && items.length % 2 === 1 && "home-promo-wide col-span-2 lg:col-span-1"]}>
-            <a
-              href={promo.href}
-              data-hover-lift
-              data-press
-              data-promo-sponsored={promo.sponsored ? "" : undefined}
-              rel={promo.external ? "sponsored noopener" : undefined}
-              target={promo.external ? "_blank" : undefined}
-              class="home-promo group relative flex aspect-[16/10] flex-col justify-end overflow-hidden rounded-2xl p-3 text-white shadow-card outline-none focus-visible:ring-4 focus-visible:ring-outline/50 sm:p-4"
-              style={`background:${promo.background}`}
-            >
-              <promo.Icon
-                class="absolute -top-3 -right-3 size-24 rotate-12 opacity-25 transition-transform duration-500 group-hover:rotate-0 group-hover:scale-110 sm:size-28"
-                aria-hidden="true"
-              />
-              <span class="absolute top-2.5 left-2.5 rounded-md bg-black/30 px-1.5 py-0.5 text-[0.7rem] font-semibold backdrop-blur-sm sm:top-3 sm:left-3">
-                {promo.badge ?? adLabel}
-              </span>
-              <span class="relative line-clamp-2 text-[0.95rem] leading-tight font-bold [overflow-wrap:anywhere] drop-shadow-sm sm:text-lg" dir="auto">
-                {promo.title}
-              </span>
-              <span class="relative mt-0.5 truncate text-xs text-white/85 sm:text-[0.8rem]" dir="auto">
-                {promo.subtitle}
-              </span>
-            </a>
+          <li
+            data-reveal
+            class:list={[
+              "min-w-0",
+              storageKey && index === items.length - 1 && items.length % 2 === 1 && "home-promo-wide col-span-2 lg:col-span-1",
+            ]}
+          >
+            {promo.type === "paid" ? (
+              <a
+                href={promo.href}
+                data-hover-lift
+                data-press
+                data-promo-sponsored
+                rel="sponsored noopener"
+                target="_blank"
+                class="home-promo group relative flex aspect-[16/10] flex-col justify-end overflow-hidden rounded-2xl p-3 text-white shadow-card outline-none focus-visible:ring-4 focus-visible:ring-outline/50 sm:p-4"
+                style={`background:${promo.background}`}
+              >
+                <Speakerphone
+                  class="absolute -top-3 -right-3 size-24 rotate-12 opacity-25 transition-transform duration-500 group-hover:rotate-0 group-hover:scale-110 sm:size-28"
+                  aria-hidden="true"
+                />
+                <span class="absolute top-2.5 left-2.5 rounded-md bg-black/30 px-1.5 py-0.5 text-[0.7rem] font-semibold backdrop-blur-sm sm:top-3 sm:left-3">
+                  {entry.ad}
+                </span>
+                <span class="relative line-clamp-2 text-[0.95rem] leading-tight font-bold [overflow-wrap:anywhere] drop-shadow-sm sm:text-lg" dir="auto">
+                  {promo.title}
+                </span>
+                <span class="relative mt-0.5 truncate text-xs text-white/85 sm:text-[0.8rem]" dir="auto">
+                  {promo.subtitle}
+                </span>
+              </a>
+            ) : (
+              <a
+                href={promoteHref}
+                data-hover-lift
+                data-press
+                data-promo-slot
+                rel="noopener"
+                target="_blank"
+                class:list={[
+                  "ad-slot group relative flex flex-col overflow-hidden rounded-2xl border-2 border-dashed border-primary/30 p-3 text-foreground outline-none transition-colors hover:border-primary/60 focus-visible:ring-4 focus-visible:ring-outline/50 sm:p-4",
+                  storageKey ? "aspect-[16/10] justify-end" : "min-h-24 justify-center pr-24 sm:min-h-28",
+                ]}
+              >
+                <Speakerphone
+                  class="absolute -top-2 -right-2 size-20 rotate-12 text-primary opacity-20 transition-transform duration-500 group-hover:rotate-0 group-hover:scale-110 sm:size-24"
+                  aria-hidden="true"
+                />
+                <span class="relative line-clamp-2 text-[0.95rem] leading-tight font-bold text-primary-accent sm:text-lg">
+                  {adSlot.title}
+                </span>
+                <span class="relative mt-0.5 line-clamp-2 text-xs text-muted-foreground sm:text-[0.8rem]">
+                  {adSlot.subtitle}
+                </span>
+              </a>
+            )}
           </li>
         ))}
       </ul>
@@ -109,9 +132,16 @@ const storageKey = `home-promos:${items.map((promo) => promo.id).join(",")}`;
 <style>
 /* The odd last card spans both mobile columns; keep it banner-height instead of doubling. */
 @media (width < 64rem) {
-  .home-promo-wide .home-promo {
+  .home-promo-wide :is(.home-promo, .ad-slot) {
     aspect-ratio: 32 / 9;
   }
+}
+.ad-slot {
+  background: linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--primary) 7%, transparent),
+    transparent 70%
+  );
 }
 /* Grain + bottom scrim keep overlay text readable on any gradient. */
 .home-promo::before {

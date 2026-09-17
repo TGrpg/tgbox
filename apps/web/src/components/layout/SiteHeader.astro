@@ -41,7 +41,7 @@ const randomLabel = t(locale, "site.random");
           class="pointer-events-none absolute top-1 left-0 hidden h-[calc(100%-0.5rem)] rounded-full bg-primary-soft"
         ></span>
         {items.map((item) => (
-            <li class="relative">
+            <li class:list={["relative", item.secondary && "hidden lg:block"]}>
               <a
                 href={item.href}
                 aria-current={item.active ? "page" : undefined}

@@ -1,0 +1,192 @@
+---
+import Trophy from "@tabler/icons/outline/trophy.svg";
+import { entryKinds, type Locale, type RankItem, t } from "@tgbox/shared";
+import EntryListRow from "@/components/EntryListRow.astro";
+import KindPageHeader from "@/components/kind/KindPageHeader.astro";
+import { localizePath } from "@/i18n/locale.ts";
+import { kindTitles, ui } from "@/i18n/ui.ts";
+import { rankUi } from "@/i18n/ui-rank.ts";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { fill, formatDate, formatNumber } from "@/lib/format.ts";
+import { buildRankings, formatGrowth } from "@/lib/rankings.ts";
+import { findEntries, getSiteData } from "@/lib/site-data.ts";
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const strings = rankUi(locale);
+const { entry: entryStrings, detail } = ui(locale);
+const data = getSiteData();
+const rankings = buildRankings(data, new Date(data.generatedAt));
+const titles = kindTitles(locale);
+
+type TabKey = keyof typeof strings.tabs;
+const tabs: { key: TabKey; items: RankItem[]; growth: boolean }[] = [
+  { key: "weekly", items: rankings.weeklyGrowth, growth: true },
+  { key: "monthly", items: rankings.monthlyGrowth, growth: true },
+  { key: "newest", items: rankings.newest, growth: false },
+  { key: "active", items: rankings.active, growth: false },
+];
+const kinds = [
+  { key: "all", label: strings.all },
+  ...entryKinds.map((kind) => ({ key: kind, label: titles[kind] })),
+];
+// RankItem carries only what the JSON consumers need; avatar, verified and promoted come from the entry.
+const rows = (items: RankItem[]) =>
+  items.flatMap((item) => findEntries([item.username]).map((entry) => ({ item, entry })));
+---
+
+<BaseLayout locale={locale} title={strings.title} description={strings.description}>
+  <div class="mx-auto max-w-3xl px-4 pt-6 pb-28 sm:px-6 sm:pt-8 md:pb-16">
+    <KindPageHeader
+      locale={locale}
+      title={strings.heading}
+      description={strings.description}
+      breadcrumbs={[{ label: t(locale, "site.home"), href: localizePath("/", locale) }, { label: strings.title }]}
+    >
+      <Trophy slot="icon" class="size-7 sm:size-8" aria-hidden="true" />
+      <p class="mt-2 text-xs text-muted-foreground">
+        {fill(strings.updated, { date: formatDate(rankings.generatedAt, locale) })}
+      </p>
+    </KindPageHeader>
+
+    <div data-rankings class="mt-6">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div
+          role="tablist"
+          aria-label={strings.tabsLabel}
+          class="flex overflow-x-auto rounded-full border border-border bg-muted/60 p-1"
+        >
+          {tabs.map((tab, index) => (
+            <button
+              type="button"
+              role="tab"
+              id={`rank-tab-${tab.key}`}
+              aria-controls={`rank-panel-${tab.key}`}
+              aria-selected={index === 0 ? "true" : "false"}
+              tabindex={index === 0 ? undefined : "-1"}
+              data-rank-tab={tab.key}
+              data-press
+              class="h-8 flex-1 rounded-full px-3.5 text-sm whitespace-nowrap text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-outline/40 aria-selected:bg-card aria-selected:font-semibold aria-selected:text-primary-accent aria-selected:shadow-card"
+            >
+              {strings.tabs[tab.key]}
+            </button>
+          ))}
+        </div>
+        <fieldset class="flex gap-1.5">
+          <legend class="sr-only">{strings.kindsLabel}</legend>
+          {kinds.map((kind, index) => (
+            <button
+              type="button"
+              aria-pressed={index === 0 ? "true" : "false"}
+              data-rank-kind={kind.key}
+              data-press
+              class="h-8 rounded-full border border-border px-3 text-[0.8rem] whitespace-nowrap text-muted-foreground transition-colors outline-none hover:border-primary/40 hover:text-primary-accent focus-visible:ring-3 focus-visible:ring-outline/40 aria-pressed:border-primary/40 aria-pressed:bg-primary-soft aria-pressed:font-semibold aria-pressed:text-primary-soft-foreground"
+            >
+              {kind.label}
+            </button>
+          ))}
+        </fieldset>
+      </div>
+
+      {tabs.map((tab, index) => (
+        <section
+          role="tabpanel"
+          id={`rank-panel-${tab.key}`}
+          aria-labelledby={`rank-tab-${tab.key}`}
+          data-rank-panel={tab.key}
+          data-active={index === 0 ? "" : undefined}
+          class="rank-panel mt-4 rounded-2xl border border-border bg-card p-2 shadow-card sm:p-3"
+        >
+          <h2 class="sr-only">{strings.tabs[tab.key]}</h2>
+          <ol class="flex flex-col">
+            {rows(tab.items).map(({ item, entry }, rank) => (
+              <li data-rank-item data-kind={item.kind} class="flex items-center gap-1">
+                <span data-rank class="rank-number" data-top={rank < 3 ? String(rank + 1) : undefined}>
+                  {rank + 1}
+                </span>
+                <div class="min-w-0 flex-1">
+                  <EntryListRow entry={entry} locale={locale}>
+                    <span slot="meta" class="flex shrink-0 flex-col items-end text-xs leading-tight tabular-nums">
+                      {tab.growth && item.growth !== null ? (
+                        <>
+                          <span class="font-semibold text-success-foreground" title={strings.growthTitle}>
+                            {formatGrowth(item.growth, item.growthPct, locale)}
+                          </span>
+                          {item.members !== null && (
+                            <span class="text-muted-foreground" title={entryStrings.members[item.kind]}>
+                              {formatNumber(item.members, locale, { compact: true })}
+                            </span>
+                          )}
+                        </>
+                      ) : tab.key === "newest" ? (
+                        <time datetime={item.listedAt} class="text-muted-foreground">
+                          {formatDate(item.listedAt, locale)}
+                        </time>
+                      ) : (
+                        <>
+                          {item.activityTier !== null && (
+                            <span class="font-medium text-primary-accent" title={detail.activity}>
+                              {detail.activityTier[item.activityTier]}
+                            </span>
+                          )}
+                          {item.members !== null && (
+                            <span class="text-muted-foreground" title={entryStrings.members[item.kind]}>
+                              {formatNumber(item.members, locale, { compact: true })}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </span>
+                  </EntryListRow>
+                </div>
+              </li>
+            ))}
+          </ol>
+          <p
+            data-rank-empty
+            data-kind-empty={strings.kindEmpty}
+            hidden={tab.items.length > 0}
+            class="rounded-xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground"
+          >
+            {tab.growth ? strings.growthEmpty : strings.empty}
+          </p>
+        </section>
+      ))}
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+import "@/scripts/rankings.ts";
+</script>
+
+<style>
+/* Without JS every list stays visible; with JS only the selected tab's panel shows. */
+:global(html.js) .rank-panel:not([data-active]) {
+  display: none;
+}
+.rank-number {
+  display: inline-grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 1.75rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted-foreground);
+  opacity: 0.7;
+}
+.rank-number[data-top] {
+  opacity: 1;
+  font-size: 0.95rem;
+  color: var(--brand-dot);
+}
+.rank-number[data-top="1"] {
+  color: #e8a400;
+}
+.rank-number[data-top="3"] {
+  color: #c2410c;
+}
+</style>

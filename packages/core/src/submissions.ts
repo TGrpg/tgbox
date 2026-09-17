@@ -9,7 +9,8 @@ import {
 import { fetchEntrySnapshot } from "@tgbox/telegram";
 import { audit } from "./audit.ts";
 import { markDirtyAndDispatch } from "./build.ts";
-import type { Actor, CoreContext } from "./context.ts";
+import { type Actor, background, type CoreContext } from "./context.ts";
+import { publishEntryToChannel } from "./publish.ts";
 
 export const rejectReasons = [
   "content",
@@ -48,7 +49,10 @@ export async function approveSubmission(ctx: CoreContext, input: { id: number; a
   return approved;
 }
 
-/** Fetches the t.me profile and lists an approved submission; marks the site dirty. */
+/**
+ * Fetches the t.me profile and lists an approved submission; marks the site dirty. A newly created
+ * entry is announced in the publish channel in the background (bot and admin approvals alike).
+ */
 export async function listApprovedSubmission(ctx: CoreContext, submission: Submission) {
   const now = ctx.now();
   const snap = await fetchEntrySnapshot(submission.username, {
@@ -86,6 +90,9 @@ export async function listApprovedSubmission(ctx: CoreContext, submission: Submi
     }));
   }
   await markDirtyAndDispatch(ctx);
+  if (!existing) {
+    await background(ctx, () => publishEntryToChannel(ctx, { username: submission.username }));
+  }
   return { entryId, created: !existing };
 }
 

@@ -20,8 +20,10 @@ export type CoreContext = {
     /** `owner/repo`; empty disables build dispatch (local dev). */
     GITHUB_REPO: string;
     GITHUB_DISPATCH_TOKEN: string;
-    /** Needed for Bot API calls made by core (Stars refunds). */
+    /** Needed for Bot API calls made by core (Stars refunds, channel posts). */
     BOT_TOKEN?: string;
+    /** Public site origin for links in channel posts; absent disables publishing. */
+    SITE_URL?: string;
     /** Encrypts credentials entered in the admin; empty/absent makes them unavailable. */
     SETTINGS_KEY?: string;
   };

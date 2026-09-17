@@ -316,6 +316,28 @@ describe("liveness", () => {
     expect(sent.map((call) => JSON.parse(call.body ?? "{}").chat_id)).toEqual(["-100777"]);
   });
 
+  test("in admins review mode the hidden-entry summary is a private copy to each admin", async () => {
+    await upsertSetting(
+      db,
+      "bot",
+      JSON.stringify({ ...settingsDefaults.bot, reviewMode: "admins", extraAdminIds: ["902"] }),
+      T0,
+    );
+    await addEntry("blocked", { kind: "group" });
+    const tg = fakeTelegram({ blocked: "banned" });
+    const env2 = { ...adminEnv, ADMIN_IDS: "900,901" };
+    await runRefresh(env2, T0, tg);
+    const run = await runRefresh(env2, T0 + 2 * MINUTE, tg);
+
+    const sent = tg.calls.filter((call) => call.url.includes("api.telegram.org"));
+    expect(sent.map((call) => JSON.parse(call.body ?? "{}").chat_id)).toEqual([
+      "900",
+      "901",
+      "902",
+    ]);
+    expect(run.subrequests).toBeLessThanOrEqual(50);
+  });
+
   test("guard: with 2+ definitive failures in one batch, failures are counted but nothing is hidden", async () => {
     await addEntry("b1", { kind: "group" });
     await addEntry("b2", { kind: "group" });

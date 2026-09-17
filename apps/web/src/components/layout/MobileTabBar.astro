@@ -17,7 +17,7 @@ const { locale, path } = Astro.props;
   <ul
     class="mx-auto grid max-w-md grid-cols-5 rounded-[1.4rem] border border-border bg-glass p-1.5 shadow-float backdrop-blur-xl backdrop-saturate-150"
   >
-    {navItems(locale, path).map((item) => (
+    {navItems(locale, path).filter((item) => !item.secondary).map((item) => (
         <li>
           <a
             href={item.href}

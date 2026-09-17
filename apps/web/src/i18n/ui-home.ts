@@ -20,6 +20,7 @@ const zh = {
   ctaButton: "打开收录机器人",
   ctaGuide: "查看收录说明",
   more: "查看全部",
+  rankings: "查看排行榜",
 };
 
 const en: typeof zh = {
@@ -39,6 +40,7 @@ const en: typeof zh = {
   ctaButton: "Open the submit bot",
   ctaGuide: "How submission works",
   more: "View all",
+  rankings: "See the rankings",
 };
 
 const dictionaries: Record<Locale, typeof zh> = { zh, en };

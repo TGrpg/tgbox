@@ -143,4 +143,14 @@ describe("settings-driven bot", () => {
     expect(post?.payload.text).toContain("@publish_me");
     expect(post?.payload.text).toContain("https://tgbox.test/detail/publish_me/");
   });
+
+  test("deep links /start promote and /start submit open those flows", async () => {
+    await h.message(owner, "/start submit");
+    expect(h.lastText()).toContain("请发送要提交的频道");
+
+    await h.message(owner, "/start promote");
+    const products = h.lastButtons().filter((b) => b.callback_data?.startsWith("pp:"));
+    expect(products.length).toBeGreaterThan(0);
+    expect(h.calls("sendMessage").some((c) => String(c.payload.text).includes("欢迎"))).toBe(false);
+  });
 });

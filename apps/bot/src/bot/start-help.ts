@@ -7,7 +7,10 @@ export function startHelp(app: App) {
   const root = new Composer<Context>();
   const composer = root.chatType("private");
 
-  composer.command("start", async (ctx) => {
+  composer.command("start", async (ctx, next) => {
+    // Deep links: ?start=submit asks for a link here, ?start=promote is handled by `promote`.
+    if (ctx.match === "promote") return next();
+    if (ctx.match === "submit") return askForLink(ctx);
     const m = i18n(ctx);
     const custom = (await app.settings()).bot.welcome[localeOf(ctx)];
     await ctx.reply(custom || m.welcome, {

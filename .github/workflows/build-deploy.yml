@@ -5,6 +5,8 @@ on:
     types: [content-changed]
   schedule:
     - cron: "0 */6 * * *"
+    # Daily forced build so rankings stay current before the 09:00 (UTC+8) channel digest.
+    - cron: "30 0 * * *"
   workflow_dispatch:
 
 # Never cancel a running deploy; queued runs pick up whatever is dirty by then.
@@ -50,7 +52,7 @@ jobs:
             --command "SELECT value FROM site_state WHERE key = 'dirty_since'" \
             | jq -r '.[0].results[0].value // empty')
           echo "dirty_since=${value:-none}"
-          if [ -n "$value" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          if [ -n "$value" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "${{ github.event.schedule }}" = "30 0 * * *" ]; then
             echo "build=true" >> "$GITHUB_OUTPUT"
           else
             echo "Site is clean; nothing to build."

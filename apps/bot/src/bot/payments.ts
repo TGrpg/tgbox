@@ -11,6 +11,7 @@ import type { Locale, PaymentCurrency, PaymentProvider } from "@tgbox/shared";
 import { Composer, type Context, InlineKeyboard } from "grammy";
 import type { App } from "./app.ts";
 import { i18n, localeOf, messages } from "./i18n/index.ts";
+import { answerAlreadyHandled } from "./review.ts";
 
 type Messages = ReturnType<typeof messages>;
 
@@ -81,10 +82,7 @@ async function handleOrphanPayment(app: App, input: Parameters<typeof recordPaym
       return;
     }
   }
-  const chatId = await app.reviewChatId();
-  if (!chatId) return;
-  await app.api.sendMessage(
-    chatId,
+  await app.sendReview(
     messages("zh").admin.orphanPayment(
       input.orderId,
       input.provider,
@@ -95,15 +93,13 @@ async function handleOrphanPayment(app: App, input: Parameters<typeof recordPaym
 }
 
 async function sendBannerReview(app: App, order: Order) {
-  const chatId = await app.reviewChatId();
-  if (!chatId || !order.banner) {
-    console.error("no review chat for banner order", order.id);
+  if (!order.banner) {
+    console.error("banner order without content", order.id);
     return;
   }
   const product = await getProduct(app.db, order.productId);
   const m = messages("zh").admin;
-  await app.api.sendMessage(
-    chatId,
+  await app.sendReview(
     m.bannerReview({
       id: order.id,
       product: product?.nameZh ?? String(order.productId),
@@ -182,7 +178,7 @@ export function payments(app: App) {
       actor: tgActor(ctx.from.id),
     });
     if (!order) {
-      await ctx.answerCallbackQuery({ text: i18n(ctx).alreadyHandled, show_alert: true });
+      await answerAlreadyHandled(ctx);
       return;
     }
     const endsAt = order.endsAt ?? app.now();
@@ -202,7 +198,7 @@ export function payments(app: App) {
       actor: tgActor(ctx.from.id),
     });
     if (!result) {
-      await ctx.answerCallbackQuery({ text: i18n(ctx).alreadyHandled, show_alert: true });
+      await answerAlreadyHandled(ctx);
       return;
     }
     const { order, refunded } = result;

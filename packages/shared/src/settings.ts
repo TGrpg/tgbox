@@ -7,11 +7,18 @@ import { z } from "zod";
 
 const chatId = z.string().regex(/^-?\d+$/);
 
+export const ReviewMode = z.enum(["chat", "admins"]);
+export type ReviewMode = z.infer<typeof ReviewMode>;
+
 export const BotSettings = z.object({
+  /** "chat": the review chat; "admins": a private copy to every admin. */
+  reviewMode: ReviewMode,
   /** null → env ADMIN_CHAT_ID */
   reviewChatId: chatId.nullable(),
   /** Approved entries are announced here; null = don't publish. */
   publishChannelId: chatId.nullable(),
+  /** Daily 09:00 (Beijing) rankings digest in the publish channel. */
+  dailyDigest: z.boolean(),
   /** Union with env ADMIN_IDS (super admins). */
   extraAdminIds: z.array(z.string().regex(/^\d+$/)),
   submissionsOpen: z.boolean(),
@@ -47,8 +54,10 @@ export type Settings = { bot: BotSettings; site: SiteSettings; payments: Payment
 
 export const settingsDefaults: Settings = {
   bot: {
+    reviewMode: "chat",
     reviewChatId: null,
     publishChannelId: null,
+    dailyDigest: true,
     extraAdminIds: [],
     submissionsOpen: true,
     submitDailyLimit: 5,
@@ -58,6 +67,30 @@ export const settingsDefaults: Settings = {
   site: { announcement: { enabled: false, zh: "", en: "", href: null } },
   payments: { starsEnabled: true, cryptoPayEnabled: false, cryptoPayNetwork: "mainnet" },
 };
+
+/** Private review copies are capped so one notice stays well inside the subrequest budget. */
+export const MAX_REVIEW_RECIPIENTS = 10;
+
+/**
+ * Chat ids that receive review messages. "chat" mode uses the review chat (settings, then env
+ * ADMIN_CHAT_ID) and falls back to private copies when neither is set; "admins" mode sends a copy
+ * to each admin (env ADMIN_IDS ∪ extraAdminIds), capped at MAX_REVIEW_RECIPIENTS.
+ */
+export function reviewRecipients(
+  bot: Pick<BotSettings, "reviewMode" | "reviewChatId" | "extraAdminIds">,
+  env: { ADMIN_IDS?: string; ADMIN_CHAT_ID?: string },
+): { mode: ReviewMode; chatIds: string[] } {
+  const chat = bot.reviewChatId ?? (env.ADMIN_CHAT_ID || null);
+  if (bot.reviewMode === "chat" && chat) return { mode: "chat", chatIds: [chat] };
+  const admins = new Set([
+    ...(env.ADMIN_IDS ?? "")
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean),
+    ...bot.extraAdminIds,
+  ]);
+  return { mode: "admins", chatIds: [...admins].slice(0, MAX_REVIEW_RECIPIENTS) };
+}
 
 /* -------------------------------------------------------------- promotions */
 

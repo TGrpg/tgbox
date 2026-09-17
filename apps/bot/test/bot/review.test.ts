@@ -86,7 +86,7 @@ describe("reviewing submissions", () => {
       h.callback(ADMIN_2, `ra:${submissionId}`, adminMessage),
     ]);
     const answers = h.calls("answerCallbackQuery").map((c) => c.payload.text);
-    expect(answers.filter((text) => text === "已处理。")).toHaveLength(1);
+    expect(answers.filter((text) => text === "已被处理。")).toHaveLength(1);
     expect(h.dispatches).toHaveLength(1);
     expect(h.calls("sendMessage").filter((c) => c.payload.chat_id === submitter)).toHaveLength(1);
   });

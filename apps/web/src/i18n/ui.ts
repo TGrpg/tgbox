@@ -4,6 +4,7 @@ import { type EntryKind, type Locale, t } from "@tgbox/shared";
 const zh = {
   nav: {
     about: "关于",
+    rank: "排行",
     primary: "主导航",
     skipToContent: "跳到正文",
     backToTop: "回到顶部",
@@ -98,6 +99,10 @@ const zh = {
     verified: "已认证",
     noDescription: "暂无简介",
   },
+  adSlot: {
+    title: "广告位招租",
+    subtitle: "在此展示你的频道 · 按周购买",
+  },
   pagination: {
     label: "分页",
     previous: "上一页",
@@ -158,6 +163,7 @@ const zh = {
 const en: typeof zh = {
   nav: {
     about: "About",
+    rank: "Rankings",
     primary: "Main navigation",
     skipToContent: "Skip to content",
     backToTop: "Back to top",
@@ -251,6 +257,10 @@ const en: typeof zh = {
     ad: "Ad",
     verified: "Verified",
     noDescription: "No description",
+  },
+  adSlot: {
+    title: "Ad space available",
+    subtitle: "Feature your channel here · weekly",
   },
   pagination: {
     label: "Pagination",

@@ -359,28 +359,29 @@ export function submit(app: App) {
       }
 
       // Queue the admin notice before touching the user's message: if answering or editing fails
-      // (query too old, message gone), the pending submission must still reach the review group.
-      const adminChatId = await app.reviewChatId();
-      if (adminChatId) {
-        const categoryName = (await categoriesFor(draft.kind)).find(
-          (category) => category.id === draft.categoryId,
-        )?.nameZh;
-        const text = messages("zh").admin.newSubmission({
-          ...draft,
-          category: categoryName ?? "",
-          tags: selectedTags.map((tag) => tag.nameZh),
-          submitter: [ctx.from.first_name, ctx.from.last_name].filter(Boolean).join(" "),
-          submitterUsername: ctx.from.username ?? null,
-          submitterId: userId,
+      // (query too old, message gone), the pending submission must still reach the reviewers.
+      const categoryName = (await categoriesFor(draft.kind)).find(
+        (category) => category.id === draft.categoryId,
+      )?.nameZh;
+      const text = messages("zh").admin.newSubmission({
+        ...draft,
+        category: categoryName ?? "",
+        tags: selectedTags.map((tag) => tag.nameZh),
+        submitter: [ctx.from.first_name, ctx.from.last_name].filter(Boolean).join(" "),
+        submitterUsername: ctx.from.username ?? null,
+        submitterId: userId,
+      });
+      await app.background(async () => {
+        const { mode, sent } = await app.sendReview(text, {
+          link_preview_options: { is_disabled: true },
+          reply_markup: reviewKeyboard(submissionId),
         });
-        await app.background(async () => {
-          const sent = await ctx.api.sendMessage(adminChatId, text, {
-            link_preview_options: { is_disabled: true },
-            reply_markup: reviewKeyboard(submissionId),
-          });
-          await setSubmissionAdminMessage(app.db, submissionId, sent.message_id);
-        });
-      }
+        // Private copies have one message per admin, so only the review chat message is recorded.
+        const [message] = sent;
+        if (mode === "chat" && message) {
+          await setSubmissionAdminMessage(app.db, submissionId, message.message_id);
+        }
+      });
       await ctx.answerCallbackQuery();
       await ctx.editMessageText(m.submitted);
       return;

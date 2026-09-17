@@ -40,12 +40,15 @@ const strings = ui(locale).entry;
         >{strings.promoted}</span>
       )}
   </span>
-  {entry.members !== null && (
-      <span
-        class="shrink-0 text-xs text-muted-foreground tabular-nums"
-        title={strings.members[entry.kind]}
-      >
-        {formatNumber(entry.members, locale, { compact: true })}
-      </span>
-    )}
+  {/* "meta" replaces the member count at the row end (e.g. growth on the rankings page). */}
+  <slot name="meta">
+    {entry.members !== null && (
+        <span
+          class="shrink-0 text-xs text-muted-foreground tabular-nums"
+          title={strings.members[entry.kind]}
+        >
+          {formatNumber(entry.members, locale, { compact: true })}
+        </span>
+      )}
+  </slot>
 </a>

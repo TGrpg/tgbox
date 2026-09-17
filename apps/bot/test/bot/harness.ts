@@ -118,6 +118,9 @@ export async function startHarness() {
   let tmeGate: Promise<void> | null = null;
   // While true, the Bot API rejects every call like it does for a user who blocked the bot.
   let telegramRejects = false;
+  // The static site (SITE_URL): requested paths and the response for them.
+  const site: string[] = [];
+  let siteResponse: () => Response = () => new Response("Not found", { status: 404 });
 
   vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(input instanceof Request ? input.url : input);
@@ -158,6 +161,10 @@ export async function startHarness() {
         ok: true,
         result: { invoice_id: 777, bot_invoice_url: "https://t.me/CryptoTestnetBot?start=IVtest" },
       });
+    }
+    if (url.hostname === "tgbox.test") {
+      site.push(url.pathname);
+      return siteResponse();
     }
     if (url.hostname === "api.github.com") {
       dispatches.push({ url: url.href, body });
@@ -210,6 +217,11 @@ export async function startHarness() {
     dispatches,
     tme,
     cryptoPay,
+    site,
+    /** Serves the static site (SITE_URL) responses. */
+    serveSite: (respond: () => Response) => {
+      siteResponse = respond;
+    },
     /** Delivers a raw Telegram update (payments, chat member changes…). */
     update: (update: Record<string, unknown>) => send(update),
     /** POSTs a Crypto Pay webhook body with the given signature header. */
@@ -249,6 +261,7 @@ export async function startHarness() {
       dispatches.length = 0;
       tme.length = 0;
       cryptoPay.length = 0;
+      site.length = 0;
     },
     message: (from: From, text: string, chat?: Record<string, unknown>) =>
       send(message(from, text, chat)),

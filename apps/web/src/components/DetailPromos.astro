@@ -1,32 +1,21 @@
 ---
 import Ad from "@tabler/icons/outline/ad-2.svg";
-import Bottle from "@tabler/icons/outline/bottle.svg";
-import Category from "@tabler/icons/outline/category.svg";
-import Heart from "@tabler/icons/outline/heart.svg";
-import Info from "@tabler/icons/outline/info-circle.svg";
-import Robot from "@tabler/icons/outline/robot.svg";
 import Speakerphone from "@tabler/icons/outline/speakerphone.svg";
 import type { Locale } from "@tgbox/shared";
-import { promos } from "@/data/promos.ts";
 import { ui } from "@/i18n/ui.ts";
 import { detailUi } from "@/i18n/ui-detail.ts";
-import { mergePromos, type PromoCard } from "@/lib/promos.ts";
+import { promoSlots, promoteUrl } from "@/lib/promos.ts";
+import { botUsername } from "@/lib/site.ts";
 import { getSiteData } from "@/lib/site-data.ts";
 
 interface Props {
   locale: Locale;
 }
 const { locale } = Astro.props;
-const icons = {
-  robot: Robot,
-  bottle: Bottle,
-  category: Category,
-  info: Info,
-  heart: Heart,
-  ad: Speakerphone,
-} satisfies Record<PromoCard["icon"], unknown>;
-const adLabel = ui(locale).entry.ad;
-const items = mergePromos(getSiteData().promos, promos, locale, 3);
+const { entry, adSlot } = ui(locale);
+const items = promoSlots(getSiteData().promos, 3, 1);
+const onlyPlaceholder = items.length === 1 && items[0]?.type === "placeholder";
+const promoteHref = promoteUrl(botUsername);
 ---
 
 {items.length > 0 && (
@@ -35,35 +24,72 @@ const items = mergePromos(getSiteData().promos, promos, locale, 3);
         <Ad class="size-4" aria-hidden="true" />
         {detailUi(locale).promo}
       </p>
-      <ul class="mt-2.5 grid grid-cols-3 gap-2.5">
-        {items.map((promo) => {
-          const Icon = icons[promo.icon];
-          return (
-            <li>
+      <ul class:list={["mt-2.5 grid gap-2.5", onlyPlaceholder ? "grid-cols-1" : "grid-cols-3"]}>
+        {items.map((promo) => (
+          <li class="min-w-0">
+            {promo.type === "paid" ? (
               <a
                 href={promo.href}
                 data-press
-                data-promo-sponsored={promo.sponsored ? "" : undefined}
-                rel={promo.external ? "sponsored noopener" : undefined}
-                target={promo.external ? "_blank" : undefined}
+                data-promo-sponsored
+                rel="sponsored noopener"
+                target="_blank"
                 class="group relative flex h-20 flex-col justify-end overflow-hidden rounded-xl p-2.5 text-white outline-none focus-visible:ring-3 focus-visible:ring-outline/50 sm:h-24 sm:p-3"
                 style={`background:${promo.background}`}
               >
-                <Icon
+                <Speakerphone
                   class="absolute -top-2 -right-2 size-16 opacity-25 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6 sm:size-20"
                   aria-hidden="true"
                 />
                 <span class="absolute top-2 left-2 rounded-md bg-black/25 px-1.5 text-[0.65rem] font-medium backdrop-blur-sm">
-                  {promo.badge ?? adLabel}
+                  {entry.ad}
                 </span>
                 <span class="relative truncate text-sm leading-tight font-semibold" dir="auto">{promo.title}</span>
                 <span class="relative hidden truncate text-[0.7rem] opacity-85 sm:block" dir="auto">
                   {promo.subtitle}
                 </span>
               </a>
-            </li>
-          );
-        })}
+            ) : (
+              <a
+                href={promoteHref}
+                data-press
+                data-promo-slot
+                rel="noopener"
+                target="_blank"
+                class:list={[
+                  "ad-slot group relative flex flex-col overflow-hidden rounded-xl border-2 border-dashed border-primary/30 p-2.5 outline-none transition-colors hover:border-primary/60 focus-visible:ring-3 focus-visible:ring-outline/50 sm:p-3",
+                  onlyPlaceholder ? "min-h-16 justify-center pr-20" : "h-20 justify-end sm:h-24",
+                ]}
+              >
+                <Speakerphone
+                  class="absolute -top-2 -right-2 size-16 rotate-12 text-primary opacity-20 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-0 sm:size-20"
+                  aria-hidden="true"
+                />
+                <span class="relative truncate text-sm leading-tight font-semibold text-primary-accent">
+                  {adSlot.title}
+                </span>
+                <span
+                  class:list={[
+                    "relative truncate text-[0.7rem] text-muted-foreground",
+                    !onlyPlaceholder && "hidden sm:block",
+                  ]}
+                >
+                  {adSlot.subtitle}
+                </span>
+              </a>
+            )}
+          </li>
+        ))}
       </ul>
     </aside>
   )}
+
+<style>
+.ad-slot {
+  background: linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--primary) 7%, transparent),
+    transparent 70%
+  );
+}
+</style>
