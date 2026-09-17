@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { EntryKind, locales, SubmissionStatus } from "./domain.ts";
 import { BannerContent, OrderStatus, PaymentCurrency, ProductKind } from "./settings.ts";
+import { Suggestion } from "./suggest.ts";
 
 /**
  * Mini App API contract (`/api/app/*`, see `.scratch/miniapp-contract.md`). The Worker routes and
@@ -93,6 +94,8 @@ export const AppPreview = z.object({
   description: z.string(),
   members: z.number().int().nullable(),
   avatarUrl: z.string().nullable(),
+  /** A guess the form pre-selects and the submitter is free to change (`suggestTaxonomy`). */
+  suggestion: Suggestion,
 });
 export type AppPreview = z.infer<typeof AppPreview>;
 

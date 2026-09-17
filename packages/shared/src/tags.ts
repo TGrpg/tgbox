@@ -35,6 +35,15 @@ export const tags: Tag[] = [
   { slug: "vpn", nameZh: "科学上网", nameEn: "VPN & Proxy" },
   { slug: "freebies", nameZh: "羊毛福利", nameEn: "Freebies" },
   { slug: "daily-news", nameZh: "每日早报", nameEn: "Daily Digest" },
+  // Appended 2026-09. Tags are cross-kind, so these carry the search intent the new categories
+  // only cover for one kind (a 网盘 bot and a 抽奖 group have no category of their own).
+  { slug: "giveaway", nameZh: "抽奖", nameEn: "Giveaways" },
+  { slug: "airdrop", nameZh: "空投", nameEn: "Airdrops" },
+  { slug: "cloud-drive", nameZh: "网盘", nameEn: "Cloud Drive" },
+  { slug: "torrent", nameZh: "磁力BT", nameEn: "Torrents" },
+  { slug: "tutorial", nameZh: "教程", nameEn: "Tutorials" },
+  { slug: "aigc", nameZh: "AI绘画", nameEn: "AI Art & Gen" },
+  { slug: "pets", nameZh: "宠物", nameEn: "Pets" },
 ];
 
 export function findTag(slug: string): Tag | undefined {

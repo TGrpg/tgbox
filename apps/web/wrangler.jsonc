@@ -17,6 +17,9 @@
   // Banner images uploaded from the Mini App (`promos/<order id>.jpg`), the same bucket and key the
   // bot writes when a banner is bought in chat.
   "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "tgbox-media" }],
+  // Workers AI (free allocation): the category suggestion on the submit form, and only when the
+  // keyword rules are unsure — a handful of calls a day (see packages/core/src/suggest.ts).
+  "ai": { "binding": "AI" },
   "vars": {
     "R2_PUBLIC_URL": "https://media.tgbox.cc"
   },

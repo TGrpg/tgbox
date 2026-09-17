@@ -55,6 +55,7 @@ const zh = {
     change: "换一个",
     categoryLabel: "选择分类",
     tagLabel: "选择标签（可选）",
+    suggestionHint: "✨ 下面的分类和标签是根据简介猜的，请确认或改成你想要的。",
     tagCount: "已选 {n} / {max}",
     submitButton: "提交",
     submitting: "提交中…",
@@ -220,6 +221,8 @@ const en: typeof zh = {
     change: "Use another link",
     categoryLabel: "Category",
     tagLabel: "Tags (optional)",
+    suggestionHint:
+      "✨ The category and tags below are a guess from the description — confirm or change them.",
     tagCount: "{n} of {max} selected",
     submitButton: "Submit",
     submitting: "Submitting…",

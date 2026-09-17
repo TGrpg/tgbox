@@ -107,6 +107,25 @@ describe("submission flow", () => {
     expect(await getBotDraft(db, owner.id, Date.now())).toBeUndefined();
   });
 
+  test("the guessed category leads the keyboard with a ✨ and costs no AI call", async () => {
+    await h.message(owner, "https://t.me/sample_channel");
+
+    // "Telegram News" is unambiguous to the keyword pass, so the model is never asked.
+    expect(h.aiCalls).toHaveLength(0);
+    const [first] = h.lastButtons().filter((b) => b.callback_data?.startsWith("sc:"));
+    expect(first?.text).toBe("✨ 资讯新闻");
+    expect(h.lastText()).toContain("可以改");
+    expect(h.lastButtons().filter((b) => b.text.startsWith("✨"))).toHaveLength(1);
+  });
+
+  test("a category nobody can guess leaves the keyboard untouched", async () => {
+    // The model answers like the translation fake does — no `response` field — which is exactly
+    // the "unusable answer" case: no suggestion, rather than a wrong one.
+    await h.message(owner, "https://t.me/grammyjs");
+    expect(h.lastButtons().some((b) => b.text.startsWith("✨"))).toBe(false);
+    expect(h.lastText()).not.toContain("可以改");
+  });
+
   test("the webhook answers before the t.me lookup finishes", async () => {
     const release = h.holdTme();
     const { response, done } = await h.startMessage(owner, "https://t.me/slow_channel");

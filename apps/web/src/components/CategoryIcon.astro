@@ -3,14 +3,23 @@ import Apps from "@tabler/icons/outline/apps.svg";
 import Article from "@tabler/icons/outline/article.svg";
 import Book from "@tabler/icons/outline/book.svg";
 import BrandApple from "@tabler/icons/outline/brand-apple.svg";
+import Briefcase from "@tabler/icons/outline/briefcase.svg";
+import BuildingStore from "@tabler/icons/outline/building-store.svg";
 import Category from "@tabler/icons/outline/category.svg";
+import ChartLine from "@tabler/icons/outline/chart-line.svg";
+import Cloud from "@tabler/icons/outline/cloud.svg";
 import Code from "@tabler/icons/outline/code.svg";
+import Coffee from "@tabler/icons/outline/coffee.svg";
+import Coin from "@tabler/icons/outline/coin.svg";
 import Compass from "@tabler/icons/outline/compass.svg";
 import DeviceGamepad2 from "@tabler/icons/outline/device-gamepad-2.svg";
 import Discount from "@tabler/icons/outline/discount.svg";
 import Dots from "@tabler/icons/outline/dots.svg";
 import Download from "@tabler/icons/outline/download.svg";
+import Folder from "@tabler/icons/outline/folder.svg";
+import Gift from "@tabler/icons/outline/gift.svg";
 import Heart from "@tabler/icons/outline/heart.svg";
+import MapPin from "@tabler/icons/outline/map-pin.svg";
 import MessageCircle from "@tabler/icons/outline/message-circle.svg";
 import MoodHappy from "@tabler/icons/outline/mood-happy.svg";
 import Movie from "@tabler/icons/outline/movie.svg";
@@ -25,6 +34,7 @@ import Shield from "@tabler/icons/outline/shield.svg";
 import Sparkles from "@tabler/icons/outline/sparkles.svg";
 import Sticker from "@tabler/icons/outline/sticker.svg";
 import Tool from "@tabler/icons/outline/tool.svg";
+import World from "@tabler/icons/outline/world.svg";
 import type { CategoryIcon } from "@tgbox/shared";
 import { categoryIcon } from "@/lib/category-icons.ts";
 
@@ -63,6 +73,16 @@ const icons = {
   sparkles: Sparkles,
   sticker: Sticker,
   tool: Tool,
+  briefcase: Briefcase,
+  "building-store": BuildingStore,
+  "chart-line": ChartLine,
+  cloud: Cloud,
+  coffee: Coffee,
+  coin: Coin,
+  folder: Folder,
+  gift: Gift,
+  "map-pin": MapPin,
+  world: World,
 } satisfies Record<CategoryIcon, unknown>;
 
 const { slug, icon, class: className } = Astro.props;

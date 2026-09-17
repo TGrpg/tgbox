@@ -80,6 +80,10 @@ export function SubmitScreen({ locale }: { locale: Locale }) {
       );
       return;
     }
+    // Pre-selected, not decided: both pickers below stay fully editable, and the hint says so.
+    const { suggestion } = result.data.preview;
+    setCategoryId(suggestion.categoryId);
+    setTagIds(suggestion.tagIds);
     setStep({ name: "form", preview: result.data.preview });
   }
 
@@ -205,6 +209,13 @@ export function SubmitScreen({ locale }: { locale: Locale }) {
               </p>
             )}
           </section>
+
+          {(step.preview.suggestion.categoryId !== null ||
+            step.preview.suggestion.tagIds.length > 0) && (
+            <p className="rounded-xl bg-muted px-3 py-2 text-muted-foreground text-xs">
+              {strings.submit.suggestionHint}
+            </p>
+          )}
 
           <section className="flex flex-col gap-2">
             <h2 className="font-medium text-sm">{strings.submit.categoryLabel}</h2>

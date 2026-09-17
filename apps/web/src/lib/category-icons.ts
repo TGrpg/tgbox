@@ -30,6 +30,16 @@ const bySlug: Record<string, CategoryIcon> = {
   "group-admin": "shield",
   search: "search",
   media: "download",
+  giveaway: "gift",
+  crypto: "coin",
+  vpn: "world",
+  "cloud-drive": "cloud",
+  jobs: "briefcase",
+  life: "coffee",
+  trade: "building-store",
+  local: "map-pin",
+  files: "folder",
+  analytics: "chart-line",
 };
 
 const isIcon = (key: string | null | undefined): key is CategoryIcon =>

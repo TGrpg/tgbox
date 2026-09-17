@@ -17,7 +17,7 @@ export function taxonomySql() {
   ];
   for (const c of categories) {
     lines.push(
-      `INSERT INTO categories (slug, kind, name_zh, name_en, sort) VALUES (${[c.slug, c.kind, c.nameZh, c.nameEn, c.sort].map(sqlValue).join(", ")}) ` +
+      `INSERT INTO categories (slug, kind, name_zh, name_en, sort, icon) VALUES (${[c.slug, c.kind, c.nameZh, c.nameEn, c.sort, c.icon].map(sqlValue).join(", ")}) ` +
         "ON CONFLICT (kind, slug) DO NOTHING;",
     );
   }

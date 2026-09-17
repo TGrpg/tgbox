@@ -431,6 +431,8 @@ describe("GET /api/app/preview", () => {
         description: "Notes",
         members: 1234,
         avatarUrl: "https://cdn.telegram.org/a.jpg",
+        // "Dev Notes" / "Notes" matches no rule, and the stub env has no AI binding.
+        suggestion: { categoryId: null, tagIds: [], source: "none" },
       },
     });
   });

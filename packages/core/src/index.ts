@@ -80,6 +80,7 @@ export {
   rejectSubmission,
   submitEntry,
 } from "./submissions.ts";
+export { aiCategoryClassifier } from "./suggest.ts";
 export {
   deleteCategory,
   deleteTag,

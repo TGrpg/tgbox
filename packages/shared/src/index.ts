@@ -6,5 +6,6 @@ export * from "./promo-link.ts";
 export * from "./rankings.ts";
 export * from "./settings.ts";
 export * from "./site-data.ts";
+export * from "./suggest.ts";
 export * from "./tags.ts";
 export { parseTelegramRef } from "./username.ts";

@@ -1,4 +1,7 @@
-import { entryKinds, type PreviewResult, parseTelegramRef } from "@tgbox/shared";
+import { env } from "cloudflare:workers";
+import { aiCategoryClassifier } from "@tgbox/core";
+import { listCategories, listTags } from "@tgbox/db";
+import { entryKinds, type PreviewResult, parseTelegramRef, suggestTaxonomy } from "@tgbox/shared";
 import { fetchEntrySnapshot } from "@tgbox/telegram";
 import type { APIRoute } from "astro";
 import { appJson, authenticateApp } from "@/lib/app-auth.ts";
@@ -36,7 +39,7 @@ function allow(userId: number, now: number) {
 export const GET: APIRoute = async ({ request, url }) => {
   const auth = await authenticateApp(request);
   if (!auth.ok) return auth.response;
-  const { user, core } = auth.session;
+  const { user, db, core } = auth.session;
 
   const username = parseTelegramRef(url.searchParams.get("username") ?? "");
   if (!username) return appJson({ ok: false, error: "invalid" } satisfies PreviewResult);
@@ -62,15 +65,27 @@ export const GET: APIRoute = async ({ request, url }) => {
   }
 
   const { profile } = snap;
+  const title = profile.title ?? username;
+  const description = profile.description ?? "";
+  // The same call the bot makes, against the live taxonomy, so both surfaces propose the same
+  // category. Only a submission that the keyword rules can't place costs an AI call.
+  const [categories, tags] = await Promise.all([listCategories(db), listTags(db)]);
+  const suggestion = await suggestTaxonomy(
+    { kind, title, description },
+    { categories, tags },
+    { classify: env.AI ? aiCategoryClassifier(env.AI) : undefined },
+  );
+
   return appJson({
     ok: true,
     preview: {
       username,
       kind,
-      title: profile.title ?? username,
-      description: profile.description ?? "",
+      title,
+      description,
       members: profile.members ?? profile.monthlyUsers,
       avatarUrl: profile.avatarUrl,
+      suggestion,
     },
   } satisfies PreviewResult);
 };

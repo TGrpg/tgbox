@@ -68,6 +68,7 @@ export const en: typeof zh = {
   members: "Members",
   profile: (kind: string, title: string, username: string) => `${kind}: ${title} (@${username})`,
   chooseCategory: "Choose a category:",
+  chooseCategorySuggested: "Choose a category (✨ is a guess from the description — change it):",
   chooseTags: (count: number, max: number) => `Choose tags (optional, ${count}/${max} selected):`,
   tagsDone: "Done",
   prevPage: "« Prev",

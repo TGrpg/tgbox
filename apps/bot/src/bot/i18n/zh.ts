@@ -122,6 +122,8 @@ export const zh = {
   members: "成员",
   profile: (kind: string, title: string, username: string) => `${kind}：${title}（@${username}）`,
   chooseCategory: "请选择分类：",
+  /** ✨ marks a guess made from the fetched title and description; the user still chooses. */
+  chooseCategorySuggested: "请选择分类（✨ 是根据简介猜的，可以改）：",
   chooseTags: (count: number, max: number) => `请选择标签（可选，已选 ${count}/${max}）：`,
   tagsDone: "完成",
   prevPage: "« 上一页",

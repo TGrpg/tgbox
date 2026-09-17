@@ -50,6 +50,18 @@ export const categoryIcons = [
   "shield",
   "search",
   "download",
+  // Added 2026-09 with the taxonomy expansion; `CategoryIcon.astro` and the admin's icon picker
+  // render the same keys, so a new one has to land in all three.
+  "gift",
+  "coin",
+  "world",
+  "cloud",
+  "briefcase",
+  "map-pin",
+  "building-store",
+  "folder",
+  "chart-line",
+  "coffee",
   "category",
 ] as const;
 export type CategoryIcon = (typeof categoryIcons)[number];

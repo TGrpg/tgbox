@@ -1,4 +1,4 @@
-import { checkSubmission } from "@tgbox/core";
+import { aiCategoryClassifier, checkSubmission } from "@tgbox/core";
 import {
   createSubmission,
   deleteBotDraft,
@@ -8,7 +8,14 @@ import {
   putBotDraft,
   setSubmissionAdminMessage,
 } from "@tgbox/db";
-import { type EntryKind, entryKinds, type Locale, MAX_TAGS, parseTelegramRef } from "@tgbox/shared";
+import {
+  type EntryKind,
+  entryKinds,
+  type Locale,
+  MAX_TAGS,
+  parseTelegramRef,
+  suggestTaxonomy,
+} from "@tgbox/shared";
 import { Composer, type Context, InlineKeyboard } from "grammy";
 import type { App } from "./app.ts";
 import { messages } from "./i18n/index.ts";
@@ -29,6 +36,8 @@ type Draft = {
   description: string;
   members: number | null;
   categoryId: number | null;
+  /** What `suggestTaxonomy` proposed, so the keyboard can keep marking it after an edit. */
+  suggestedCategoryId: number | null;
   /** indexes into the D1 tag list (ordered by id), encoded as a bitmask */
   tagMask: number;
 };
@@ -46,6 +55,8 @@ function parseDraft(step: string, payload: unknown): { step: Step; draft: Draft 
     typeof p.description !== "string" ||
     !(p.members === null || typeof p.members === "number") ||
     !(p.categoryId === null || typeof p.categoryId === "number") ||
+    // Absent in drafts written before suggestions existed; those just lose the ✨.
+    !(p.suggestedCategoryId == null || typeof p.suggestedCategoryId === "number") ||
     typeof p.tagMask !== "number"
   ) {
     return null;
@@ -59,6 +70,7 @@ function parseDraft(step: string, payload: unknown): { step: Step; draft: Draft 
       description: p.description,
       members: p.members,
       categoryId: p.categoryId,
+      suggestedCategoryId: typeof p.suggestedCategoryId === "number" ? p.suggestedCategoryId : null,
       tagMask: p.tagMask,
     },
   };
@@ -107,12 +119,18 @@ export function submit(app: App) {
   async function categoryView(locale: Locale, draft: Draft, v: string) {
     const keyboard = new InlineKeyboard();
     const rows = await categoriesFor(draft.kind);
-    rows.forEach((category, index) => {
-      keyboard.text(locale === "en" ? category.nameEn : category.nameZh, `sc:${v}:${category.id}`);
+    // The guess goes first with a ✨, everything else keeps its admin-defined order: the submitter
+    // still sees the whole list, they just don't have to find the obvious answer in it.
+    const suggested = rows.find((category) => category.id === draft.suggestedCategoryId);
+    const ordered = suggested ? [suggested, ...rows.filter((row) => row !== suggested)] : rows;
+    ordered.forEach((category, index) => {
+      const name = locale === "en" ? category.nameEn : category.nameZh;
+      keyboard.text(category === suggested ? `✨ ${name}` : name, `sc:${v}:${category.id}`);
       if (index % 2 === 1) keyboard.row();
     });
     keyboard.row().text(messages(locale).cancel, `sx:${v}:`);
-    return { text: messages(locale).chooseCategory, keyboard };
+    const m = messages(locale);
+    return { text: suggested ? m.chooseCategorySuggested : m.chooseCategory, keyboard };
   }
 
   async function tagView(locale: Locale, mask: number, page: number, v: string) {
@@ -246,13 +264,23 @@ export function submit(app: App) {
       const kind = entryKinds.find((k) => k === snap.kind);
       if (snap.liveness !== "active" || !kind || !snap.profile) return answer(m.unavailable);
 
+      const title = snap.profile.title ?? username;
+      const description = snap.profile.description ?? "";
+      // Runs after the webhook was acknowledged, so an unsure guess may spend one AI call without
+      // anyone waiting on it. A failure here costs the ✨ mark, never the submission.
+      const suggestion = await suggestTaxonomy(
+        { kind, title, description },
+        { categories: await categoriesFor(kind), tags: await allTags() },
+        { classify: app.env.AI ? aiCategoryClassifier(app.env.AI) : undefined },
+      );
       const draft: Draft = {
         username,
         kind,
-        title: snap.profile.title ?? username,
-        description: snap.profile.description ?? "",
+        title,
+        description,
         members: snap.profile.members ?? snap.profile.monthlyUsers,
         categoryId: null,
+        suggestedCategoryId: suggestion.categoryId,
         tagMask: 0,
       };
       const v = await saveDraft(userId, "choosing_category", draft);

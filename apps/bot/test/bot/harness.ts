@@ -25,8 +25,11 @@ export const ADMIN_CHAT_ID = -100500;
 /** What the fake Workers AI binding was asked to do, and what it answers. */
 export type AiCall = { model: string; inputs: Record<string, unknown> };
 
+/** Translation answers in `translated_text`, the category classifier in `response`. */
+export type AiAnswer = { translated_text?: string; response?: string };
+
 /** Never the real Workers AI: tests record the calls and script the answers. */
-function fakeAi(calls: AiCall[], respond: () => { translated_text?: string }) {
+function fakeAi(calls: AiCall[], respond: () => AiAnswer) {
   return {
     run: async (model: string, inputs: Record<string, unknown>) => {
       calls.push({ model, inputs });
@@ -36,7 +39,7 @@ function fakeAi(calls: AiCall[], respond: () => { translated_text?: string }) {
 }
 
 const aiCalls: AiCall[] = [];
-let aiRespond: () => { translated_text?: string } = () => ({ translated_text: "translated" });
+let aiRespond: () => AiAnswer = () => ({ translated_text: "translated" });
 
 // Vars are empty in wrangler.jsonc (typed as ""), so tests layer their own values on top.
 const testEnv: Env = Object.assign({}, env, {
@@ -281,7 +284,7 @@ export async function startHarness() {
     /** Workers AI calls, in order. */
     aiCalls,
     /** Scripts what the fake Workers AI binding answers (or throws). */
-    answerAi: (respond: () => { translated_text?: string }) => {
+    answerAi: (respond: () => AiAnswer) => {
       aiRespond = respond;
     },
     /** Serves the next Telegram file download. */
