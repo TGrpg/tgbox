@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import type { EntryPreview } from "@tgbox/core";
-import { type EntryKind, entryKinds } from "@tgbox/shared";
+import { type EntryKind, entryKinds, type Suggestion } from "@tgbox/shared";
 import { BadgeCheckIcon, CircleAlertIcon, SearchIcon, SendIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
@@ -215,7 +215,14 @@ function PreviewResult({ preview, onListed }: { preview: Preview; onListed: () =
       {problem ? (
         <Problem title={problem} />
       ) : (
-        kind && <ListForm username={preview.username} kind={kind} onListed={onListed} />
+        kind && (
+          <ListForm
+            username={preview.username}
+            kind={kind}
+            suggestion={preview.suggestion}
+            onListed={onListed}
+          />
+        )
       )}
     </div>
   );
@@ -224,10 +231,12 @@ function PreviewResult({ preview, onListed }: { preview: Preview; onListed: () =
 function ListForm({
   username,
   kind,
+  suggestion,
   onListed,
 }: {
   username: string;
   kind: EntryKind;
+  suggestion: Suggestion;
   onListed: () => void;
 }) {
   const client = useQueryClient();
@@ -237,6 +246,16 @@ function ListForm({
   const [tagIds, setTagIds] = useState<number[]>([]);
   const categories = (taxonomy.data?.categories ?? []).filter((row) => row.kind === kind);
   const tags = taxonomy.data?.tags ?? [];
+
+  // The guess is applied once the taxonomy has loaded, and only while the admin has not chosen
+  // anything: it is a starting point, never something that reappears over an edit.
+  const suggestedSlug = categories.find((row) => row.id === suggestion.categoryId)?.slug;
+  const [applied, setApplied] = useState(false);
+  if (!applied && taxonomy.data) {
+    setApplied(true);
+    if (suggestedSlug) setCategorySlug(suggestedSlug);
+    if (suggestion.tagIds.length > 0) setTagIds(suggestion.tagIds);
+  }
 
   const list = useMutation({
     mutationFn: (input: { categorySlug: string; tagSlugs: string[] }) =>
@@ -282,6 +301,11 @@ function ListForm({
       <div className="flex flex-col gap-2">
         <Label>标签</Label>
         <TagPicker tags={tags} selected={tagIds} onChange={setTagIds} />
+        {suggestion.source !== "none" && (
+          <p className="text-muted-foreground text-xs">
+            ✨ 分类和标签是根据简介猜的，请确认或改掉。
+          </p>
+        )}
       </div>
       <Button
         size="lg"

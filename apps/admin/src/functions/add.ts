@@ -1,3 +1,4 @@
+import { env } from "cloudflare:workers";
 import { createServerFn } from "@tanstack/react-start";
 import { listEntryManually, previewEntry } from "@tgbox/core";
 import { findPendingSubmission, getBlacklistEntry } from "@tgbox/db";
@@ -11,7 +12,9 @@ const usernameInput = z.string().trim().min(1).max(200);
 export const $previewEntry = createServerFn({ method: "POST" })
   .middleware([adminMiddleware])
   .inputValidator(z.object({ username: usernameInput }))
-  .handler(({ data, context }) => previewEntry(context.core, { username: data.username }));
+  .handler(({ data, context }) =>
+    previewEntry(context.core, { username: data.username, ai: env.AI }),
+  );
 
 export const $listEntry = createServerFn({ method: "POST" })
   .middleware([adminMiddleware])
