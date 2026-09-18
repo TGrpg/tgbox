@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { EntryKind } from "./domain.ts";
 import { MAX_TAGS } from "./domain.ts";
+import { categoryTagHints } from "./tags.ts";
 
 /**
  * Proposes a category and tags from what t.me says about an entry, so the submitter confirms
@@ -45,8 +46,6 @@ export type ClassifyRequest = SuggestInput & {
 export type CategoryClassifier = (request: ClassifyRequest) => Promise<string | null>;
 
 /* ------------------------------------------------------------------- matching */
-
-const HAN = /\p{Script=Han}/u;
 
 /** A term the rules look for. ASCII terms need word boundaries; CJK terms have none to need. */
 type Term = { source: string; test: (text: string) => boolean };
@@ -337,31 +336,64 @@ const tagRule = (slug: string, terms: readonly string[]): TagRule => ({
 
 /** Keyword → tag. Tags are cross-kind, so these ignore `kind` entirely. */
 const tagRules: readonly TagRule[] = [
-  tagRule("giveaway", ["抽奖", "抽獎", "giveaway", "lottery", "送码"]),
-  tagRule("freebies", ["羊毛", "福利", "白嫖", "免费领", "freebies"]),
+  tagRule("freebies", ["羊毛", "福利", "白嫖", "免费领", "freebies", "抽奖", "抽獎", "giveaway"]),
   tagRule("airdrop", ["空投", "airdrop", "撸毛"]),
-  tagRule("crypto", ["加密货币", "比特币", "crypto", "bitcoin", "web3", "usdt", "币圈"]),
   tagRule("cloud-drive", ["网盘", "云盘", "夸克", "阿里云盘", "百度网盘", "onedrive"]),
   tagRule("torrent", ["磁力", "种子", "torrent", "magnet", "bt"]),
-  tagRule("vpn", ["科学上网", "翻墙", "机场", "节点", "clash", "v2ray", "vpn", "proxy"]),
   tagRule("movies", ["电影", "movie", "movies", "影视"]),
-  tagRule("tv-series", ["剧集", "美剧", "韩剧", "日剧", "追剧", "短剧", "tv series"]),
+  tagRule("tv-series", ["剧集", "美剧", "韩剧", "日剧", "追剧", "tv series"]),
+  // 短剧 is its own supply, and it is never what someone looking for 美剧 means.
+  tagRule("short-drama", ["短剧", "微短剧", "短劇", "short drama"]),
   tagRule("anime", ["动漫", "番剧", "anime", "動漫", "二次元"]),
   tagRule("music", ["音乐", "无损", "music", "flac", "歌曲"]),
   tagRule("ebooks", ["电子书", "epub", "ebook", "mobi", "书籍"]),
-  tagRule("podcast", ["播客", "podcast", "电台"]),
-  tagRule("tutorial", ["教程", "tutorial", "guide", "入门", "指南"]),
   tagRule("programming", ["编程", "代码", "programming", "developer", "python", "javascript"]),
   tagRule("security", ["网络安全", "渗透", "security", "hacking", "漏洞"]),
-  tagRule("aigc", ["ai绘画", "绘画", "aigc", "midjourney", "stable diffusion", "文生图"]),
-  tagRule("chatgpt", ["chatgpt", "gpt", "openai"]),
+  tagRule("vps", ["vps", "独服", "云服务器", "搬瓦工", "vultr", "建站", "hosting", "甲骨文"]),
+  tagRule("gadgets", ["数码", "硬件", "耳机", "显卡", "主板", "gadget", "gadgets", "开箱"]),
+  // The AI tags split what used to be one bucket. `chatgpt` is OpenAI's product, `llm` is models
+  // in general — the two term lists share nothing, so a text names one or the other.
+  tagRule("llm", [
+    "大模型",
+    "大语言模型",
+    "语言模型",
+    "llm",
+    "claude",
+    "gemini",
+    "deepseek",
+    "qwen",
+    "通义",
+    "kimi",
+    "ollama",
+    "开源模型",
+  ]),
+  tagRule("chatgpt", ["chatgpt", "openai", "gpt", "sam altman"]),
+  tagRule("ai-art", [
+    "ai绘画",
+    "绘画",
+    "aigc",
+    "midjourney",
+    "stable diffusion",
+    "文生图",
+    "comfyui",
+  ]),
+  tagRule("ai-video", ["ai视频", "文生视频", "视频生成", "sora", "runway", "可灵", "即梦"]),
+  tagRule("ai-coding", ["ai编程", "cursor", "copilot", "claude code", "windsurf", "vibe coding"]),
+  tagRule("ai-agent", ["智能体", "ai agent", "agents", "mcp", "autogpt", "coze", "dify", "n8n"]),
+  tagRule("prompt", ["提示词", "咒语", "prompt", "prompts"]),
+  tagRule("free-api", [
+    "免费api",
+    "free api",
+    "api key",
+    "apikey",
+    "中转api",
+    "api中转",
+    "逆向api",
+  ]),
   tagRule("finance", ["财经", "股票", "基金", "理财", "finance", "stock"]),
   tagRule("science", ["科学", "科普", "science", "研究"]),
   tagRule("design", ["设计", "素材", "design", "字体", "ui"]),
   tagRule("photography", ["摄影", "photography", "写真", "相机"]),
-  tagRule("travel", ["旅行", "旅游", "travel", "机票", "签证"]),
-  tagRule("food", ["美食", "菜谱", "food", "recipe", "探店"]),
-  tagRule("pets", ["宠物", "萌宠", "撸猫", "pets", "喵星人"]),
   tagRule("sports", ["体育", "足球", "篮球", "sports", "nba", "赛事"]),
   tagRule("memes", ["表情包", "沙雕", "meme", "memes", "梗图"]),
   // "每日" and a bare "daily" are not this tag: 每日壁纸 and "updated daily" are about cadence,
@@ -372,7 +404,6 @@ const tagRules: readonly TagRule[] = [
   tagRule("android", ["安卓", "android", "apk"]),
   tagRule("ios", ["ios", "iphone", "ipad", "越狱", "testflight"]),
   tagRule("windows", ["windows", "win11", "win10"]),
-  tagRule("macos", ["macos", "mac os", "苹果电脑"]),
   tagRule("linux", ["linux", "ubuntu", "debian"]),
 ];
 
@@ -406,21 +437,39 @@ function rankCategories(input: SuggestInput, allowed: ReadonlySet<string>): Scor
     .sort((a, b) => b.score - a.score);
 }
 
-function rankTags(input: SuggestInput, allowed: ReadonlySet<string>): Scored[] {
+/**
+ * `hinted` are the chosen category's tag hints: a tag still has to earn `MIN_TAG_SCORE` on its own,
+ * but when more than `MAX_TAGS` do, the ones that fit the category are the ones worth keeping.
+ */
+function rankTags(
+  input: SuggestInput,
+  allowed: ReadonlySet<string>,
+  hinted: ReadonlySet<string>,
+): Scored[] {
   const title = input.title.toLowerCase();
   const description = input.description.toLowerCase();
-  return tagRules
+  const scored = tagRules
     .filter((item) => allowed.has(item.slug))
     .map((item) => ({ slug: item.slug, score: score(item.terms, title, description) }))
-    .filter((item) => item.score >= MIN_TAG_SCORE)
-    .sort((a, b) => b.score - a.score);
+    .filter((item) => item.score >= MIN_TAG_SCORE);
+  const rank = (item: Scored) => item.score + (hinted.has(item.slug) ? HINT_BONUS : 0);
+  return withoutRedundantModelTag(scored).sort((a, b) => rank(b) - rank(a));
 }
 
-/** Han anywhere in the text means Chinese; the language tag is the one guess that is nearly free. */
-function languageTag(input: SuggestInput, allowed: ReadonlySet<string>): string | null {
-  const chinese = HAN.test(input.title) || HAN.test(input.description);
-  const slug = chinese ? "chinese" : "english";
-  return allowed.has(slug) ? slug : null;
+/** Worth one passing mention: enough to order two equally matched tags, never to add one. */
+const HINT_BONUS = 1;
+
+/**
+ * `chatgpt` means OpenAI's product, `llm` means models in general, and no text is about both: one
+ * that names both is about the field and happens to mention the product, so the weaker of the two
+ * is dropped (a tie goes to `llm`).
+ */
+function withoutRedundantModelTag(scored: Scored[]): Scored[] {
+  const chatgpt = scored.find((item) => item.slug === "chatgpt");
+  const llm = scored.find((item) => item.slug === "llm");
+  if (!chatgpt || !llm) return scored;
+  const loser = chatgpt.score > llm.score ? llm : chatgpt;
+  return scored.filter((item) => item !== loser);
 }
 
 /* ------------------------------------------------------------------ the entry */
@@ -450,38 +499,40 @@ export async function suggestTaxonomy(
   };
   if (!text.title && !text.description) return EMPTY;
 
-  const tagSlugs = new Set<string>();
-  const language = languageTag(text, new Set(tagIdBySlug.keys()));
-  if (language) tagSlugs.add(language);
-  for (const tag of rankTags(text, new Set(tagIdBySlug.keys()))) {
-    if (tagSlugs.size >= MAX_TAGS) break;
-    tagSlugs.add(tag.slug);
-  }
-  const tagIds = [...tagSlugs].flatMap((slug) => {
-    const id = tagIdBySlug.get(slug);
-    return id === undefined ? [] : [id];
-  });
-
+  // The category is settled first because it decides which tags matter: the picker offers the
+  // category's hinted tags, and a suggestion that agrees with them is one tap less to undo.
   const ranked = rankCategories(text, new Set(categoryIds.keys()));
   const [best, runnerUp] = ranked;
   const confident =
     best !== undefined &&
     best.score >= MIN_CATEGORY_SCORE &&
     best.score - (runnerUp?.score ?? 0) >= MIN_CATEGORY_MARGIN;
-  if (confident) {
+
+  let chosen: { slug: string; id: number; source: "rules" | "ai" } | null = null;
+  if (confident && best) {
     const id = categoryIds.get(best.slug);
-    if (id !== undefined) return { categoryId: id, tagIds, source: "rules" };
+    if (id !== undefined) chosen = { slug: best.slug, id, source: "rules" };
+  }
+  if (!chosen && options.classify) {
+    const answer = await options.classify({
+      ...text,
+      candidates: categories.map((category) => ({
+        slug: category.slug,
+        nameZh: category.nameZh,
+      })),
+    });
+    const id = answer === null ? undefined : categoryIds.get(answer);
+    if (answer !== null && id !== undefined) chosen = { slug: answer, id, source: "ai" };
   }
 
-  if (!options.classify) return { categoryId: null, tagIds, source: "none" };
-  const answer = await options.classify({
-    ...text,
-    candidates: categories.map((category) => ({
-      slug: category.slug,
-      nameZh: category.nameZh,
-    })),
-  });
-  const id = answer === null ? undefined : categoryIds.get(answer);
-  if (id === undefined) return { categoryId: null, tagIds, source: "none" };
-  return { categoryId: id, tagIds, source: "ai" };
+  const hints = chosen === null ? [] : (categoryTagHints[`${input.kind}:${chosen.slug}`] ?? []);
+  const tagIds: number[] = [];
+  for (const tag of rankTags(text, new Set(tagIdBySlug.keys()), new Set(hints))) {
+    if (tagIds.length >= MAX_TAGS) break;
+    const id = tagIdBySlug.get(tag.slug);
+    if (id !== undefined) tagIds.push(id);
+  }
+
+  if (chosen === null) return { categoryId: null, tagIds, source: "none" };
+  return { categoryId: chosen.id, tagIds, source: chosen.source };
 }

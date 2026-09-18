@@ -5,6 +5,7 @@ import {
   categoryListingBase,
   categoryListingPaths,
   kindSections,
+  listingLangs,
   relatedTags,
   sortEntries,
 } from "./kind-listing.ts";
@@ -163,4 +164,17 @@ test("related tags are ranked by how often they co-occur with the tag", () => {
   };
   expect(relatedTags(data, "ai").map((tag) => tag.slug)).toEqual(["code", "news"]);
   expect(relatedTags(data, "ai", 1).map((tag) => tag.slug)).toEqual(["code"]);
+});
+
+test("language chips cover the languages a page renders, most common first", () => {
+  const entries = [
+    entry({ username: "a", lang: "en" }),
+    entry({ username: "b", lang: "zh" }),
+    entry({ username: "c", lang: null }),
+    entry({ username: "d", lang: "zh" }),
+  ];
+  expect(listingLangs(entries)).toEqual(["zh", "en"]);
+  // A page with nothing to choose between offers no filter at all.
+  expect(listingLangs([entry({ username: "a", lang: "zh" })])).toEqual(["zh"]);
+  expect(listingLangs([entry({ username: "a", lang: null })])).toEqual([]);
 });

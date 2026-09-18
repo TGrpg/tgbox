@@ -41,7 +41,11 @@ const press = async (from: typeof owner, prefix: string, index = 0) => {
 
 describe("submission flow", () => {
   test("tag keyboard and summary use the taxonomy stored in D1", async () => {
-    const [first] = await listTags(db);
+    // Whatever the keyboard offers first for this category, renamed in D1 behind its back.
+    await h.message(owner, "https://t.me/sample_channel");
+    await press(owner, "sc:", 0);
+    const shown = h.lastButtons()[0]?.text;
+    const first = (await listTags(db)).find((tag) => tag.nameZh === shown);
     if (!first) throw new Error("no tags");
     await db.update(tags).set({ nameZh: "改过的标签" }).where(eq(tags.id, first.id));
 
@@ -170,6 +174,58 @@ describe("submission flow", () => {
       .calls("sendMessage")
       .find((c) => c.payload.chat_id === String(ADMIN_CHAT_ID));
     expect(adminPost?.payload.text).toContain("flaky_answer_channel");
+  });
+
+  test("the tag keyboard leads with the category's tags without changing what a mask means", async () => {
+    // The mask indexes into `listTags` in id order, and drafts and callback data carry it around.
+    // Paging over a per-category display order must not touch that: a draft tagged under one
+    // category has to resolve to the same tags after the category (and the order) changes.
+    await h.message(owner, "https://t.me/sample_channel");
+    await press(owner, "sc:", 0); // the ✨ guess: 资讯新闻
+
+    const newsHints = ["每日早报", "财经", "科学", "数码硬件", "网络安全", "体育"];
+    expect(
+      h
+        .lastButtons()
+        .map((b) => b.text)
+        .slice(0, newsHints.length),
+    ).toEqual(newsHints);
+
+    await press(owner, "st:", 0); // 每日早报
+    await press(owner, "st:", 1); // 财经
+    await press(owner, "sd:");
+    expect(h.lastText()).toContain("每日早报");
+    expect(h.lastText()).toContain("财经");
+
+    // Move the submission to a category whose tags are completely different.
+    await press(owner, "se:");
+    const tech = h.lastButtons().find((b) => b.text === "开发编程");
+    await h.callback(owner, tech?.callback_data ?? "");
+    expect(h.lastText()).toContain("开发编程");
+    expect(h.lastText()).toContain("每日早报");
+    expect(h.lastText()).toContain("财经");
+
+    await press(owner, "sg:");
+    const techHints = ["编程", "开源", "网络安全", "主机VPS", "Linux", "数码硬件", "AI编程"];
+    expect(
+      h
+        .lastButtons()
+        .map((b) => b.text)
+        .slice(0, techHints.length),
+    ).toEqual(techHints);
+    // The two selected tags are not 开发编程 tags, so they moved off the first page entirely —
+    // the ✅ marks travel with the tags, not with the positions.
+    expect(h.lastButtons().filter((b) => b.text.startsWith("✅"))).toHaveLength(0);
+
+    await press(owner, "sd:");
+    await press(owner, "so:");
+    const [row] = await db
+      .select()
+      .from(submissions)
+      .where(eq(submissions.username, "sample_channel"));
+    const live = await listTags(db);
+    const idOf = (slug: string) => live.find((tag) => tag.slug === slug)?.id;
+    expect(row?.tagIds?.slice().sort()).toEqual([idOf("daily-news"), idOf("finance")].sort());
   });
 
   test("tag selection stops at five", async () => {

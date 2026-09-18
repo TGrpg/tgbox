@@ -3,12 +3,13 @@ import { type EntryKind, type Locale, t } from "@tgbox/shared";
 import KindListingShell from "@/components/kind/KindListingShell.astro";
 import KindPageHeader from "@/components/kind/KindPageHeader.astro";
 import KindSection from "@/components/kind/KindSection.astro";
+import LangFilter from "@/components/kind/LangFilter.astro";
 import { localizePath } from "@/i18n/locale.ts";
 import { kindTitles, ui } from "@/i18n/ui.ts";
 import { kindUi } from "@/i18n/ui-kind.ts";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import { fill } from "@/lib/format.ts";
-import { kindSections } from "@/lib/kind-listing.ts";
+import { kindSections, listingLangs } from "@/lib/kind-listing.ts";
 import { kindSeo } from "@/lib/seo.ts";
 import { byMembers, getSiteData } from "@/lib/site-data.ts";
 
@@ -28,6 +29,8 @@ const seo = kindSeo(locale, kind, {
     .map((entry) => entry.title),
 });
 const description = seo.description;
+// Only the entries this page renders, so every chip leaves at least one card visible.
+const langs = listingLangs(sections.flatMap((section) => section.entries));
 ---
 
 <BaseLayout locale={locale} title={seo.title} description={seo.description} keywords={seo.keywords}>
@@ -37,7 +40,13 @@ const description = seo.description;
       title={fill(kindUi(locale).directory, { kind: title })}
       description={description}
       breadcrumbs={[{ label: t(locale, "site.home"), href: localizePath("/", locale) }, { label: title }]}
-    />
+    >
+      {langs.length > 1 && (
+          <div class="mt-5 border-t border-border pt-4">
+            <LangFilter locale={locale} langs={langs} />
+          </div>
+        )}
+    </KindPageHeader>
     <div class="mt-8 space-y-10">
       {sections.length === 0 ? (
           <p class="rounded-2xl border border-dashed border-border p-10 text-center text-muted-foreground">

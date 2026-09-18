@@ -211,7 +211,7 @@ describe("categories", () => {
 describe("tags", () => {
   test("renaming a tag updates search rows of tagged entries", async () => {
     const { ctx } = await setup();
-    const id = await tagId("podcast");
+    const id = await tagId("short-drama");
     const entryId = await listed(
       "tag_rename",
       (await kindCategories("channel"))[0]?.category.id ?? 1,
@@ -220,15 +220,21 @@ describe("tags", () => {
 
     const result = await upsertTag(ctx, {
       id,
-      slug: "podcast",
-      nameZh: "播客节目",
-      nameEn: "Podcasts",
+      slug: "short-drama",
+      nameZh: "短剧精选",
+      nameEn: "Short Drama",
       actor,
     });
     expect(result).toEqual({ ok: true, id, changed: true });
-    expect((await searchEntries(db, "播客节目")).map((row) => row.entry.id)).toEqual([entryId]);
+    expect((await searchEntries(db, "短剧精选")).map((row) => row.entry.id)).toEqual([entryId]);
     expect(
-      await upsertTag(ctx, { id, slug: "podcast", nameZh: "播客节目", nameEn: "Podcasts", actor }),
+      await upsertTag(ctx, {
+        id,
+        slug: "short-drama",
+        nameZh: "短剧精选",
+        nameEn: "Short Drama",
+        actor,
+      }),
     ).toEqual({
       ok: true,
       id,

@@ -46,8 +46,7 @@ describe("the keyword pass", () => {
       categoryId: categoryId("channel", "giveaway"),
       source: "rules",
     });
-    expect(result.tagIds).toContain(tagId("giveaway"));
-    expect(result.tagIds).toContain(tagId("chinese"));
+    expect(result.tagIds).toContain(tagId("freebies"));
   });
 
   test.each([
@@ -193,5 +192,78 @@ describe("staying inside the live taxonomy", () => {
     );
     expect(result.categoryId).not.toBe(categoryId("channel", "giveaway"));
     expect(result.source).not.toBe("rules");
+  });
+});
+
+describe("the taxonomy v2 tags", () => {
+  test("Chinese text on its own is not a tag any more", async () => {
+    // Language used to be guessed as a `chinese`/`english` tag. It is a detected column now, so a
+    // Chinese profile that says nothing else gets no tags at all.
+    const result = await suggestTaxonomy(
+      { kind: "channel", title: "小站", description: "偶尔更新一些东西。" },
+      taxonomy,
+    );
+    expect(result.tagIds).toEqual([]);
+  });
+
+  test.each([
+    ["短剧资源站", "每日更新精品短剧", "short-drama"],
+    ["VPS 优惠", "独服、云服务器测评，搬瓦工与 Vultr", "vps"],
+    ["数码硬件", "耳机、显卡开箱", "gadgets"],
+    ["AI绘画作品集", "Midjourney 与 Stable Diffusion 文生图", "ai-art"],
+    ["AI视频生成", "Sora、Runway、可灵 作品与教程", "ai-video"],
+    ["AI编程", "Cursor、Copilot 使用技巧", "ai-coding"],
+    ["AI智能体", "MCP、Coze、Dify 工作流分享", "ai-agent"],
+    ["提示词大全", "prompt 咒语分享", "prompt"],
+    ["免费API", "api key 与中转api 分享", "free-api"],
+  ])("%j → %s", async (title, description, slug) => {
+    const result = await suggestTaxonomy({ kind: "channel", title, description }, taxonomy);
+    expect(result.tagIds).toContain(tagId(slug));
+  });
+
+  describe("chatgpt and llm never both fire", () => {
+    const suggest = (title: string, description: string) =>
+      suggestTaxonomy({ kind: "channel", title, description }, taxonomy);
+
+    test("OpenAI's product is chatgpt, not llm", async () => {
+      const result = await suggest("ChatGPT 中文社区", "GPT 使用技巧、OpenAI 官方动态");
+      expect(result.tagIds).toContain(tagId("chatgpt"));
+      expect(result.tagIds).not.toContain(tagId("llm"));
+    });
+
+    test("models in general are llm, not chatgpt", async () => {
+      const result = await suggest("大模型日报", "DeepSeek、Qwen、Claude 等开源模型动态");
+      expect(result.tagIds).toContain(tagId("llm"));
+      expect(result.tagIds).not.toContain(tagId("chatgpt"));
+    });
+
+    test("a text that names both keeps the one it is about", async () => {
+      const result = await suggest("大模型情报", "涵盖 ChatGPT、Claude、Gemini 的模型动态");
+      const both = [tagId("llm"), tagId("chatgpt")].filter((id) => result.tagIds.includes(id));
+      expect(both).toEqual([tagId("llm")]);
+    });
+  });
+
+  test("the category's hints decide which tags survive the MAX_TAGS cut", async () => {
+    // Eight tags score equally here. The five that get kept are the ones an AI channel is
+    // offered in the picker, so the suggestion and the chips agree instead of fighting.
+    const result = await suggestTaxonomy(
+      {
+        kind: "channel",
+        title: "AI 工具箱",
+        description:
+          "提示词 prompt、AI编程 Cursor、AI视频 Sora，也分享电影影视、音乐歌曲、电子书 epub、编程代码、网络安全漏洞",
+      },
+      taxonomy,
+      { classify: neverCalled },
+    );
+    expect(result).toMatchObject({ categoryId: categoryId("channel", "ai"), source: "rules" });
+    expect(result.tagIds).toHaveLength(MAX_TAGS);
+    for (const slug of ["prompt", "ai-coding", "ai-video"]) {
+      expect(result.tagIds).toContain(tagId(slug));
+    }
+    for (const slug of ["ebooks", "security"]) {
+      expect(result.tagIds).not.toContain(tagId(slug));
+    }
   });
 });

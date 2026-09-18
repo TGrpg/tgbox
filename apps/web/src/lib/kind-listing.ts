@@ -54,6 +54,23 @@ export function kindSections(data: SiteData, kind: EntryKind, limit = 10) {
     .filter((section) => section.entries.length > 0);
 }
 
+/**
+ * Detected languages among the entries a page actually renders, most common first. Drives the
+ * listing pages' language chips, so it is computed from the rendered slice: every chip a page
+ * shows is then guaranteed to leave at least one entry visible.
+ */
+export function listingLangs(entries: Pick<EntryView, "lang">[], limit = 4): string[] {
+  const counts = new Map<string, number>();
+  for (const entry of entries) {
+    if (entry.lang === null) continue;
+    counts.set(entry.lang, (counts.get(entry.lang) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .sort(([a, countA], [b, countB]) => countB - countA || a.localeCompare(b))
+    .slice(0, limit)
+    .map(([lang]) => lang);
+}
+
 /** Tags that most often appear alongside `slug`. */
 export function relatedTags(data: SiteData, slug: string, limit = 16): TagView[] {
   const counts = new Map<string, number>();

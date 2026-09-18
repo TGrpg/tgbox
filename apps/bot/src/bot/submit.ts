@@ -15,6 +15,7 @@ import {
   MAX_TAGS,
   parseTelegramRef,
   suggestTaxonomy,
+  tagsForCategory,
 } from "@tgbox/shared";
 import { Composer, type Context, InlineKeyboard } from "grammy";
 import type { App } from "./app.ts";
@@ -38,7 +39,10 @@ type Draft = {
   categoryId: number | null;
   /** What `suggestTaxonomy` proposed, so the keyboard can keep marking it after an edit. */
   suggestedCategoryId: number | null;
-  /** indexes into the D1 tag list (ordered by id), encoded as a bitmask */
+  /**
+   * Indexes into the D1 tag list (ordered by id), encoded as a bitmask. Never the order the
+   * keyboard shows: that changes with the category, this must not.
+   */
   tagMask: number;
 };
 
@@ -133,26 +137,38 @@ export function submit(app: App) {
     return { text: suggested ? m.chooseCategorySuggested : m.chooseCategory, keyboard };
   }
 
-  async function tagView(locale: Locale, mask: number, page: number, v: string) {
+  /**
+   * The tag list from D1 (ordered by id) is the mask's index space and nothing may reorder it: the
+   * mask lives in saved drafts and in callback data, so a tag that changed position would silently
+   * change what an existing draft means. The category's hinted tags are brought to the front as a
+   * `displayOrder` of indexes *into* that list instead, and every bit still refers to `tags[index]`.
+   */
+  async function tagView(locale: Locale, draft: Draft, mask: number, page: number, v: string) {
     const m = messages(locale);
     const tags = await allTags();
     const count = selectedTagIndexes(mask, tags.length).length;
+    const category = (await categoriesFor(draft.kind)).find((row) => row.id === draft.categoryId);
+    const { hinted, rest } = tagsForCategory(draft.kind, category?.slug ?? null, tags);
+    const canonical = new Map(tags.map((tag, index) => [tag.id, index]));
+    const displayOrder = [...hinted, ...rest].flatMap((tag) => {
+      const index = canonical.get(tag.id);
+      return index === undefined ? [] : [index];
+    });
     const keyboard = new InlineKeyboard();
     const start = page * TAGS_PER_PAGE;
-    tags.slice(start, start + TAGS_PER_PAGE).forEach((tag, offset) => {
-      const index = start + offset;
+    displayOrder.slice(start, start + TAGS_PER_PAGE).forEach((index, offset) => {
       const selected = hasBit(mask, index);
       // A full selection only allows deselecting; the unchanged mask makes the tap a no-op.
       const bit = 2 ** index;
       const next = selected ? mask - bit : count < MAX_TAGS ? mask + bit : mask;
       keyboard.text(
-        `${selected ? "✅ " : ""}${tagName(locale, tag)}`,
+        `${selected ? "✅ " : ""}${tagName(locale, tags[index])}`,
         `st:${v}:${next.toString(36)}.${page}`,
       );
       if (offset % 2 === 1) keyboard.row();
     });
     keyboard.row();
-    const pages = Math.ceil(tags.length / TAGS_PER_PAGE);
+    const pages = Math.ceil(displayOrder.length / TAGS_PER_PAGE);
     if (page > 0) keyboard.text(m.prevPage, `st:${v}:${mask.toString(36)}.${page - 1}`);
     if (page < pages - 1) keyboard.text(m.nextPage, `st:${v}:${mask.toString(36)}.${page + 1}`);
     keyboard
@@ -325,7 +341,7 @@ export function submit(app: App) {
         ctx,
         nextStep === "confirming"
           ? await confirmView(locale, next, nv)
-          : await tagView(locale, next.tagMask, 0, nv),
+          : await tagView(locale, next, next.tagMask, 0, nv),
       );
       return;
     }
@@ -343,7 +359,7 @@ export function submit(app: App) {
       if (action === "st") {
         // Toggling keeps the selection in the buttons only; the draft is written on "done".
         await ctx.answerCallbackQuery();
-        await show(ctx, await tagView(locale, mask, page, v));
+        await show(ctx, await tagView(locale, draft, mask, page, v));
         return;
       }
       const next = { ...draft, tagMask: mask };
@@ -363,7 +379,7 @@ export function submit(app: App) {
     if (action === "sg" && step === "confirming") {
       const nv = await saveDraft(userId, "choosing_tags", draft);
       await ctx.answerCallbackQuery();
-      await show(ctx, await tagView(locale, draft.tagMask, 0, nv));
+      await show(ctx, await tagView(locale, draft, draft.tagMask, 0, nv));
       return;
     }
 

@@ -232,6 +232,8 @@ export function SubmitScreen({ locale }: { locale: Locale }) {
             <h2 className="font-medium text-sm">{strings.submit.tagLabel}</h2>
             <TagPicker
               tags={taxonomy.data.tags}
+              kind={step.preview.kind}
+              category={taxonomy.data.categories.find((item) => item.id === categoryId) ?? null}
               locale={locale}
               selected={tagIds}
               onChange={setTagIds}

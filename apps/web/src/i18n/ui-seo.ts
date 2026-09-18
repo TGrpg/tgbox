@@ -42,6 +42,11 @@ const zh = {
     description:
       "带有“{tag}”标签的 Telegram 频道、群组和机器人共 {n} 个{examples}，按成员数排序，可继续浏览相关标签发现更多电报频道。",
   },
+  tags: {
+    title: "Telegram 标签索引 · 按标签找频道群组和机器人",
+    description:
+      "TGbox 的全部 {n} 个标签，按主题和属性分组，覆盖 {total} 个 Telegram 频道、群组和机器人。点开任意标签即可看到同一主题下的全部条目。",
+  },
   rank: {
     title: "电报频道排名 · Telegram 群组与机器人排行榜",
     description:
@@ -78,6 +83,7 @@ const zh = {
       bot: ["电报机器人索引", "tg机器人", "telegram bot", "电报机器人大全"],
     } satisfies Record<EntryKind, string[]>,
     rank: ["电报频道排名", "电报频道排行榜", "telegram频道排名", "电报涨粉排行"],
+    tags: ["电报频道标签", "telegram标签", "电报频道分类", "按标签找电报频道"],
     guides: ["telegram 教程", "电报频道怎么找", "电报频道怎么运营", "telegram 频道群组区别"],
     /** "科技频道" / "Tech channels" — how a category and a kind read as one search term. */
     categoryKind: "{category}{kind}",
@@ -147,6 +153,11 @@ const en: typeof zh = {
     description:
       "{n} Telegram channels, groups and bots tagged “{tag}”{examples}, sorted by member count, plus related tags to keep exploring.",
   },
+  tags: {
+    title: "Telegram Tags — Browse Channels, Groups & Bots by Topic",
+    description:
+      "All {n} tags in use on TGbox, grouped by topic and attribute, across {total} Telegram channels, groups and bots. Open a tag to see everything listed under it.",
+  },
   rank: {
     title: "Telegram Rankings — Top & Fastest-growing Channels",
     description:
@@ -197,6 +208,7 @@ const en: typeof zh = {
       "fastest growing telegram channels",
       "telegram channel ranking",
     ],
+    tags: ["telegram tags", "telegram channel tags", "browse telegram channels by topic"],
     guides: [
       "telegram guide",
       "how to find telegram channels",

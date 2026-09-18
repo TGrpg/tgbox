@@ -118,6 +118,16 @@ export function tagSeo(
   };
 }
 
+/** The tag index: how many tags lead somewhere, over how many entries. */
+export function tagsSeo(locale: Locale, input: { count: number; total: number }): PageSeo {
+  const strings = seoUi(locale);
+  return {
+    title: strings.tags.title,
+    description: fill(strings.tags.description, { n: input.count, total: input.total }),
+    keywords: keywords(strings.keywords.tags, strings.keywords.base),
+  };
+}
+
 export function rankSeo(locale: Locale): PageSeo {
   const strings = seoUi(locale);
   return {

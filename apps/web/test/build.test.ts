@@ -369,6 +369,32 @@ describe("site build from snapshot data", () => {
     expect(sitemap).not.toContain("/tag/movies/");
   });
 
+  test("the tag index lists only tags that lead somewhere, grouped by facet, in both locales", () => {
+    for (const [route, topic, attribute, label] of [
+      ["tags", "主题", "属性", "编程"],
+      ["en/tags", "Topics", "Attributes", "Programming"],
+    ] as const) {
+      const page = html(route);
+      expect(page, route).toContain(topic);
+      expect(page, route).toContain(attribute);
+      expect(page, route).toContain(label);
+      expect(page, route).toContain('data-tag-chip="programming"');
+      expect(page, route).toContain('data-tag-chip="free"');
+      // A tag nobody used has no listing page, so it is left out rather than linked to a 404.
+      expect(page, route).not.toContain('data-tag-chip="linux"');
+      expect(types(page), route).toEqual(["ItemList", "BreadcrumbList"]);
+    }
+    expect(html("tags")).toContain('href="/tag/programming/"');
+    expect(html("en/tags")).toContain('href="/en/tag/programming/"');
+    // The entry point the tag pages were missing: a footer link on every page, and the sitemap.
+    expect(html("")).toContain('href="/tags/"');
+    expect(html("en/")).toContain('href="/en/tags/"');
+    expect(html("detail/techdaily")).toContain('href="/tags/"');
+    const sitemap = readFileSync(path.join(client, "sitemap-pages.xml"), "utf8");
+    expect(sitemap).toContain(`<loc>${siteUrl}/tags/</loc>`);
+    expect(sitemap).toContain(`<loc>${siteUrl}/en/tags/</loc>`);
+  });
+
   test("the footer credits the open-source repo and the licence on every page", () => {
     for (const [route, label, licence] of [
       ["", "开源于 GitHub", "以 AGPL-3.0 许可证发布"],
@@ -658,13 +684,50 @@ describe("site build from snapshot data", () => {
     expect([...missing]).toEqual([]);
   });
 
-  test("category sidebar links non-empty categories only and shows counts", () => {
+  test("category sidebar omits empty categories instead of listing them as dead text", () => {
     const tech = html("channel/tech");
     const sidebar = tech.split('class="category-sidebar')[1]?.split("</aside>")[0] ?? "";
     expect(sidebar).toContain('href="/channel/"');
     expect(sidebar).toContain('href="/channel/tech/"');
-    // A channel category without approved entries is shown but not linked.
-    expect(sidebar).toMatch(/<span[^>]*aria-disabled="true"[^>]*data-sidebar-empty/);
+    // Five channel categories hold approved entries; the other sixteen are left out, not muted.
+    expect(sidebar.match(/<li[\s>]/g)).toHaveLength(6);
+    expect(sidebar).not.toContain("data-sidebar-empty");
+    expect(sidebar).not.toContain("aria-disabled");
+    expect(sidebar).not.toContain("/channel/deals/");
+    // Counts still ride along with each row.
+    expect(sidebar).toMatch(/61\s*<\/span>/);
+    // The mobile chip scroller and the tablet icon rail are built from the same list.
+    const chips = tech.split('<nav aria-label="分类导航"')[1]?.split("</nav>")[0] ?? "";
+    expect(chips).toContain('href="/channel/games/"');
+    expect(chips).not.toContain("/channel/deals/");
+    expect(chips.match(/<li[\s>]/g)).toHaveLength(6);
+  });
+
+  test("listing pages filter by detected language in the fragment, with no crawlable lang URL", () => {
+    for (const prefix of ["", "en/"]) {
+      for (const route of [`${prefix}channel`, `${prefix}channel/tech`]) {
+        const page = html(route);
+        expect(page, route).toContain("data-lang-filter");
+        expect(page, route).toContain('data-lang-chip="all"');
+        // The choice lives in the fragment, which is never crawled or built as a page.
+        expect(page, route).toContain('href="#lang=zh"');
+        expect(page, route).toContain('href="#lang=en"');
+        // Cards carry the detected language, so the filter is pure client-side hiding.
+        expect(page, route).toContain('data-entry-lang="zh"');
+        expect(page, route).toContain('data-entry-lang="en"');
+        expect(page, route).not.toMatch(/href="[^"]*[?&]lang=/);
+      }
+    }
+    // Chips are named in the reader's own language.
+    expect(html("channel")).toMatch(/data-lang-chip="en"[^>]*>\s*英语/);
+    expect(html("en/channel")).toMatch(/data-lang-chip="zh"[^>]*>\s*Chinese/);
+    // 61 game channels, none with a detected language: nothing to choose between, no chips.
+    expect(html("channel/games")).not.toContain("data-lang-filter");
+    // No page and no sitemap entry is generated for a language.
+    expect(existsSync(path.join(client, "channel/lang"))).toBe(false);
+    for (const file of allFiles(client).filter((name) => name.endsWith(".xml"))) {
+      expect(readFileSync(file, "utf8"), file).not.toMatch(/[?&]lang=|\/lang\//);
+    }
   });
 
   test("category listings paginate at 60 entries", () => {

@@ -85,6 +85,13 @@
       "when": 1789674750403,
       "tag": "0012_taxonomy_expansion",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1789712350178,
+      "tag": "0013_taxonomy_ai",
+      "breakpoints": true
     }
   ]
 }

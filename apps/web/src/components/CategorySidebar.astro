@@ -17,6 +17,8 @@ interface Props {
 const { locale, kind, current } = Astro.props;
 const strings = ui(locale).sidebar;
 const categories = getSiteData().categories.filter((category) => category.kind === kind);
+// An empty category has no listing page. Most of the taxonomy is empty on a small directory, so
+// showing those as unlinked text would leave the rail mostly dead grey; they are left out instead.
 const items = [
   {
     slug: undefined,
@@ -25,14 +27,15 @@ const items = [
     label: strings.all,
     count: categories.reduce((sum, category) => sum + category.count, 0),
   },
-  // Empty categories have no listing page, so they render as muted text instead of a 404 link.
-  ...categories.map((category) => ({
-    slug: category.slug,
-    icon: category.icon,
-    href: category.count > 0 ? localizePath(`/${kind}/${category.slug}/`, locale) : undefined,
-    label: localName(category, locale),
-    count: category.count,
-  })),
+  ...categories
+    .filter((category) => category.count > 0)
+    .map((category) => ({
+      slug: category.slug,
+      icon: category.icon,
+      href: localizePath(`/${kind}/${category.slug}/`, locale),
+      label: localName(category, locale),
+      count: category.count,
+    })),
 ];
 const format = new Intl.NumberFormat(locale === "zh" ? "zh-CN" : "en", { notation: "compact" });
 const toggleId = `sidebar-expand-${kind}`;
@@ -53,18 +56,14 @@ const toggleId = `sidebar-expand-${kind}`;
       <span class="sr-only">{strings.expand}</span>
     </label>
     <ul class="list space-y-0.5">
-      {items.map((item) => {
-        const Tag = item.href ? "a" : "span";
-        return (
+      {items.map((item) => (
           <li>
-            <Tag
+            <a
               href={item.href}
               title={item.label}
-              aria-current={item.href && item.slug === current ? "page" : undefined}
-              aria-disabled={item.href ? undefined : "true"}
-              data-sidebar-empty={item.href ? undefined : ""}
-              data-press={item.href ? "" : undefined}
-              class="flex h-10 items-center gap-2.5 rounded-xl px-2.5 text-[0.925rem] whitespace-nowrap text-muted-foreground transition-colors outline-none aria-disabled:cursor-default aria-disabled:opacity-45 [&[href]]:hover:bg-muted [&[href]]:hover:text-foreground focus-visible:ring-3 focus-visible:ring-outline/40 aria-[current=page]:bg-primary-soft aria-[current=page]:font-semibold aria-[current=page]:text-primary-soft-foreground"
+              aria-current={item.slug === current ? "page" : undefined}
+              data-press
+              class="flex h-10 items-center gap-2.5 rounded-xl px-2.5 text-[0.925rem] whitespace-nowrap text-muted-foreground transition-colors outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-outline/40 aria-[current=page]:bg-primary-soft aria-[current=page]:font-semibold aria-[current=page]:text-primary-soft-foreground"
             >
               {item.slug ? (
                 <CategoryIcon slug={item.slug} icon={item.icon} class="size-[1.15rem] shrink-0" />
@@ -75,19 +74,16 @@ const toggleId = `sidebar-expand-${kind}`;
               <span class="label ml-auto font-mono text-[0.7rem] tabular-nums opacity-70">
                 {format.format(item.count)}
               </span>
-            </Tag>
+            </a>
           </li>
-        );
-      })}
+        ))}
     </ul>
   </div>
 </aside>
 
 <nav aria-label={strings.label} class="-mx-4 md:hidden">
   <ul class="flex gap-2 overflow-x-auto px-4 pb-1 no-scrollbar">
-    {items
-      .filter((item) => item.href)
-      .map((item) => (
+    {items.map((item) => (
         <li class="shrink-0">
           <a
             href={item.href}

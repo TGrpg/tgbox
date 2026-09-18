@@ -1,0 +1,105 @@
+---
+import Hash from "@tabler/icons/outline/hash.svg";
+import { type Locale, t, tagFacet } from "@tgbox/shared";
+import KindPageHeader from "@/components/kind/KindPageHeader.astro";
+import JsonLd from "@/components/layout/JsonLd.astro";
+import { localizePath } from "@/i18n/locale.ts";
+import { ui } from "@/i18n/ui.ts";
+import { kindUi } from "@/i18n/ui-kind.ts";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { itemListJsonLd } from "@/lib/json-ld.ts";
+import { tagsSeo } from "@/lib/seo.ts";
+import { absoluteUrl } from "@/lib/site.ts";
+import { getSiteData, localName } from "@/lib/site-data.ts";
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const strings = ui(locale);
+const kindStrings = kindUi(locale);
+const data = getSiteData();
+// A tag nobody used has no page, so listing it would only hand out 404s.
+const live = data.tags.filter((tag) => tag.count > 0);
+// `facet` groups the one global vocabulary into 主题 / 属性 (see .scratch/taxonomy-v2.md).
+const groups = (["topic", "attribute"] as const)
+  .map((facet) => ({
+    facet,
+    tags: live
+      .filter((tag) => tagFacet(tag.slug) === facet)
+      .sort((a, b) => b.count - a.count || a.slug.localeCompare(b.slug)),
+  }))
+  .filter((group) => group.tags.length > 0);
+const seo = tagsSeo(locale, { count: live.length, total: data.stats.total });
+const pageUrl = absoluteUrl(localizePath("/tags/", locale));
+// The breadcrumb JSON-LD comes from the visible trail in KindPageHeader.
+const jsonLd = [
+  itemListJsonLd({
+    name: strings.page.tags,
+    url: pageUrl,
+    items: live.map((tag) => ({
+      name: localName(tag, locale),
+      url: absoluteUrl(localizePath(`/tag/${tag.slug}/`, locale)),
+    })),
+  }),
+];
+---
+
+<BaseLayout locale={locale} title={seo.title} description={seo.description} keywords={seo.keywords}>
+  <JsonLd slot="head" data={jsonLd} />
+  <div class="mx-auto max-w-5xl px-4 pt-5 pb-20 sm:px-6 md:pt-8">
+    <KindPageHeader
+      locale={locale}
+      title={strings.page.tags}
+      description={seo.description}
+      count={{ n: live.length, template: kindStrings.tagsIndexCount }}
+      breadcrumbs={[
+          { label: t(locale, "site.home"), href: localizePath("/", locale) },
+          { label: strings.page.tags },
+        ]}
+    >
+      <Hash slot="icon" class="size-7 sm:size-8" aria-hidden="true" />
+    </KindPageHeader>
+
+    {groups.length === 0 ? (
+        <p
+          class="mt-8 rounded-2xl border border-dashed border-border p-10 text-center text-muted-foreground"
+        >
+          {kindStrings.tagsIndexEmpty}
+        </p>
+      ) : (
+        <div class="mt-8 space-y-8">
+          {groups.map((group) => (
+            <section aria-labelledby={`facet-${group.facet}`}>
+              <h2
+                id={`facet-${group.facet}`}
+                class="mb-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+              >
+                {kindStrings.facets[group.facet]}
+              </h2>
+              <ul class="flex flex-wrap gap-2">
+                {group.tags.map((tag) => (
+                  <li>
+                    <a
+                      href={localizePath(`/tag/${tag.slug}/`, locale)}
+                      data-tag-chip={tag.slug}
+                      data-press
+                      class="group inline-flex h-9 items-center gap-1 rounded-full border border-border bg-card pr-1.5 pl-3 text-sm shadow-card transition-colors outline-none hover:border-primary/40 hover:text-primary-accent focus-visible:ring-3 focus-visible:ring-outline/40"
+                    >
+                      <span class="text-primary-accent/70">#</span>
+                      {localName(tag, locale)}
+                      <span
+                        class="ml-1 rounded-full bg-muted px-1.5 text-[0.7rem] leading-5 text-muted-foreground tabular-nums group-hover:bg-primary-soft group-hover:text-primary-soft-foreground"
+                      >
+                        {tag.count}
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
+      )}
+  </div>
+</BaseLayout>

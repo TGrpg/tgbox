@@ -1,0 +1,52 @@
+---
+import Language from "@tabler/icons/outline/language.svg";
+import type { Locale } from "@tgbox/shared";
+import { htmlLang } from "@/i18n/locale.ts";
+import { kindUi } from "@/i18n/ui-kind.ts";
+
+interface Props {
+  locale: Locale;
+  /**
+   * Detected language codes present among the entries this page renders, most common first.
+   * Callers only render the filter when there is more than one language to choose between.
+   */
+  langs: string[];
+}
+
+const { locale, langs } = Astro.props;
+const strings = kindUi(locale).langFilter;
+// `lang` is a detected ISO code, not a fixed list, so the chips are named by the platform.
+const names = new Intl.DisplayNames([htmlLang[locale]], { type: "language" });
+const chips = [
+  { code: "all", label: strings.all, href: "#" },
+  ...langs.map((code) => ({
+    code,
+    label: names.of(code) ?? code.toUpperCase(),
+    href: `#lang=${code}`,
+  })),
+];
+---
+
+{/* Fragment links, not new URLs: the filter is client-side and leaves no crawlable duplicate. */}
+<nav data-lang-filter aria-label={strings.label} class="flex items-center gap-2">
+  <Language class="size-4 text-muted-foreground" aria-hidden="true" />
+  <ul class="inline-flex rounded-full border border-border bg-muted/60 p-1">
+    {chips.map((chip) => (
+        <li>
+          <a
+            href={chip.href}
+            data-lang-chip={chip.code}
+            aria-current={chip.code === "all" ? "true" : undefined}
+            data-press
+            class="flex h-8 items-center rounded-full px-3.5 text-sm whitespace-nowrap text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-outline/40 aria-[current=true]:bg-card aria-[current=true]:font-semibold aria-[current=true]:text-primary-accent aria-[current=true]:shadow-card"
+          >
+            {chip.label}
+          </a>
+        </li>
+      ))}
+  </ul>
+</nav>
+
+<script>
+import "@/scripts/lang-filter.ts";
+</script>

@@ -5,6 +5,7 @@ import KindGrid from "@/components/kind/KindGrid.astro";
 import KindListingShell from "@/components/kind/KindListingShell.astro";
 import KindPageHeader from "@/components/kind/KindPageHeader.astro";
 import KindSortTabs from "@/components/kind/KindSortTabs.astro";
+import LangFilter from "@/components/kind/LangFilter.astro";
 import JsonLd from "@/components/layout/JsonLd.astro";
 import Pagination from "@/components/Pagination.astro";
 import { localizePath } from "@/i18n/locale.ts";
@@ -13,7 +14,12 @@ import { kindUi } from "@/i18n/ui-kind.ts";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import { fill } from "@/lib/format.ts";
 import { itemListJsonLd } from "@/lib/json-ld.ts";
-import { categoryListingBase, type ListingSort, sortEntries } from "@/lib/kind-listing.ts";
+import {
+  categoryListingBase,
+  type ListingSort,
+  listingLangs,
+  sortEntries,
+} from "@/lib/kind-listing.ts";
 import { categorySeo, MIN_INDEXED_LISTING_ENTRIES } from "@/lib/seo.ts";
 import { absoluteUrl } from "@/lib/site.ts";
 import { getSiteData, localName, PAGE_SIZE, pageHref, pageSlice } from "@/lib/site-data.ts";
@@ -40,6 +46,7 @@ const base = localizePath(categoryListingBase(category.kind, category.slug, sort
 const sortSuffix = sort === "latest" ? ` · ${kindStrings.latestTitle}` : "";
 const pageSuffix = page > 1 ? ` · ${fill(strings.pagination.page, { n: page })}` : "";
 const visible = pageSlice(entries, page);
+const langs = listingLangs(visible);
 const seo = categorySeo(locale, {
   kind: category.kind,
   kindWord: kindTitle,
@@ -96,8 +103,9 @@ const jsonLd = [
         slot="icon"
         class="size-7 sm:size-8"
       />
-      <div class="mt-5 border-t border-border pt-4">
+      <div class="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-border pt-4">
         <KindSortTabs locale={locale} kind={category.kind} slug={category.slug} sort={sort} />
+        {langs.length > 1 && <LangFilter locale={locale} langs={langs} />}
       </div>
     </KindPageHeader>
     <KindGrid locale={locale} entries={visible} eager={10} class="mt-6" />

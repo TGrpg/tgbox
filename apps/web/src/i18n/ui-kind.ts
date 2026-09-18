@@ -9,8 +9,13 @@ const zh = {
   sort: { members: "成员数", latest: "最新收录" },
   latestTitle: "最新收录",
   relatedTags: "相关标签",
+  /** Client-side language filter on the kind and category listings. */
+  langFilter: { label: "按语言筛选", all: "全部语言" },
+  /** Tag index: the two facet groups tags are shown under. */
+  facets: { topic: "主题", attribute: "属性" },
+  tagsIndexCount: "{n} 个标签",
+  tagsIndexEmpty: "还没有条目用到标签。",
   tagCount: "{n} 个",
-  emptyCategory: "暂无条目",
 };
 
 const en: typeof zh = {
@@ -21,8 +26,11 @@ const en: typeof zh = {
   sort: { members: "Members", latest: "Newest" },
   latestTitle: "Newest",
   relatedTags: "Related tags",
+  langFilter: { label: "Filter by language", all: "All languages" },
+  facets: { topic: "Topics", attribute: "Attributes" },
+  tagsIndexCount: "{n} tags",
+  tagsIndexEmpty: "No entry uses a tag yet.",
   tagCount: "{n}",
-  emptyCategory: "No entries yet",
 };
 
 const dictionaries: Record<Locale, typeof zh> = { zh, en };

@@ -81,8 +81,14 @@ async function ftsRow(id: number) {
 
 describe("taxonomy", () => {
   test("syncs all shared categories and tags, and a re-sync writes nothing", async () => {
-    expect(await listCategories(db)).toHaveLength(categoryDefs.length);
-    expect(await listTags(db)).toHaveLength(tagDefs.length);
+    // A superset, not an equality: the migrations still carry tags that have since been retired
+    // from the seed list, and removing those rows from a live database is an admin action.
+    const tagSlugs = new Set((await listTags(db)).map((row) => row.slug));
+    expect(tagDefs.filter((def) => !tagSlugs.has(def.slug))).toEqual([]);
+    const rows = await listCategories(db);
+    const categoryKeys = new Set(rows.map((row) => `${row.kind}:${row.slug}`));
+    expect(categoryDefs.filter((def) => !categoryKeys.has(`${def.kind}:${def.slug}`))).toEqual([]);
+    expect(rows).toHaveLength(categoryDefs.length);
     expect(await syncTaxonomy(db)).toEqual({ rowsWritten: 0 });
   });
 });
@@ -229,7 +235,7 @@ describe("liveness", () => {
 
 describe("search", () => {
   test("long queries match phrases, short queries fall back to LIKE, approved only", async () => {
-    await approve("ai_news_cn", "AI 中文资讯", ["chinese"]);
+    await approve("ai_news_cn", "AI 中文资讯", ["science"]);
     await approve("soft_share", "软件分享站");
     const { id: hiddenId } = await approve("soft_hidden", "软件隐藏频道");
     await setEntryStatus(db, hiddenId, "hidden_by_admin", NOW);

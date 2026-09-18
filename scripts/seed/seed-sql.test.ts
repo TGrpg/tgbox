@@ -21,7 +21,7 @@ const channel: SeedRow = {
   username: "Solidot",
   kind: "channel",
   category: "news",
-  tags: ["chinese", "science", "not-a-tag"],
+  tags: ["daily-news", "science", "not-a-tag"],
   title: "Solidot",
   description: "奇客的资讯，重要的东西",
   lang: "zh",
@@ -37,7 +37,9 @@ test("migrations seed the taxonomy idempotently", () => {
   const db = migratedDb();
   const count = (table: string) => db.prepare(`SELECT count(*) AS n FROM ${table}`).get()?.n;
   assert.equal(count("categories"), 48);
-  assert.equal(count("tags"), 37);
+  // Migrations only ever insert: tags retired from the seed list are still seeded here, and are
+  // removed from a live database with the admin's deleteTag instead.
+  assert.equal(count("tags"), 47);
   const before = db.prepare("SELECT total_changes() AS n").get()?.n;
   const again = readFileSync(
     path.join(repoRoot, "packages/db/migrations/0002_taxonomy.sql"),
@@ -61,7 +63,7 @@ test("seeding lists an approved entry with stats, tags, search row and dirty fla
     .prepare("SELECT t.slug FROM entry_tags et JOIN tags t ON t.id = et.tag_id ORDER BY t.slug")
     .all()
     .map((row) => row.slug);
-  assert.deepEqual(tagSlugs, ["chinese", "science"]);
+  assert.deepEqual(tagSlugs, ["daily-news", "science"]);
   assert.equal(
     db.prepare("SELECT rowid FROM entries_fts WHERE entries_fts MATCH '\"Science\"'").get()?.rowid,
     entry?.id,

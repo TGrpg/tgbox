@@ -92,12 +92,12 @@ test("go page shows the entry and three Telegram routes", async ({ page }) => {
   await expect(page).toHaveURL(/\/go\/\?u=telegram$/);
 });
 
-test("category sidebar only links categories that have a page", async ({ page }) => {
+test("category sidebar only lists categories that have a page", async ({ page }) => {
   await page.goto("/channel/");
   const sidebar = page.locator("aside.category-sidebar");
-  const empty = sidebar.locator("[data-sidebar-empty]");
-  expect(await empty.count()).toBeGreaterThan(0);
-  await expect(empty.first()).not.toHaveAttribute("href");
+  expect(await sidebar.locator("li").count()).toBeGreaterThan(1);
+  // Empty categories are left out entirely, so every row is a link to a page that exists.
+  expect(await sidebar.locator("li > :not(a)").count()).toBe(0);
   for (const href of await sidebar
     .locator("a")
     .evaluateAll((links) => links.map((link) => link.getAttribute("href") ?? ""))) {
