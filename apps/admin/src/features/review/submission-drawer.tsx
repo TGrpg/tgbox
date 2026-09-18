@@ -24,6 +24,7 @@ import {
   SheetTitle,
 } from "@/components/coss/ui/sheet.tsx";
 import { Skeleton } from "@/components/coss/ui/skeleton.tsx";
+import { UserChip } from "@/components/user-chip.tsx";
 import { submissionPreviewQueryOptions } from "@/functions/review.ts";
 import {
   compactNumber,
@@ -186,7 +187,7 @@ function SubmissionFacts({ submission, names }: { submission: Submission; names:
     [
       "提交者",
       <a key="user" className="hover:underline" href={`tg://user?id=${submission.tgUserId}`}>
-        {submission.tgUserId}
+        <UserChip id={submission.tgUserId} showId />
       </a>,
     ],
     ["提交时间", dateTime(submission.createdAt)],

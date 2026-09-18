@@ -21,6 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/coss/ui/table.tsx";
+import { UserChip } from "@/components/user-chip.tsx";
 import { formatAmount } from "@/features/promotions/labels.ts";
 import {
   USERS_PAGE_SIZE,
@@ -39,9 +40,6 @@ const filterItems: { value: Filter; label: string }[] = [
   { value: "blacklisted", label: "已拉黑" },
   { value: "blocked", label: "已屏蔽机器人" },
 ];
-
-export const displayName = (user: Pick<UserRow, "firstName" | "lastName" | "tgUserId">) =>
-  [user.firstName, user.lastName].filter(Boolean).join(" ") || `用户 ${user.tgUserId}`;
 
 export const formatSpend = (spend: UserRow["spend"]) =>
   spend.length === 0
@@ -167,12 +165,8 @@ export function UserList() {
                   >
                     <TableCell className="pl-4">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium">{displayName(user)}</span>
+                        <UserChip id={user.tgUserId} showId className="max-w-64" />
                         <StatusBadges user={user} />
-                      </div>
-                      <div className="text-muted-foreground text-xs">
-                        {user.username ? `@${user.username} · ` : ""}
-                        <span className="font-mono">{user.tgUserId}</span>
                       </div>
                     </TableCell>
                     <TableCell>{user.locale === "en" ? "English" : "中文"}</TableCell>
@@ -201,13 +195,10 @@ export function UserList() {
                 className="gap-1 p-3 text-left"
               >
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium">{displayName(user)}</span>
+                  <UserChip id={user.tgUserId} className="max-w-full" />
                   <StatusBadges user={user} />
                 </div>
-                <div className="text-muted-foreground text-xs">
-                  {user.username ? `@${user.username} · ` : ""}
-                  活跃 {user.lastSeenDay}
-                </div>
+                <div className="text-muted-foreground text-xs">活跃 {user.lastSeenDay}</div>
                 <div className="flex gap-4 text-xs">
                   <span>
                     投稿 <Submissions counts={user.submissions} />

@@ -1,5 +1,5 @@
 import type { Entry } from "@tgbox/db";
-import type { EntryKind, ProductKind } from "@tgbox/shared";
+import { type EntryKind, isEntryProduct, type ProductKind } from "@tgbox/shared";
 
 export type SubmissionSummary = {
   username: string;
@@ -76,6 +76,14 @@ const zhProductKinds: Record<ProductKind, string> = {
   pin: "全站置顶",
   banner: "首页横幅",
   announcement: "顶部公告条",
+};
+
+const zhProductEffects: Record<ProductKind, string> = {
+  highlight: "在所有列表里用金色底和「推广」角标突出显示，位置不变。",
+  category_pin: "在自己所在分类里排第一位，含高亮效果。",
+  pin: "首页、总览、分类页和详情页的「发现更多」都排最前，含高亮效果。",
+  banner: "首页赞助区大卡片，并出现在每个详情页侧栏，可带配图。需审核。",
+  announcement: "全站每一页顶部的一行文字链接，独占一个名额。需审核。",
 };
 
 const zhTarget = (t: PromotionTarget) =>
@@ -164,21 +172,19 @@ export const zh = {
   promote: {
     intro: (advertiseUrl: string) =>
       [
-        "📣 推广位（价格从低到高）",
+        "📣 购买推广",
         "",
-        "【推广我的条目】已收录的频道、群组、机器人，付款后立即生效，每一档都包含上一档：",
-        "· 高亮：金色底和「推广」角标，位置不变",
-        "· 分类置顶：在自己的分类排第一",
-        "· 全站置顶：首页、总览和分类页都排最前",
+        "先选择广告位，下一步再选时长和价格。",
+        "🔸 推广我的条目：已收录的频道、群组、机器人，付款后立即生效",
+        "🖼 品牌广告：任意链接，审核通过后上线",
         "",
-        "【投放品牌广告】任意链接，审核通过后上线：",
-        "· 首页横幅：首页赞助区大卡片 + 详情页侧栏",
-        "· 顶部公告条：全站每页顶部一行文字链接",
-        "",
-        `效果示意和剩余名额：${advertiseUrl}`,
-        "",
-        "请选择：",
+        `每种广告位的效果示意：${advertiseUrl}`,
       ].join("\n"),
+    placement: (kind: ProductKind) =>
+      `${isEntryProduct(kind) ? "🔸" : "🖼"} ${zhProductKinds[kind]}`,
+    chooseDuration: (kind: ProductKind) =>
+      [`${zhProductKinds[kind]}`, zhProductEffects[kind], "", "请选择时长："].join("\n"),
+    back: "← 返回广告位",
     unavailable: "暂时无法购买推广，请稍后再试或联系客服（/support）。",
     product: (p: ProductLabel) =>
       `${p.name} · ${[p.stars === null ? "" : `⭐${p.stars}`, p.usdt === null ? "" : `${p.usdt} USDT`].filter(Boolean).join(" / ")}`,

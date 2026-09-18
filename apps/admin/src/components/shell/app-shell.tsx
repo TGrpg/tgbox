@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { type ReactNode, useEffect, useState } from "react";
 import { Button } from "@/components/coss/ui/button.tsx";
 import { Skeleton } from "@/components/coss/ui/skeleton.tsx";
+import { ActorChip } from "@/components/user-chip.tsx";
 import { sessionQueryOptions } from "@/functions/session.ts";
 import { cn } from "@/lib/cn.ts";
 import {
@@ -49,11 +50,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           <span className="font-semibold md:hidden">TGbox · 后台</span>
           <div className="ml-auto flex items-center gap-2">
             {session.data ? (
-              <span
-                className="max-w-48 truncate text-muted-foreground text-sm"
-                title={session.data.via}
-              >
-                {session.data.actor}
+              <span className="max-w-48 text-muted-foreground text-sm" title={session.data.via}>
+                <ActorChip actor={session.data.actor} />
               </span>
             ) : (
               <Skeleton className="h-5 w-32" />

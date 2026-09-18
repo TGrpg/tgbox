@@ -29,7 +29,13 @@ import { breadcrumbJsonLd, entryJsonLd } from "@/lib/json-ld.ts";
 import { linkify } from "@/lib/linkify.ts";
 import { detailSeo, entrySummary, localizedDescription } from "@/lib/seo.ts";
 import { absoluteUrl } from "@/lib/site.ts";
-import { findCategory, findEntries, findTag, localName } from "@/lib/site-data.ts";
+import {
+  findCategory,
+  findEntries,
+  findTag,
+  localName,
+  relatedWithPromos,
+} from "@/lib/site-data.ts";
 
 interface Props {
   locale: Locale;
@@ -69,8 +75,8 @@ const tierLabel =
   entry.activityTier === null ? null : (detail.activityTier[entry.activityTier] ?? null);
 const segments = activitySegments(entry.activityTier);
 
-const relatedChannels = findEntries(entry.related.channels);
-const relatedGroups = findEntries(entry.related.groups);
+const relatedChannels = relatedWithPromos(entry, "channel", findEntries(entry.related.channels));
+const relatedGroups = relatedWithPromos(entry, "group", findEntries(entry.related.groups));
 
 // The bot machine-translates descriptions; each locale reads its own, falling back to the original.
 const { text: description, translated } = localizedDescription(entry, locale);

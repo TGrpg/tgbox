@@ -337,7 +337,7 @@ describe("buildSiteData", () => {
     expect(entry(data, "techdaily").promo).toBe("category_pin");
     expect(entry(data, "movieshare").promo).toBeNull();
     expect(entry(data, "aiwatch").promo).toBe("pin");
-    expect(data.sponsoredAnnouncement).toMatchObject({ id: "10", title: "公告条" });
+    expect(data.sponsoredAnnouncements).toMatchObject([{ id: "10", title: "公告条" }]);
     // Capacity as the bot counts it; category pins publish only their per-category size.
     expect(data.inventory).toEqual(
       expect.arrayContaining([
@@ -358,7 +358,7 @@ describe("buildSiteData", () => {
 
     const data = await buildSiteData({ dbPath, mediaDir: tempDir(), now: fixtureNow });
 
-    expect(data).toMatchObject({ announcement: null, promos: [], sponsoredAnnouncement: null });
+    expect(data).toMatchObject({ announcement: null, promos: [], sponsoredAnnouncements: [] });
     expect(entry(data, "aiwatch").promo).toBe("pin");
   });
 

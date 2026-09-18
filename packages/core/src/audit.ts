@@ -25,6 +25,7 @@ export const auditActions = [
   "settings.update",
   "credential.set",
   "product.upsert",
+  "product.slots",
   "order.create",
   "order.paid",
   "order.reject",

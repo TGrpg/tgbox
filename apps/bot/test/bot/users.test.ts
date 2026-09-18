@@ -36,7 +36,16 @@ describe("broadcast cron", () => {
     await h.message({ ...ann, id: 557, username: "cat" }, "/help");
     const ctx = { ...core, config: { ...core.config, BOT_TOKEN: "1:x" } };
     const created = await createBroadcast(ctx, {
-      message: { text: "新功能上线", buttonText: null, buttonUrl: null },
+      message: {
+        text: "新功能上线",
+        format: "plain",
+        media: null,
+        buttons: [],
+        buttonsPerRow: 1,
+        silent: false,
+        protect: false,
+        noPreview: false,
+      },
       audience: "all",
       actor: emailActor("admin@example.com"),
     });

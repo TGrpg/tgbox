@@ -4,9 +4,9 @@ type Placement = { name: string; effect: string; includes: string | null };
 
 const zh = {
   title: "广告投放",
-  metaTitle: "Telegram 频道推广 · 广告位价格 | TGbox",
+  metaTitle: "Telegram 频道推广 · 广告位介绍 | TGbox",
   description:
-    "给你已收录的频道、群组或机器人买一个更靠前的位置，或者在首页和全站顶部投放品牌广告。价格、剩余名额和效果示意都在这一页。",
+    "给你已收录的频道、群组或机器人买一个更靠前的位置，或者在首页和全站顶部投放品牌广告。这里是每种广告位的效果示意和剩余名额，价格在机器人里查看。",
   entryFamily: "推广我的条目",
   entryFamilyLead:
     "给已经收录的频道、群组或机器人加曝光。付款后立即生效，每一档都包含上一档的效果。",
@@ -40,19 +40,17 @@ const zh = {
     },
   } satisfies Record<ProductKind, Placement>,
   days: "{n} 天",
-  stars: "{n} Stars",
-  usdt: "{n} USDT",
   slotsLeft: "共 {slots} 个名额 · 剩 {left} 个",
   slotsFull: "名额已满 · 到期后开放",
   slotsPerCategory: "每个分类 {slots} 个名额",
-  from: "{price} 起",
+  durations: "可选时长：{days}",
   preview: "效果示意",
   sampleTitle: "你的频道",
   sampleDescription: "你的频道简介会显示在这里",
   bannerTitle: "你的品牌",
   bannerSubtitle: "一句话介绍，最多 40 字",
   announcementText: "你的公告 · 一句话介绍，点击直达你的链接",
-  buy: "在机器人里购买",
+  buy: "在机器人里看价格并购买",
   buyHint: "打开 @{bot}，发送 /promote 选择档位；也可以在机器人的小程序里购买。",
   faqTitle: "常见问题",
   faq: [
@@ -81,9 +79,9 @@ const zh = {
 
 const en: typeof zh = {
   title: "Advertise",
-  metaTitle: "Promote a Telegram channel · Ad pricing | TGbox",
+  metaTitle: "Promote a Telegram channel · Ad placements | TGbox",
   description:
-    "Move your listed channel, group or bot up the lists, or run a brand ad on the home page and at the top of every page. Prices, free slots and previews are all on this page.",
+    "Move your listed channel, group or bot up the lists, or run a brand ad on the home page and at the top of every page. This page previews every placement and its free slots; prices are in the bot.",
   entryFamily: "Promote my listing",
   entryFamilyLead:
     "More exposure for a channel, group or bot that is already listed. Live as soon as you pay; each tier includes the one before it.",
@@ -120,19 +118,17 @@ const en: typeof zh = {
     },
   },
   days: "{n} days",
-  stars: "{n} Stars",
-  usdt: "{n} USDT",
   slotsLeft: "{slots} slots · {left} left",
   slotsFull: "Fully booked · opens when one ends",
   slotsPerCategory: "{slots} slots per category",
-  from: "From {price}",
+  durations: "Durations: {days}",
   preview: "Preview",
   sampleTitle: "Your channel",
   sampleDescription: "Your channel description shows here",
   bannerTitle: "Your brand",
   bannerSubtitle: "One line, up to 40 characters",
   announcementText: "Your announcement · one line that links straight to you",
-  buy: "Buy in the bot",
+  buy: "See prices and buy in the bot",
   buyHint: "Open @{bot} and send /promote to pick a placement, or buy in the bot's Mini App.",
   faqTitle: "FAQ",
   faq: [

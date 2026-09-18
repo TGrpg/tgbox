@@ -234,7 +234,7 @@ export async function buildSiteData(options: BuildSiteDataOptions): Promise<Site
             })
         : [];
     const promos = liveAds("banner");
-    const sponsoredAnnouncement = liveAds("announcement")[0] ?? null;
+    const sponsoredAnnouncements = liveAds("announcement");
 
     // Capacity per kind for the advertising page: live promotions only, since `orders` (buyer ids)
     // is never exported. Category pins are per category, so only their size is published.
@@ -329,7 +329,7 @@ export async function buildSiteData(options: BuildSiteDataOptions): Promise<Site
       },
       announcement,
       promos,
-      sponsoredAnnouncement,
+      sponsoredAnnouncements,
       inventory,
       showAdSlots: site.showAdSlots,
       payments: paymentMethods(),

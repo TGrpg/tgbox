@@ -2,6 +2,9 @@ import type {
   ActivityTier,
   BannerContent,
   BroadcastAudience,
+  BroadcastButton,
+  BroadcastFormat,
+  BroadcastMedia,
   BroadcastStatus,
   EntryKind,
   EntryStatus,
@@ -337,6 +340,13 @@ export const botUsers = sqliteTable("bot_users", {
   lastSeenDay: text("last_seen_day").notNull(),
   /** Set when a message to the user failed with 403 (they blocked the bot); cleared on return. */
   blockedAt: integer("blocked_at"),
+  /**
+   * R2 key of the profile photo the admin shows, null when the user has none. Keys are keyed
+   * hashes of the id, so the public media host doesn't turn ids into photos.
+   */
+  avatarKey: text("avatar_key"),
+  /** Last time the admin asked Telegram for the photo; null = never. */
+  avatarCheckedAt: integer("avatar_checked_at"),
 });
 
 /**
@@ -345,9 +355,17 @@ export const botUsers = sqliteTable("bot_users", {
  */
 export const broadcasts = sqliteTable("broadcasts", {
   id: integer().primaryKey(),
+  /** The message, or the caption when there is media. */
   text: text().notNull(),
-  buttonText: text("button_text"),
-  buttonUrl: text("button_url"),
+  format: text().$type<BroadcastFormat>().notNull().default("plain"),
+  /** A file Telegram already holds (uploaded once through the preview), re-sent by id. */
+  media: text({ mode: "json" }).$type<BroadcastMedia>(),
+  buttons: text({ mode: "json" }).$type<BroadcastButton[]>().notNull().default(sql`'[]'`),
+  /** Buttons per keyboard row. */
+  buttonsPerRow: integer("buttons_per_row").notNull().default(1),
+  silent: integer({ mode: "boolean" }).notNull().default(false),
+  protect: integer({ mode: "boolean" }).notNull().default(false),
+  noPreview: integer("no_preview", { mode: "boolean" }).notNull().default(false),
   audience: text().$type<BroadcastAudience>().notNull(),
   status: text().$type<BroadcastStatus>().notNull().default("running"),
   cursor: integer().notNull().default(0),

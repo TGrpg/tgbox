@@ -1,4 +1,4 @@
-import type { EntryKind, ProductView, SiteData } from "@tgbox/shared";
+import type { EntryKind, EntryProductKind, ProductView, PromoView, SiteData } from "@tgbox/shared";
 
 /**
  * Static JSON the Telegram Mini App reads directly from the CDN (`/data/app-*.json`). None of it
@@ -20,6 +20,16 @@ export type AppEntry = {
   title: string;
   members: number | null;
   avatarUrl: string | null;
+  /** Any live entry promotion: the row is tinted and tagged like on the site. */
+  promo: EntryProductKind | null;
+};
+
+/** Browse: the entry list plus the paid ads the site shows, so the app carries them too. */
+export type AppBrowse = {
+  entries: AppEntry[];
+  /** Paid bars take turns: the app shows one at random, like the site. */
+  announcements: PromoView[];
+  banners: PromoView[];
 };
 
 export type AppCategory = {
@@ -35,8 +45,16 @@ export type AppTag = { id: number; slug: string; nameZh: string; nameEn: string 
 
 export type AppTaxonomy = { categories: AppCategory[]; tags: AppTag[] };
 
+export function appBrowse(data: SiteData): AppBrowse {
+  return {
+    entries: appEntries(data),
+    announcements: data.sponsoredAnnouncements,
+    banners: data.promos,
+  };
+}
+
 /** Site-wide pins first, then the largest, capped per kind. */
-export function appEntries(data: SiteData): AppEntry[] {
+function appEntries(data: SiteData): AppEntry[] {
   const ranked = [...data.entries].sort(
     (a, b) =>
       Number(b.promo === "pin") - Number(a.promo === "pin") ||
@@ -55,6 +73,7 @@ export function appEntries(data: SiteData): AppEntry[] {
         title: entry.title,
         members: entry.members,
         avatarUrl: entry.avatarUrl,
+        promo: entry.promo,
       },
     ];
   });

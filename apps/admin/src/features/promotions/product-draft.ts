@@ -8,7 +8,6 @@ type Product = {
   days: number;
   priceStars: number;
   priceUsdt: string;
-  slots: number;
   active: boolean;
   sort: number;
 };
@@ -21,7 +20,6 @@ export type ProductDraft = {
   days: string;
   priceStars: string;
   priceUsdt: string;
-  slots: string;
   active: boolean;
   sort: string;
 };
@@ -33,7 +31,6 @@ export const newProductDraft: ProductDraft = {
   days: "7",
   priceStars: "",
   priceUsdt: "",
-  slots: "5",
   active: true,
   sort: "0",
 };
@@ -45,7 +42,6 @@ export const toDraft = (product: Product): ProductDraft => ({
   days: String(product.days),
   priceStars: String(product.priceStars),
   priceUsdt: product.priceUsdt,
-  slots: String(product.slots),
   active: product.active,
   sort: String(product.sort),
 });
@@ -73,8 +69,6 @@ export function parseProductDraft(
   if (!/^\d{1,6}(\.\d{1,2})?$/.test(priceUsdt) || Number(priceUsdt) <= 0) {
     return { ok: false, error: "USDT 价格需大于 0，最多两位小数" };
   }
-  const slots = int(draft.slots, 1, 100);
-  if (slots === null) return { ok: false, error: "名额需在 1–100 之间" };
   const sort = int(draft.sort, -1_000_000, 1_000_000);
   if (sort === null) return { ok: false, error: "排序需为整数" };
   return {
@@ -86,7 +80,6 @@ export function parseProductDraft(
       days,
       priceStars,
       priceUsdt,
-      slots,
       active: draft.active,
       sort,
     },

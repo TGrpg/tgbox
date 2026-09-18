@@ -88,25 +88,24 @@ export type AdOffer = {
   slots: number;
   /** Free slots at build time; null for per-category slots. */
   left: number | null;
-  /** Cheapest prices, for "from …". */
-  fromUsdt: number;
-  fromStars: number;
 };
 
+/** How many banners run at once: the admin's setting (the banner products' slots) at build time. */
+export function bannerSlots(data: Pick<SiteData, "inventory">) {
+  return data.inventory.find((item) => item.kind === "banner")?.slots ?? 0;
+}
+
 /**
- * The line under an unsold sponsor card: free slots and the cheapest price when the build knows
- * them, else the generic pitch.
+ * The line under an unsold sponsor card: the free slots when the build knows them, else the
+ * generic pitch. Never a price — those are quoted in the bot.
  */
 export function adSlotLine(
-  data: Pick<SiteData, "products" | "inventory" | "payments">,
+  data: Pick<SiteData, "products" | "inventory">,
   kind: ProductKind,
   strings: { subtitle: string; offer: string },
 ) {
   const offer = adOffers(data).find((item) => item.kind === kind);
-  if (!offer?.left) return strings.subtitle;
-  // Quote the currency a buyer can pay in, as the bot does.
-  const price = data.payments.usdt ? `${offer.fromUsdt} USDT` : `${offer.fromStars} Stars`;
-  return fill(strings.offer, { left: offer.left, price });
+  return offer?.left ? fill(strings.offer, { left: offer.left }) : strings.subtitle;
 }
 
 /** Placements that have a product on sale, cheapest family first (the ProductKind order). */
@@ -124,8 +123,6 @@ export function adOffers(data: Pick<SiteData, "products" | "inventory">): AdOffe
         products,
         slots,
         left: inventory?.used == null ? null : Math.max(0, slots - inventory.used),
-        fromUsdt: Math.min(...products.map((product) => Number(product.priceUsdt))),
-        fromStars: Math.min(...products.map((product) => product.priceStars)),
       },
     ];
   });

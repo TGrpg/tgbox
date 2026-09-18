@@ -35,6 +35,7 @@ import {
 } from "@/components/coss/ui/table.tsx";
 import { Textarea } from "@/components/coss/ui/textarea.tsx";
 import { toastManager } from "@/components/coss/ui/toast.tsx";
+import { UserChip } from "@/components/user-chip.tsx";
 import { OptionSelect } from "@/features/entries/option-select.tsx";
 import {
   $approveOrder,
@@ -181,7 +182,9 @@ export function OrdersTab() {
                           {order.provider ? providerLabels[order.provider] : "—"}
                         </div>
                       </TableCell>
-                      <TableCell className="font-mono text-xs">{order.tgUserId}</TableCell>
+                      <TableCell className="max-w-48">
+                        <UserChip id={order.tgUserId} />
+                      </TableCell>
                       <TableCell>
                         <OrderStatusBadge order={order} />
                       </TableCell>
@@ -227,7 +230,7 @@ export function OrdersTab() {
                         {formatAmount(order.amount, order.currency)}
                         {order.provider && ` · ${providerLabels[order.provider]}`}
                       </span>
-                      <span className="font-mono">买家 {order.tgUserId}</span>
+                      <UserChip id={order.tgUserId} size="sm" />
                       {order.clicks && <ClickBadge clicks={order.clicks} />}
                     </div>
                     <div className="text-muted-foreground text-xs">

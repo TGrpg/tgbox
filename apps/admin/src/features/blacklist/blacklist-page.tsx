@@ -23,6 +23,7 @@ import {
   TableRow,
 } from "@/components/coss/ui/table.tsx";
 import { toastManager } from "@/components/coss/ui/toast.tsx";
+import { UserChip } from "@/components/user-chip.tsx";
 import {
   $addBlacklist,
   $removeBlacklist,
@@ -45,6 +46,16 @@ const dateTime = (ms: number) =>
   new Date(ms).toLocaleString("zh-CN", { dateStyle: "medium", timeStyle: "short" });
 
 const rowKey = (row: Pick<BlacklistRow, "type" | "value">) => `${row.type}:${row.value}`;
+
+/** A banned user shows who they are; a banned username stays as typed. */
+function BlacklistValue({ row }: { row: Pick<BlacklistRow, "type" | "value"> }) {
+  const id = row.type === "user" ? Number(row.value) : Number.NaN;
+  return Number.isSafeInteger(id) ? (
+    <UserChip id={id} showId />
+  ) : (
+    <span className="font-mono">{row.value}</span>
+  );
+}
 
 export function BlacklistPage() {
   const queryClient = useQueryClient();
@@ -150,7 +161,9 @@ export function BlacklistPage() {
                           {typeLabel(row.type)}
                         </Badge>
                       </TableCell>
-                      <TableCell className="font-mono">{row.value}</TableCell>
+                      <TableCell>
+                        <BlacklistValue row={row} />
+                      </TableCell>
                       <TableCell className="max-w-72 truncate text-muted-foreground">
                         {row.reason ?? "—"}
                       </TableCell>
@@ -185,7 +198,9 @@ export function BlacklistPage() {
                         <Badge variant={row.type === "user" ? "info" : "secondary"}>
                           {typeLabel(row.type)}
                         </Badge>
-                        <span className="truncate font-mono text-sm">{row.value}</span>
+                        <span className="min-w-0 text-sm">
+                          <BlacklistValue row={row} />
+                        </span>
                       </div>
                       <div className="mt-1 truncate text-muted-foreground text-xs">
                         {row.reason ? `${row.reason} · ` : ""}

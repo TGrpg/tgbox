@@ -18,7 +18,13 @@ import {
   setOrderBanner,
   setOrderInvoice,
 } from "@tgbox/db";
-import { BannerContent, isEntryProduct, type Locale, parseTelegramRef } from "@tgbox/shared";
+import {
+  BannerContent,
+  isEntryProduct,
+  type Locale,
+  ProductKind,
+  parseTelegramRef,
+} from "@tgbox/shared";
 import { Composer, type Context, InlineKeyboard } from "grammy";
 import type { Message, PhotoSize } from "grammy/types";
 import type { App } from "./app.ts";
@@ -109,6 +115,7 @@ export function promote(app: App) {
   const cancelKeyboard = (locale: Locale) =>
     new InlineKeyboard().text(messages(locale).cancel, "px");
 
+  /** Step one: the placements on sale. Prices come with the second step, one placement at a time. */
   async function showProducts(ctx: Context) {
     const locale = await app.locale(ctx);
     const m = messages(locale).promote;
@@ -121,7 +128,31 @@ export function promote(app: App) {
       return;
     }
     const keyboard = new InlineKeyboard();
-    for (const product of products) {
+    const kinds = ProductKind.options.filter((kind) => products.some((p) => p.kind === kind));
+    for (const kind of kinds) keyboard.text(m.placement(kind), `pk:${kind}`).row();
+    await ctx.reply(m.intro(`${app.env.SITE_URL}${locale === "en" ? "/en" : ""}/advertise/`), {
+      reply_markup: keyboard,
+      link_preview_options: { is_disabled: true },
+    });
+  }
+
+  /** Step two: one placement's durations with the prices the buyer can actually pay. */
+  composer.callbackQuery(/^pk:([a-z_]+)$/, async (ctx) => {
+    const locale = await app.locale(ctx);
+    const m = messages(locale).promote;
+    await ctx.answerCallbackQuery();
+    const kind = ProductKind.safeParse(ctx.match[1]);
+    const [products, methods] = await Promise.all([
+      listProducts(app.db, { activeOnly: true }),
+      paymentMethods(app),
+    ]);
+    const offered = kind.success ? products.filter((product) => product.kind === kind.data) : [];
+    if (!kind.success || offered.length === 0) {
+      await ctx.reply(m.productUnavailable);
+      return;
+    }
+    const keyboard = new InlineKeyboard();
+    for (const product of offered) {
       // Only quote a price the buyer can actually pay: an operator who turned Stars off should
       // not have Stars prices advertised anywhere in the flow.
       const label = m.product({
@@ -132,11 +163,11 @@ export function promote(app: App) {
       });
       keyboard.text(label, `pp:${product.id}`).row();
     }
-    await ctx.reply(m.intro(`${app.env.SITE_URL}${locale === "en" ? "/en" : ""}/advertise/`), {
-      reply_markup: keyboard,
-      link_preview_options: { is_disabled: true },
-    });
-  }
+    keyboard.text(m.back, "promote");
+    await ctx
+      .editMessageText(m.chooseDuration(kind.data), { reply_markup: keyboard })
+      .catch(() => ctx.reply(m.chooseDuration(kind.data), { reply_markup: keyboard }));
+  });
 
   composer.command("promote", showProducts);
   // Deep link https://t.me/<bot>?start=promote; `startHelp` passes it on.

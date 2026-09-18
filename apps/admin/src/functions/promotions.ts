@@ -1,6 +1,12 @@
 import { keepPreviousData, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
-import { createManualPromotion, endPromotion, extendPromotion, upsertProduct } from "@tgbox/core";
+import {
+  createManualPromotion,
+  endPromotion,
+  extendPromotion,
+  setPlacementSlots,
+  upsertProduct,
+} from "@tgbox/core";
 import { countActivePromotions, countPaidOrders, listProducts } from "@tgbox/db";
 import { isEntryProduct, type OrderStatus, ProductKind } from "@tgbox/shared";
 import { queryKeys } from "@/lib/query-keys.ts";
@@ -13,6 +19,7 @@ import {
   ManualPromotionInput,
   OrderReviewInput,
   OrdersInput,
+  PlacementSlotsInput,
   ProductInput,
   PromotionIdInput,
   RejectOrderInput,
@@ -155,4 +162,11 @@ export const $upsertProduct = createServerFn({ method: "POST" })
   .inputValidator(ProductInput)
   .handler(({ data, context }) =>
     upsertProduct(context.core, { ...data, actor: context.auth.actor }),
+  );
+
+export const $setPlacementSlots = createServerFn({ method: "POST" })
+  .middleware([adminMiddleware])
+  .inputValidator(PlacementSlotsInput)
+  .handler(({ data, context }) =>
+    setPlacementSlots(context.core, { ...data, actor: context.auth.actor }),
   );

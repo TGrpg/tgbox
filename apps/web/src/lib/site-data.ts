@@ -50,6 +50,37 @@ export function promotedFirst(entries: EntryView[], scope: "site" | "category"):
   return [...entries].sort((a, b) => rank(b) - rank(a));
 }
 
+/** Site-wide pins shown in a detail page's "discover more" list, ahead of the similar entries. */
+const RELATED_PINS = 2;
+
+/**
+ * A detail page's "discover more" list of one kind: up to two site-wide pins lead (they paid for
+ * every list), then the similar entries with category pins of this entry's own category first.
+ * The list keeps its length, so the paid rows replace the least similar ones.
+ */
+export function relatedWithPromos(
+  entry: Pick<EntryView, "username" | "category">,
+  kind: EntryKind,
+  similar: EntryView[],
+): EntryView[] {
+  if (similar.length === 0) return [];
+  const pins = getSiteData()
+    .entries.filter(
+      (other) => other.kind === kind && other.promo === "pin" && other.username !== entry.username,
+    )
+    .slice(0, RELATED_PINS);
+  const rank = (other: EntryView) =>
+    other.promo === "pin"
+      ? 2
+      : other.promo === "category_pin" && other.category === entry.category
+        ? 1
+        : 0;
+  const pinned = new Set(pins.map((pin) => pin.username));
+  return [...pins, ...similar.filter((other) => !pinned.has(other.username))]
+    .sort((a, b) => rank(b) - rank(a))
+    .slice(0, similar.length);
+}
+
 /** Largest first; entries without a member count go last. */
 export function byMembers(entries: EntryView[]): EntryView[] {
   return [...entries].sort(

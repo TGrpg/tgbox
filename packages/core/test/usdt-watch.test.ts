@@ -35,7 +35,6 @@ async function withOrder(harness: Harness) {
     days: 7,
     priceStars: 500,
     priceUsdt: "10",
-    slots: 10,
     active: true,
     sort: 0,
     actor,

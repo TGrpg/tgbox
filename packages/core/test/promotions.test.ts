@@ -11,6 +11,7 @@ import {
   markOrderPaid,
   rejectOrder,
   runPromotionMaintenance,
+  setPlacementSlots,
   upsertProduct,
 } from "@tgbox/core";
 import {
@@ -261,6 +262,33 @@ describe("slots and products", () => {
     ).toEqual({ ok: false, error: "target_not_listed" });
   });
 
+  test("a placement's size is one admin setting shared by its durations", async () => {
+    const { ctx, dispatches } = await setup();
+    expect(await setPlacementSlots(ctx, { kind: "banner", slots: 8, actor })).toBe(true);
+    const banners = (await listProducts(db)).filter((p) => p.kind === "banner");
+    expect(banners.map((p) => p.slots)).toEqual([8, 8]);
+    expect(await checkSlots(ctx, "banner")).toEqual({ available: 8, nextFreeAt: null });
+    // The site shows free slots, so it is rebuilt.
+    expect(dispatches).toHaveLength(1);
+    for (const slots of [0, 101, 2.5]) {
+      expect(await setPlacementSlots(ctx, { kind: "banner", slots, actor })).toBe(false);
+    }
+    // A new duration joins at the placement's size.
+    const created = await upsertProduct(ctx, {
+      kind: "banner",
+      nameZh: "首页横幅 90 天",
+      nameEn: "Home banner for 90 days",
+      days: 90,
+      priceStars: 12000,
+      priceUsdt: "150",
+      active: true,
+      sort: 45,
+      actor,
+    });
+    if (!created.ok) throw new Error(created.error);
+    expect((await listProducts(db)).find((p) => p.id === created.id)?.slots).toBe(8);
+  });
+
   test("products are validated on create and edit", async () => {
     const { ctx } = await setup();
     const product = {
@@ -270,7 +298,6 @@ describe("slots and products", () => {
       days: 1,
       priceStars: 100,
       priceUsdt: "2.5",
-      slots: 3,
       active: false,
       sort: 5,
       actor,

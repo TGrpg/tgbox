@@ -1,5 +1,11 @@
 export { type EntryPreview, previewEntry } from "./add.ts";
 export { type AuditAction, auditActions } from "./audit.ts";
+export {
+  AVATAR_BATCH,
+  AVATAR_MAX_AGE_MS,
+  type AvatarBucket,
+  refreshUserAvatars,
+} from "./avatars.ts";
 export { addBlacklist, removeBlacklist } from "./blacklist.ts";
 export { dispatchStaleBuild, markDirtyAndDispatch, triggerBuild } from "./build.ts";
 export {
@@ -52,10 +58,12 @@ export {
   createOrder,
   endPromotion,
   extendPromotion,
+  MAX_SLOTS,
   markOrderPaid,
   type PromotionContentError,
   rejectOrder,
   runPromotionMaintenance,
+  setPlacementSlots,
   upsertProduct,
 } from "./promotions.ts";
 export { publishEntryToChannel } from "./publish.ts";
@@ -93,9 +101,10 @@ export {
 export {
   advanceBroadcast,
   BROADCAST_BATCH,
-  type BroadcastMessage,
   createBroadcast,
   messageUser,
+  previewMessage,
   runDueBroadcasts,
   setBroadcastState,
+  uploadMessageMedia,
 } from "./users.ts";

@@ -6,11 +6,13 @@ import {
   countAudience,
   createDb,
   getBotUserDetail,
+  getBotUserProfiles,
   getBroadcast,
   insertBroadcast,
   listBotUsers,
   markBotUsersBlocked,
   recordBroadcastBatch,
+  setBotUserAvatar,
   touchBotUser,
 } from "./index.ts";
 
@@ -65,9 +67,27 @@ describe("recording users", () => {
   test("a user who blocked the bot is reachable again once they write", async () => {
     await touchBotUser(db, alice);
     await markBotUsersBlocked(db, [11], NOW);
-    expect(await countAudience(db, "all")).toBe(0);
+    expect(await countAudience(db, "all", NOW)).toBe(0);
     await touchBotUser(db, { ...alice, now: NOW + 1 });
-    expect(await countAudience(db, "all")).toBe(1);
+    expect(await countAudience(db, "all", NOW)).toBe(1);
+  });
+});
+
+describe("profiles", () => {
+  test("known users come back with their avatar state; unknown ids are left out", async () => {
+    await touchBotUser(db, alice);
+    await setBotUserAvatar(db, { tgUserId: 11, avatarKey: "users/abc.jpg", now: NOW });
+    expect(await getBotUserProfiles(db, [11, 99])).toEqual([
+      {
+        tgUserId: 11,
+        firstName: "Alice",
+        lastName: null,
+        username: "alice",
+        avatarKey: "users/abc.jpg",
+        avatarCheckedAt: NOW,
+      },
+    ]);
+    expect(await getBotUserProfiles(db, [])).toEqual([]);
   });
 });
 
@@ -125,22 +145,32 @@ describe("broadcasts", () => {
       env.DB.prepare("INSERT INTO user_prefs (tg_user_id, locale, updated_at) VALUES (2, 'en', 1)"),
       env.DB.prepare("INSERT INTO blacklist (type, value, created_at) VALUES ('user', '4', 1)"),
     ]);
-    expect(await countAudience(db, "all")).toBe(3);
-    expect(await countAudience(db, "en")).toBe(2);
-    expect(await countAudience(db, "zh")).toBe(1);
-    expect(await countAudience(db, "paying")).toBe(0);
+    expect(await countAudience(db, "all", NOW)).toBe(3);
+    expect(await countAudience(db, "en", NOW)).toBe(2);
+    expect(await countAudience(db, "zh", NOW)).toBe(1);
+    expect(await countAudience(db, "paying", NOW)).toBe(0);
+    expect(await countAudience(db, "submitters", NOW)).toBe(0);
+    // Users seen within the last 30 days; seed() dates everyone NOW.
+    expect(await countAudience(db, "active30", NOW + 29 * DAY)).toBe(3);
+    expect(await countAudience(db, "active30", NOW + 31 * DAY)).toBe(0);
   });
 
   test("batches walk the audience once; a racing claim gets nothing; a rewind resends", async () => {
     for (const id of [1, 2, 3, 4, 5]) await seed(id);
     const created = await insertBroadcast(db, {
       text: "hi",
-      buttonText: null,
-      buttonUrl: null,
+      format: "plain",
+      media: null,
+      buttons: [],
+      buttonsPerRow: 1,
+      silent: false,
+      protect: false,
+      noPreview: false,
       audience: "all",
       total: 5,
       createdBy: "system",
       now: NOW,
+      startAt: NOW,
     });
     const lease = { limit: 2, now: NOW, leaseMs: 60_000 };
     expect(await claimBroadcastBatch(db, created, lease)).toEqual([1, 2]);

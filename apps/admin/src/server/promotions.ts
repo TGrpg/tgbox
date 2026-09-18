@@ -81,6 +81,8 @@ export const ManualPromotionInput = z.discriminatedUnion("kind", [
   }),
 ]);
 
+export const PlacementSlotsInput = z.object({ kind: ProductKind, slots: z.number().int() });
+
 export const PromotionIdInput = z.object({ promotionId: z.number().int().positive() });
 export const ExtendPromotionInput = PromotionIdInput.extend({
   days: z.number().int().min(1).max(365),
@@ -94,7 +96,6 @@ export const ProductInput = z.object({
   days: z.number().int(),
   priceStars: z.number().int(),
   priceUsdt: z.string().trim().max(20),
-  slots: z.number().int(),
   active: z.boolean(),
   sort: z.number().int(),
 });

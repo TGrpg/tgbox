@@ -1,4 +1,4 @@
-import type { ProductKind } from "@tgbox/shared";
+import { isEntryProduct, type ProductKind } from "@tgbox/shared";
 import {
   type AdOrderSummary,
   type EntryStatusSummary,
@@ -17,6 +17,22 @@ const enProductKinds: Record<ProductKind, string> = {
   pin: "site-wide pin",
   banner: "home banner",
   announcement: "announcement bar",
+};
+
+const enProductNames: Record<ProductKind, string> = {
+  highlight: "Highlight",
+  category_pin: "Category pin",
+  pin: "Site-wide pin",
+  banner: "Home banner",
+  announcement: "Announcement bar",
+};
+
+const enProductEffects: Record<ProductKind, string> = {
+  highlight: "A gold tint and a “Promoted” tag in every list, same position.",
+  category_pin: "First place in its own category; includes the highlight.",
+  pin: "First on home, overviews, categories and detail pages' “discover more”; includes the highlight.",
+  banner: "A large home sponsor card, also beside every detail page; can carry an image. Reviewed.",
+  announcement: "One line of text at the top of every page; a single slot. Reviewed.",
 };
 
 const enTarget = (t: PromotionTarget) =>
@@ -106,21 +122,19 @@ export const en: typeof zh = {
   promote: {
     intro: (advertiseUrl: string) =>
       [
-        "📣 Promotions (cheapest first)",
+        "📣 Buy a promotion",
         "",
-        "Promote my listing — a listed channel, group or bot; live once paid, each tier includes the one before:",
-        "· Highlight: gold tint and a “Promoted” tag, same position",
-        "· Category pin: first in its own category",
-        "· Site-wide pin: first on home, overviews and categories",
+        "Pick a placement first; the next step shows durations and prices.",
+        "🔸 Promote my listing: a listed channel, group or bot, live once paid",
+        "🖼 Brand ad: any link, live after review",
         "",
-        "Brand ad — any link; live after review:",
-        "· Home banner: large home sponsor card + detail page sidebar",
-        "· Announcement bar: one line of text at the top of every page",
-        "",
-        `Previews and free slots: ${advertiseUrl}`,
-        "",
-        "Choose:",
+        `What each placement looks like: ${advertiseUrl}`,
       ].join("\n"),
+    placement: (kind: ProductKind) =>
+      `${isEntryProduct(kind) ? "🔸" : "🖼"} ${enProductNames[kind]}`,
+    chooseDuration: (kind: ProductKind) =>
+      [enProductNames[kind], enProductEffects[kind], "", "Choose a duration:"].join("\n"),
+    back: "← Back to placements",
     unavailable:
       "Promotions can't be bought right now. Try again later or contact support (/support).",
     product: (p: ProductLabel) =>

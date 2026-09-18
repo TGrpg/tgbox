@@ -1,7 +1,8 @@
-import type { EntryKind, Locale } from "@tgbox/shared";
+import type { EntryKind, EntryProductKind, Locale } from "@tgbox/shared";
 import { ExternalLinkIcon, Share2Icon } from "lucide-react";
 import { Button } from "@/components/coss/ui/button";
 import { appUi } from "@/i18n/ui-app.ts";
+import { cn } from "@/lib/cn.ts";
 import { formatNumber } from "@/lib/format.ts";
 import { shareEntry, type TelegramWebApp } from "./telegram.ts";
 
@@ -11,6 +12,8 @@ export type BrowseItem = {
   title: string;
   members: number | null;
   avatarUrl: string | null;
+  /** Search results don't carry it; the browse list does. */
+  promo?: EntryProductKind | null;
 };
 
 /** Links must not navigate the webview away from the app; Telegram opens them itself. */
@@ -34,7 +37,13 @@ export function EntryCard({
   const strings = appUi(locale);
   const detailUrl = `${siteUrl}${locale === "en" ? "/en" : ""}/detail/${entry.username}/`;
   return (
-    <li className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3">
+    // Same look as a promoted card on the site: every tier is tinted and tagged alike.
+    <li
+      className={cn(
+        "flex items-center gap-3 rounded-2xl border border-border bg-card p-3",
+        entry.promo && "border-warning-foreground/35 bg-warning/50",
+      )}
+    >
       <img
         src={entry.avatarUrl ?? "/images/default-avatar.svg"}
         alt=""
@@ -44,8 +53,15 @@ export function EntryCard({
         className="size-11 shrink-0 rounded-full bg-muted object-cover"
       />
       <div className="min-w-0 flex-1">
-        <p className="truncate font-semibold text-sm" dir="auto">
-          {entry.title}
+        <p className="flex items-center gap-1.5 font-semibold text-sm">
+          <span className="truncate" dir="auto">
+            {entry.title}
+          </span>
+          {entry.promo && (
+            <span className="shrink-0 rounded-md bg-warning-foreground px-1.5 text-[0.675rem] text-warning leading-4">
+              {strings.browse.promoted}
+            </span>
+          )}
         </p>
         <p className="truncate text-muted-foreground text-xs">
           @{entry.username}

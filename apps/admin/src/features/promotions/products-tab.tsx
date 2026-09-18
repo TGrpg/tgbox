@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ProductKind } from "@tgbox/shared";
 import { PlusIcon, SaveIcon, XIcon } from "lucide-react";
 import { motion } from "motion/react";
 import { type FormEvent, type ReactNode, useState } from "react";
@@ -20,12 +21,17 @@ import {
 import { toastManager } from "@/components/coss/ui/toast.tsx";
 import { OptionSelect } from "@/features/entries/option-select.tsx";
 import { useIsMobile } from "@/features/entries/use-is-mobile.ts";
-import { $upsertProduct, type ProductRow, productsQueryOptions } from "@/functions/promotions.ts";
+import {
+  $setPlacementSlots,
+  $upsertProduct,
+  type ProductRow,
+  productsQueryOptions,
+} from "@/functions/promotions.ts";
 import { invalidate } from "@/lib/query-keys.ts";
 import { productKindLabels, productKindOptions, productKindVariants } from "./labels.ts";
 import { newProductDraft, type ProductDraft, parseProductDraft, toDraft } from "./product-draft.ts";
 
-const columns = ["类型", "中文名", "英文名", "天数", "Stars", "USDT", "名额", "上架", "排序"];
+const columns = ["类型", "中文名", "英文名", "天数", "Stars", "USDT", "上架", "排序"];
 
 export function ProductsTab() {
   const list = useQuery(productsQueryOptions());
@@ -50,10 +56,10 @@ export function ProductsTab() {
 
   return (
     <div className="flex flex-col gap-3">
+      <PlacementSlots products={list.data} />
       <div className="flex flex-wrap items-center gap-2">
         <p className="text-muted-foreground text-sm">
-          机器人 /promote 里的推广档位就在这里配置：置顶和横幅各自的天数、Stars 价、USDT
-          价和名额。改价只影响之后的订单；同一类型的名额取该类型档位中最大的「名额」。
+          机器人 /promote 里每个广告位的时长和价格。改价只影响之后的订单；网站上不显示价格。
         </p>
         <Button className="ml-auto" size="sm" disabled={adding} onClick={() => setAdding(true)}>
           <PlusIcon aria-hidden />
@@ -177,7 +183,6 @@ function ProductEditor({
         onChange={(event) => patch({ priceUsdt: event.target.value })}
       />
     ),
-    slots: numberInput("名额", draft.slots, (slots) => patch({ slots })),
     active: (
       <Switch
         aria-label="上架"
@@ -223,7 +228,6 @@ function ProductEditor({
           <TableCell>{fields.days}</TableCell>
           <TableCell>{fields.priceStars}</TableCell>
           <TableCell>{fields.priceUsdt}</TableCell>
-          <TableCell>{fields.slots}</TableCell>
           <TableCell className="align-middle">{fields.active}</TableCell>
           <TableCell>{fields.sort}</TableCell>
           <TableCell className="pr-4">{buttons}</TableCell>
@@ -254,7 +258,6 @@ function ProductEditor({
             <CardField label="中文名">{fields.nameZh}</CardField>
             <CardField label="英文名">{fields.nameEn}</CardField>
             <CardField label="天数">{fields.days}</CardField>
-            <CardField label="名额">{fields.slots}</CardField>
             <CardField label="Stars">{fields.priceStars}</CardField>
             <CardField label="USDT">{fields.priceUsdt}</CardField>
             <CardField label="排序">{fields.sort}</CardField>
@@ -286,5 +289,96 @@ function numberInput(label: string, value: string, onChange: (value: string) => 
       value={value}
       onChange={(event) => onChange(event.target.value)}
     />
+  );
+}
+
+/** Per-category for category pins; everywhere else, how many run on the whole site at once. */
+const slotHints: Record<ProductKind, string> = {
+  highlight: "全站同时高亮的条目数",
+  category_pin: "每个分类同时置顶的条目数",
+  pin: "全站同时置顶的条目数",
+  banner: "首页和详情页同时展示的横幅数",
+  announcement: "同时投放的公告条数（多条时每次打开页面随机轮换）",
+};
+
+/**
+ * The size of each placement, set here rather than built in. One number per placement: all of its
+ * durations share it. Saving rebuilds the site, which shows the free slots.
+ */
+function PlacementSlots({ products }: { products: ProductRow[] }) {
+  const kinds = ProductKind.options.filter((kind) => products.some((p) => p.kind === kind));
+  return (
+    <Card className="gap-3 p-4">
+      <div>
+        <h2 className="font-semibold">广告位名额</h2>
+        <p className="text-muted-foreground text-sm">
+          每种广告位同时能卖出几个。满了之后机器人会告诉买家最早什么时候空出来。
+        </p>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+        {kinds.map((kind) => (
+          <SlotsField
+            key={`${kind}:${Math.max(...products.filter((p) => p.kind === kind).map((p) => p.slots))}`}
+            kind={kind}
+            current={Math.max(...products.filter((p) => p.kind === kind).map((p) => p.slots))}
+          />
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+function SlotsField({ kind, current }: { kind: ProductKind; current: number }) {
+  const queryClient = useQueryClient();
+  const [value, setValue] = useState(String(current));
+  const slots = Number(value);
+  const valid = /^\d+$/.test(value) && slots >= 1 && slots <= 100;
+  const save = useMutation({
+    mutationFn: () => $setPlacementSlots({ data: { kind, slots } }),
+    onSuccess: (ok) =>
+      ok
+        ? toastManager.add({
+            type: "success",
+            title: `${productKindLabels[kind]}：${slots} 个名额`,
+          })
+        : toastManager.add({ type: "error", title: "名额需在 1–100 之间" }),
+    onError: (error) =>
+      toastManager.add({ type: "error", title: "保存失败", description: error.message }),
+    onSettled: () => invalidate(queryClient, "products", "audit", "adminStats"),
+  });
+  return (
+    <form
+      className="flex flex-col gap-1.5 rounded-xl border p-3"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (valid && slots !== current) save.mutate();
+      }}
+    >
+      <Badge variant={productKindVariants[kind]} className="self-start">
+        {productKindLabels[kind]}
+      </Badge>
+      <div className="flex items-center gap-2">
+        <Input
+          aria-label={`${productKindLabels[kind]}名额`}
+          type="number"
+          min={1}
+          max={100}
+          className="w-20"
+          value={value}
+          aria-invalid={!valid || undefined}
+          onChange={(event) => setValue(event.target.value)}
+        />
+        <Button
+          type="submit"
+          size="sm"
+          variant="outline"
+          disabled={!valid || slots === current}
+          loading={save.isPending}
+        >
+          保存
+        </Button>
+      </div>
+      <span className="text-muted-foreground text-xs">{slotHints[kind]}</span>
+    </form>
   );
 }

@@ -126,7 +126,7 @@ const zh = {
   adSlot: {
     title: "广告位招租",
     subtitle: "在此展示你的频道 · 按周购买",
-    offer: "剩 {left} 个位置 · {price} 起",
+    offer: "还剩 {left} 个位置 · 点击了解",
   },
   pagination: {
     label: "分页",
@@ -301,7 +301,7 @@ const en: typeof zh = {
   adSlot: {
     title: "Ad space available",
     subtitle: "Feature your channel here · weekly",
-    offer: "{left} left · from {price}",
+    offer: "{left} slots left · learn more",
   },
   pagination: {
     label: "Pagination",

@@ -117,7 +117,7 @@ describe("adOffers", () => {
     priceUsdt,
   });
 
-  test("lists placements on sale in tier order, with slots left and the cheapest price", () => {
+  test("lists placements on sale in tier order, with the slots left", () => {
     const offers = adOffers({
       products: [
         product(1, "banner", 30, "60"),
@@ -132,11 +132,11 @@ describe("adOffers", () => {
         { kind: "announcement", slots: 1, used: 0 },
       ],
     });
-    expect(offers.map((offer) => [offer.kind, offer.slots, offer.left, offer.fromUsdt])).toEqual([
-      ["highlight", 30, 28, 3],
-      ["category_pin", 3, null, 5],
+    expect(offers.map((offer) => [offer.kind, offer.slots, offer.left])).toEqual([
+      ["highlight", 30, 28],
+      ["category_pin", 3, null],
       // Over-full (an admin added one by hand) reads as none left, never negative.
-      ["banner", 5, 0, 20],
+      ["banner", 5, 0],
     ]);
     expect(offers[2]?.products.map((item) => item.days)).toEqual([7, 30]);
   });

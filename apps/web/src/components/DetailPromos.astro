@@ -5,7 +5,7 @@ import { type Locale, promoClickUrl } from "@tgbox/shared";
 import { localizePath } from "@/i18n/locale.ts";
 import { ui } from "@/i18n/ui.ts";
 import { detailUi } from "@/i18n/ui-detail.ts";
-import { adSlotLine, promoSlots } from "@/lib/promos.ts";
+import { adSlotLine, bannerSlots, promoSlots } from "@/lib/promos.ts";
 import { getSiteData } from "@/lib/site-data.ts";
 
 interface Props {
@@ -14,7 +14,13 @@ interface Props {
 const { locale } = Astro.props;
 const { entry, adSlot } = ui(locale);
 const data = getSiteData();
-const items = promoSlots(data.promos, 3, 1, data.showAdSlots);
+// The sidebar carries every paid banner but at most one "for rent" card, however many slots exist.
+const items = promoSlots(
+  data.promos,
+  Math.min(bannerSlots(data), data.promos.length + 1),
+  1,
+  data.showAdSlots,
+);
 const onlyPlaceholder = items.length === 1 && items[0]?.type === "placeholder";
 const advertiseHref = localizePath("/advertise/", locale);
 const slotLine = adSlotLine(data, "banner", adSlot);

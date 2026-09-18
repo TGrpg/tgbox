@@ -244,10 +244,40 @@ export async function botUserStats(db: Db, now: number) {
   };
 }
 
+/* ------------------------------------------------------------------ profiles */
+
+/** What the admin shows for a Telegram user wherever one appears; unknown ids are left out. */
+export function getBotUserProfiles(db: Db, ids: number[]) {
+  if (ids.length === 0) return Promise.resolve([]);
+  return db
+    .select({
+      tgUserId: botUsers.tgUserId,
+      firstName: botUsers.firstName,
+      lastName: botUsers.lastName,
+      username: botUsers.username,
+      avatarKey: botUsers.avatarKey,
+      avatarCheckedAt: botUsers.avatarCheckedAt,
+    })
+    .from(botUsers)
+    .where(inArray(botUsers.tgUserId, ids));
+}
+
+/** Records a fetched profile photo (or that there is none). At most one write per user a week. */
+export async function setBotUserAvatar(
+  db: Db,
+  input: { tgUserId: number; avatarKey: string | null; now: number },
+) {
+  await db
+    .update(botUsers)
+    .set({ avatarKey: input.avatarKey, avatarCheckedAt: input.now })
+    .where(eq(botUsers.tgUserId, input.tgUserId))
+    .run();
+}
+
 /* ------------------------------------------------------------------ broadcasts */
 
-/** Reachable users in the audience: not blocked, not blacklisted. */
-function audienceWhere(audience: BroadcastAudience): SQL {
+/** Reachable users in the audience: not blocked, not blacklisted. `now` dates "active". */
+function audienceWhere(audience: BroadcastAudience, now: number): SQL {
   const reachable = sql`${botUsers.blockedAt} IS NULL AND NOT ${isBlacklisted}`;
   switch (audience) {
     case "zh":
@@ -255,13 +285,20 @@ function audienceWhere(audience: BroadcastAudience): SQL {
       return sql`${reachable} AND ${userLocale} = ${audience}`;
     case "paying":
       return sql`${reachable} AND ${hasPaid}`;
+    case "submitters":
+      return sql`${reachable} AND ${hasSubmitted}`;
+    case "active30":
+      return sql`${reachable} AND ${botUsers.lastSeenDay} >= ${utcDay(now - 30 * DAY_MS)}`;
     case "all":
       return reachable;
   }
 }
 
-export async function countAudience(db: Db, audience: BroadcastAudience) {
-  const [row] = await db.select({ count: count() }).from(botUsers).where(audienceWhere(audience));
+export async function countAudience(db: Db, audience: BroadcastAudience, now: number) {
+  const [row] = await db
+    .select({ count: count() })
+    .from(botUsers)
+    .where(audienceWhere(audience, now));
   return row?.count ?? 0;
 }
 
@@ -269,15 +306,27 @@ export async function insertBroadcast(
   db: Db,
   input: Pick<
     Broadcast,
-    "text" | "buttonText" | "buttonUrl" | "audience" | "total" | "createdBy"
+    | "text"
+    | "format"
+    | "media"
+    | "buttons"
+    | "buttonsPerRow"
+    | "silent"
+    | "protect"
+    | "noPreview"
+    | "audience"
+    | "total"
+    | "createdBy"
   > & {
     now: number;
+    /** Scheduled start; nobody sends a batch before it. */
+    startAt: number;
   },
 ) {
-  const { now, ...fields } = input;
+  const { now, startAt, ...fields } = input;
   const [row] = await db
     .insert(broadcasts)
-    .values({ ...fields, createdAt: now })
+    .values({ ...fields, notBefore: startAt, createdAt: now })
     .returning();
   if (!row) throw new Error("broadcast insert returned nothing");
   return row;
@@ -317,7 +366,9 @@ export async function claimBroadcastBatch(
   const recipients = await db
     .select({ tgUserId: botUsers.tgUserId })
     .from(botUsers)
-    .where(and(sql`${botUsers.tgUserId} > ${broadcast.cursor}`, audienceWhere(broadcast.audience)))
+    .where(
+      and(sql`${botUsers.tgUserId} > ${broadcast.cursor}`, audienceWhere(broadcast.audience, now)),
+    )
     .orderBy(botUsers.tgUserId)
     .limit(limit);
   const last = recipients.at(-1)?.tgUserId;

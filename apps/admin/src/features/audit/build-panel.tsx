@@ -5,6 +5,7 @@ import { Button } from "@/components/coss/ui/button.tsx";
 import { Card } from "@/components/coss/ui/card.tsx";
 import { Skeleton } from "@/components/coss/ui/skeleton.tsx";
 import { toastManager } from "@/components/coss/ui/toast.tsx";
+import { ActorChip } from "@/components/user-chip.tsx";
 import { $triggerBuild, buildStatusQueryOptions } from "@/functions/audit.ts";
 import { invalidate } from "@/lib/query-keys.ts";
 
@@ -61,9 +62,9 @@ export function BuildPanel() {
         {data.lastTrigger === null ? (
           "暂无记录"
         ) : (
-          <span>
-            {dateTime(data.lastTrigger.at)}{" "}
-            <span className="text-muted-foreground">({data.lastTrigger.actor})</span>
+          <span className="inline-flex items-center gap-2">
+            {dateTime(data.lastTrigger.at)}
+            <ActorChip actor={data.lastTrigger.actor} />
           </span>
         )}
       </Item>

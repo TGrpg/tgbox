@@ -1,11 +1,12 @@
-import { type EntryKind, entryKinds, type Locale } from "@tgbox/shared";
+import { type EntryKind, entryKinds, type Locale, promoClickUrl } from "@tgbox/shared";
 import { SearchIcon, XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Spinner } from "@/components/coss/ui/spinner";
 import { appUi } from "@/i18n/ui-app.ts";
-import { APP_BROWSE_LIMIT, type AppEntry } from "@/lib/app-data.ts";
+import { APP_BROWSE_LIMIT, type AppBrowse } from "@/lib/app-data.ts";
 import { cn } from "@/lib/cn.ts";
 import { loadPagefind, resetPagefind } from "@/lib/pagefind.ts";
+import { BannerCard } from "./banner-card.tsx";
 import { type BrowseItem, EntryCard } from "./entry-card.tsx";
 import { useWebApp } from "./shell.tsx";
 import { useStaticJson } from "./use-static.ts";
@@ -61,7 +62,15 @@ export function BrowseScreen({
 }) {
   const strings = appUi(locale);
   const webApp = useWebApp();
-  const entries = useStaticJson<AppEntry[]>("/data/app-entries.json");
+  const browse = useStaticJson<AppBrowse>("/data/app-browse.json");
+  const entries =
+    browse.status === "ready" ? { status: "ready" as const, data: browse.data.entries } : browse;
+  // Paid ads open through the site's click counter, as they do on the site.
+  const openAd = (id: string) => {
+    const url = `${siteUrl}${promoClickUrl(id)}`;
+    if (webApp) webApp.openLink(url);
+    else window.open(url, "_blank", "noopener");
+  };
   const [tab, setTab] = useState<Tab>("all");
   const tabs: Tab[] = ["all", ...entryKinds];
   const [query, setQuery] = useState("");
@@ -173,6 +182,10 @@ export function BrowseScreen({
         <p className="py-6 text-center text-muted-foreground text-sm">{strings.common.error}</p>
       )}
 
+      {!searching && browse.status === "ready" && (
+        <SponsoredStrip ads={browse.data} locale={locale} onOpen={openAd} />
+      )}
+
       <ul className="flex flex-col gap-2">
         {items.map((entry) => (
           <EntryCard
@@ -193,6 +206,62 @@ export function BrowseScreen({
 
       {capped && (
         <p className="pb-2 text-center text-muted-foreground text-xs">{strings.browse.capped}</p>
+      )}
+    </div>
+  );
+}
+
+/** The paid announcement bar and banners, above the list; tapping counts a click like on the site. */
+function SponsoredStrip({
+  ads,
+  locale,
+  onOpen,
+}: {
+  ads: AppBrowse;
+  locale: Locale;
+  onOpen: (id: string) => void;
+}) {
+  const strings = appUi(locale).browse;
+  // Picked once per mount, so the bar doesn't change under the user's finger on re-render.
+  const [announcement] = useState(
+    () => ads.announcements[Math.floor(Math.random() * ads.announcements.length)] ?? null,
+  );
+  if (!announcement && ads.banners.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-2">
+      {announcement && (
+        <button
+          type="button"
+          onClick={() => onOpen(announcement.id)}
+          className="flex items-center gap-2 rounded-2xl border border-border bg-card px-3 py-2.5 text-left text-sm"
+        >
+          <span className="shrink-0 rounded-full bg-primary-soft px-2 py-0.5 font-semibold text-primary-soft-foreground text-xs">
+            {strings.promoted}
+          </span>
+          <span className="min-w-0 flex-1 truncate" dir="auto">
+            {announcement.title} · {announcement.subtitle}
+          </span>
+        </button>
+      )}
+      {ads.banners.length > 0 && (
+        <div className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1">
+          {ads.banners.map((banner) => (
+            <button
+              key={banner.id}
+              type="button"
+              onClick={() => onOpen(banner.id)}
+              className="w-64 shrink-0 snap-start text-left"
+            >
+              <BannerCard
+                title={banner.title}
+                subtitle={banner.subtitle}
+                imageUrl={banner.imageUrl}
+                seed={banner.id}
+                adLabel={strings.ad}
+              />
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );

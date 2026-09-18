@@ -60,6 +60,12 @@ export async function upsertProductRow(db: Db, product: typeof products.$inferIn
   return result.meta.changes > 0 ? id : null;
 }
 
+/** One placement's size: every product of the kind carries it, so its durations never disagree. */
+export async function setProductSlots(db: Db, kind: ProductKind, slots: number) {
+  const result = await db.update(products).set({ slots }).where(eq(products.kind, kind)).run();
+  return result.meta.changes;
+}
+
 /* ------------------------------------------------------------------ orders */
 
 export type NewOrder = Pick<

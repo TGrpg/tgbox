@@ -23,6 +23,7 @@ export const auditActionLabels: Record<AuditAction, string> = {
   "tag.delete": "删除标签",
   "settings.update": "修改设置",
   "credential.set": "设置密钥",
+  "product.slots": "修改名额",
   "product.upsert": "编辑商品",
   "order.create": "创建订单",
   "order.paid": "订单支付",

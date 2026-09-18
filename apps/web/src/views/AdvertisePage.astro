@@ -22,10 +22,8 @@ const data = getSiteData();
 const offers = adOffers(data);
 const entryOffers = offers.filter((offer) => isEntryProduct(offer.kind));
 const adOffersList = offers.filter((offer) => !isEntryProduct(offer.kind));
+// Prices live in the bot only; this page shows what each placement is and whether it is free.
 const buyHref = promoteUrl(botUsername);
-// Quote only what a buyer can actually pay with, like the bot does; USDT when nothing is set up.
-const showStars = data.payments.stars;
-const showUsdt = data.payments.usdt || !data.payments.stars;
 
 const availability = (offer: AdOffer) =>
   offer.left === null
@@ -77,16 +75,7 @@ const previewRows = (kind: EntryProductKind) => {
                   data-ad-offer={offer.kind}
                   class="flex flex-col rounded-3xl border border-border bg-card p-5 shadow-card"
                 >
-                  <div class="flex items-baseline justify-between gap-3">
-                    <h3 class="text-lg font-semibold">{placement.name}</h3>
-                    <span class="text-sm font-medium whitespace-nowrap text-primary-accent">
-                      {fill(strings.from, {
-                        price: showUsdt
-                          ? fill(strings.usdt, { n: offer.fromUsdt })
-                          : fill(strings.stars, { n: offer.fromStars }),
-                      })}
-                    </span>
-                  </div>
+                  <h3 class="text-lg font-semibold">{placement.name}</h3>
                   <p class="mt-2 text-sm leading-relaxed text-muted-foreground">{placement.effect}</p>
                   {placement.includes && (
                     <p class="mt-2 inline-flex items-center gap-1 text-xs font-medium text-success-foreground">
@@ -124,21 +113,11 @@ const previewRows = (kind: EntryProductKind) => {
                     )}
                   </div>
 
-                  <dl class="mt-4 space-y-1.5 text-sm">
-                    {offer.products.map((product) => (
-                      <div class="flex items-baseline justify-between gap-3">
-                        <dt class="text-muted-foreground">{fill(strings.days, { n: product.days })}</dt>
-                        <dd class="font-medium tabular-nums">
-                          {[
-                            showUsdt && fill(strings.usdt, { n: product.priceUsdt }),
-                            showStars && fill(strings.stars, { n: product.priceStars }),
-                          ]
-                            .filter(Boolean)
-                            .join(" · ")}
-                        </dd>
-                      </div>
-                    ))}
-                  </dl>
+                  <p class="mt-4 text-sm text-muted-foreground">
+                    {fill(strings.durations, {
+                      days: offer.products.map((product) => fill(strings.days, { n: product.days })).join(" / "),
+                    })}
+                  </p>
                   <p
                     data-ad-availability
                     class:list={[

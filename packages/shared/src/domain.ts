@@ -77,8 +77,50 @@ export const locales = ["zh", "en"] as const;
 export type Locale = (typeof locales)[number];
 
 /** Who an admin broadcast goes to; language follows /lang, else the Telegram client language. */
-export const BroadcastAudience = z.enum(["all", "zh", "en", "paying"]);
+export const BroadcastAudience = z.enum(["all", "zh", "en", "paying", "submitters", "active30"]);
 export type BroadcastAudience = z.infer<typeof BroadcastAudience>;
 
 export const BroadcastStatus = z.enum(["running", "paused", "done", "cancelled"]);
 export type BroadcastStatus = z.infer<typeof BroadcastStatus>;
+
+/** Plain text, or Telegram's HTML subset (<b>, <i>, <u>, <s>, <a>, <code>, <pre>, <blockquote>…). */
+export const BroadcastFormat = z.enum(["plain", "html"]);
+export type BroadcastFormat = z.infer<typeof BroadcastFormat>;
+
+export const BroadcastMediaType = z.enum(["photo", "video", "animation", "document"]);
+export type BroadcastMediaType = z.infer<typeof BroadcastMediaType>;
+
+export const BroadcastMedia = z.object({
+  type: BroadcastMediaType,
+  fileId: z.string().min(1).max(300),
+});
+export type BroadcastMedia = z.infer<typeof BroadcastMedia>;
+
+export const BroadcastButton = z.object({
+  text: z.string().trim().min(1).max(40),
+  url: z
+    .string()
+    .trim()
+    .regex(/^https:\/\/\S+$/)
+    .max(2048),
+});
+export type BroadcastButton = z.infer<typeof BroadcastButton>;
+
+/**
+ * One message as the admin composes it, for a broadcast or a single user. Telegram caps a caption
+ * at 1024 characters and a message at 4096, so the limit follows the media.
+ */
+export const OutgoingMessage = z
+  .object({
+    text: z.string().trim().max(4096),
+    format: BroadcastFormat,
+    media: BroadcastMedia.nullable(),
+    buttons: z.array(BroadcastButton).max(8),
+    buttonsPerRow: z.number().int().min(1).max(3),
+    silent: z.boolean(),
+    protect: z.boolean(),
+    noPreview: z.boolean(),
+  })
+  .refine((m) => m.text.length > 0 || m.media !== null, "empty")
+  .refine((m) => m.media === null || m.text.length <= 1024, "caption too long");
+export type OutgoingMessage = z.infer<typeof OutgoingMessage>;

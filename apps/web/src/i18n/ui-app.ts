@@ -43,6 +43,8 @@ const zh = {
     empty: "这个分类暂时还没有条目。",
     clear: "清空",
     capped: "只列出了热门条目，其余的用上面的搜索框找。",
+    promoted: "推广",
+    ad: "广告",
   },
   submit: {
     title: "提交收录",
@@ -232,6 +234,8 @@ const en: typeof zh = {
     empty: "Nothing listed here yet.",
     clear: "Clear",
     capped: "Only the popular entries are listed here; use the search box for the rest.",
+    promoted: "Promoted",
+    ad: "Ad",
   },
   submit: {
     title: "Submit an entry",

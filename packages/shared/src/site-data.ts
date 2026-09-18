@@ -165,8 +165,11 @@ export const SiteData = z.object({
   announcement: AnnouncementView.nullable(),
   /** Live paid banners, ordered by start time. */
   promos: z.array(PromoView),
-  /** The live paid announcement bar; shown instead of the admin announcement while it runs. */
-  sponsoredAnnouncement: PromoView.nullable().default(null),
+  /**
+   * Live paid announcement bars, oldest first. While any runs it replaces the admin announcement;
+   * several take turns, one per page load.
+   */
+  sponsoredAnnouncements: z.array(PromoView).default([]),
   inventory: z.array(InventoryView).default([]),
   /** Admin setting: pad the unsold sponsor slots with "for rent" cards instead of hiding them. */
   showAdSlots: z.boolean(),

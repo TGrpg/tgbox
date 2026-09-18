@@ -19,6 +19,7 @@ import {
   type Order,
   type Promotion,
   setOrderStatus,
+  setProductSlots,
   upsertProductRow,
 } from "@tgbox/db";
 import {
@@ -343,7 +344,28 @@ export async function extendPromotion(
   return promotion;
 }
 
-/** Creates a product when `id` is omitted, else edits it. Prices are not retroactive. */
+/** How many of a placement run at once (per category for category pins). */
+export const MAX_SLOTS = 100;
+
+/**
+ * Sets a placement's size, the one number the admin tunes instead of it being built in. It applies
+ * to every duration of the kind, and the site is rebuilt because it shows the free slots.
+ */
+export async function setPlacementSlots(
+  ctx: CoreContext,
+  input: { kind: ProductKind; slots: number; actor: Actor },
+) {
+  if (!Number.isInteger(input.slots) || input.slots < 1 || input.slots > MAX_SLOTS) return false;
+  if ((await setProductSlots(ctx.db, input.kind, input.slots)) === 0) return false;
+  await audit(ctx, input.actor, "product.slots", `placement:${input.kind}`, { slots: input.slots });
+  await markDirtyAndDispatch(ctx);
+  return true;
+}
+
+/**
+ * Creates a product when `id` is omitted, else edits it. Prices are not retroactive. A product
+ * takes its placement's size (see `setPlacementSlots`); a placement's first product starts at 1.
+ */
 export async function upsertProduct(
   ctx: CoreContext,
   input: {
@@ -355,14 +377,22 @@ export async function upsertProduct(
     priceStars: number;
     /** Decimal string with up to 2 fraction digits */
     priceUsdt: string;
-    slots: number;
     active: boolean;
     sort: number;
     actor: Actor;
   },
 ): Promise<{ ok: true; id: number } | { ok: false; error: "invalid" | "not_found" }> {
   const { actor, ...product } = input;
-  const fields = { ...product, nameZh: product.nameZh.trim(), nameEn: product.nameEn.trim() };
+  const slots = Math.max(
+    1,
+    ...(await listProducts(ctx.db)).filter((p) => p.kind === input.kind).map((p) => p.slots),
+  );
+  const fields = {
+    ...product,
+    slots,
+    nameZh: product.nameZh.trim(),
+    nameEn: product.nameEn.trim(),
+  };
   const valid =
     fields.nameZh.length > 0 &&
     fields.nameZh.length <= 40 &&
@@ -374,9 +404,6 @@ export async function upsertProduct(
     fields.priceStars <= 1_000_000 &&
     /^\d{1,6}(\.\d{1,2})?$/.test(fields.priceUsdt) &&
     Number(fields.priceUsdt) > 0 &&
-    Number.isInteger(fields.slots) &&
-    fields.slots >= 1 &&
-    fields.slots <= 100 &&
     Number.isInteger(fields.sort);
   if (!valid) return { ok: false, error: "invalid" };
   const id = await upsertProductRow(ctx.db, fields);

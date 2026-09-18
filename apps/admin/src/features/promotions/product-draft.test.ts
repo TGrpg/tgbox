@@ -19,7 +19,6 @@ test("a complete draft parses into product fields", () => {
       days: 7,
       priceStars: 500,
       priceUsdt: "10",
-      slots: 5,
       active: true,
       sort: 0,
     },
@@ -32,7 +31,6 @@ test.each([
   ["fractional stars", { priceStars: "9.5" }],
   ["three USDT decimals", { priceUsdt: "1.005" }],
   ["a zero USDT price", { priceUsdt: "0" }],
-  ["101 slots", { slots: "101" }],
 ])("rejects %s", (_name, patch) => {
   expect(parseProductDraft({ ...valid, ...patch }).ok).toBe(false);
 });
@@ -46,7 +44,6 @@ test("an existing product round-trips through the draft", () => {
     days: 30,
     priceStars: 3000,
     priceUsdt: "60",
-    slots: 5,
     active: false,
     sort: 4,
   };

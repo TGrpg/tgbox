@@ -13,8 +13,10 @@ interface Props {
   sponsored?: boolean | undefined;
   /** A sample on the advertising page: no dismiss button, untouched by the real bar's dismissal. */
   preview?: boolean | undefined;
+  /** One of several paid bars taking turns; the layout's script shows one of them. */
+  rotation?: "shown" | "hidden" | undefined;
 }
-const { locale, announcement, sponsored = false, preview = false } = Astro.props;
+const { locale, announcement, sponsored = false, preview = false, rotation } = Astro.props;
 const strings = ui(locale).announcement;
 const text = announcement[locale] || announcement.zh || announcement.en;
 const external = announcement.href !== null && /^https?:\/\//.test(announcement.href);
@@ -35,6 +37,8 @@ const newTab = sponsored || external;
 */}
 <div
   data-announcement={preview ? undefined : ""}
+  data-announcement-rotation={rotation ? "" : undefined}
+  hidden={rotation === "hidden"}
   class:list={["mx-auto w-full", !preview && "max-w-7xl px-4 pt-3 sm:px-6 md:pt-4"]}
 >
   <div

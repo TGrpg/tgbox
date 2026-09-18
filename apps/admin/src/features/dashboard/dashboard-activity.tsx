@@ -9,6 +9,7 @@ import { Card } from "@/components/coss/ui/card.tsx";
 import { Skeleton } from "@/components/coss/ui/skeleton.tsx";
 import { toastManager } from "@/components/coss/ui/toast.tsx";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "@/components/coss/ui/tooltip.tsx";
+import { ActorChip } from "@/components/user-chip.tsx";
 import { dateTime, kindLabels, livenessLabels } from "@/features/review/labels.ts";
 import { $triggerBuild, dashboardActivityQueryOptions } from "@/functions/dashboard.ts";
 import { invalidate } from "@/lib/query-keys.ts";
@@ -141,7 +142,11 @@ export function DashboardActivity() {
             <Line
               key={row.id}
               primary={`${auditLabels[row.action] ?? row.action}${row.username ? ` · @${row.username}` : row.target ? ` · ${row.target}` : ""}`}
-              secondary={`${row.actor} · ${dateTime(row.createdAt)}`}
+              secondary={
+                <span className="inline-flex items-center gap-1.5">
+                  <ActorChip actor={row.actor} />· {dateTime(row.createdAt)}
+                </span>
+              }
             />
           ))
         )}
@@ -190,7 +195,7 @@ function Line({
   aside,
 }: {
   primary: string;
-  secondary: string;
+  secondary: ReactNode;
   aside?: ReactNode;
 }) {
   return (

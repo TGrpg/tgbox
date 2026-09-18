@@ -35,6 +35,7 @@ import {
 } from "@/components/coss/ui/table.tsx";
 import { Tabs, TabsList, TabsTab } from "@/components/coss/ui/tabs.tsx";
 import { PageHeader } from "@/components/shell/page-header.tsx";
+import { UserChip } from "@/components/user-chip.tsx";
 import {
   MAX_BULK,
   type ReviewTab,
@@ -199,9 +200,7 @@ function QueueList({ tab }: { tab: ReviewTab }) {
       {
         id: "submitter",
         header: "提交者",
-        cell: ({ row }) => (
-          <span className="text-muted-foreground tabular-nums">{row.original.tgUserId}</span>
-        ),
+        cell: ({ row }) => <UserChip id={row.original.tgUserId} size="sm" className="max-w-40" />,
       },
       {
         id: "time",

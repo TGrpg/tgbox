@@ -40,18 +40,22 @@ const {
 const path = Astro.url.pathname;
 const strings = ui(locale);
 const data = getSiteData();
-// A paid announcement bar takes the admin's place while it runs.
-const sponsored = showAnnouncement && data.sponsoredAnnouncement !== null;
-const announcement = !showAnnouncement
-  ? null
-  : data.sponsoredAnnouncement
-    ? paidAnnouncement(data.sponsoredAnnouncement)
-    : data.announcement;
+// Paid announcement bars take the admin's place while they run; several take turns (below).
+const paidBars = showAnnouncement ? data.sponsoredAnnouncements.map(paidAnnouncement) : [];
+const sponsored = paidBars.length > 0;
+const announcement = !showAnnouncement ? null : (paidBars[0] ?? data.announcement);
+// Every paid bar gets its turn: one at random per page load (the first one without JS).
+const rotatePaidBars = `(() => {
+  const bars = document.querySelectorAll("[data-announcement-rotation]");
+  const pick = Math.floor(Math.random() * bars.length);
+  bars.forEach((bar, index) => { bar.hidden = index !== pick; });
+})();`;
 // Titles of the largest entries always hit the (zh-built) index, unlike localized tag names.
 const hotKeywords = byMembers(data.entries)
   .slice(0, 6)
   .map((entry) => entry.title);
-const dismissKey = announcement ? announcementKey(announcement) : "";
+// Only the admin's own notice stays dismissed across pages; a paid bar comes back on the next load.
+const dismissKey = announcement && !sponsored ? announcementKey(announcement) : "";
 const pagefindUrl = (import.meta.env.PUBLIC_PAGEFIND_URL ?? "/pagefind").replace(/\/$/, "");
 ---
 
@@ -101,7 +105,11 @@ const pagefindUrl = (import.meta.env.PUBLIC_PAGEFIND_URL ?? "/pagefind").replace
       {ui(locale).nav.skipToContent}
     </a>
     <SiteHeader locale={locale} path={path} />
-    {announcement && <Announcement locale={locale} announcement={announcement} sponsored={sponsored} />}
+    {paidBars.map((bar, index) => (
+        <Announcement locale={locale} announcement={bar} sponsored rotation={index > 0 ? "hidden" : "shown"} />
+      ))}
+    {!sponsored && announcement && <Announcement locale={locale} announcement={announcement} />}
+    {paidBars.length > 1 && <script is:inline set:html={rotatePaidBars} />}
     <main id="main" class="flex-1">
       <slot />
     </main>
@@ -127,7 +135,7 @@ const pagefindUrl = (import.meta.env.PUBLIC_PAGEFIND_URL ?? "/pagefind").replace
         localStorage.setItem("theme", dark ? "dark" : "light");
       } else if (target.closest("[data-announcement-dismiss]")) {
         root.dataset.announcementDismissed = "";
-        localStorage.setItem(root.dataset.announcementKey, "1");
+        if (root.dataset.announcementKey) localStorage.setItem(root.dataset.announcementKey, "1");
       }
     });
     </script>

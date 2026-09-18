@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { ChevronRightIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/coss/ui/badge.tsx";
 import { Button } from "@/components/coss/ui/button.tsx";
@@ -13,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/coss/ui/select.tsx";
 import { Skeleton } from "@/components/coss/ui/skeleton.tsx";
+import { ActorChip } from "@/components/user-chip.tsx";
 import {
   type AuditFilter,
   type AuditRow,
@@ -58,7 +60,7 @@ export function AuditLog() {
   ];
   const actorItems = [
     { value: ALL, label: "全部操作者" },
-    ...(actors.data ?? []).map((actor) => ({ value: actor, label: actor })),
+    ...(actors.data ?? []).map((actor) => ({ value: actor, label: <ActorChip actor={actor} /> })),
   ];
 
   return (
@@ -149,7 +151,9 @@ function AuditItem({ row }: { row: AuditRow }) {
           </Badge>
         </span>
         <span className="truncate font-mono text-xs sm:order-2">{row.target ?? "—"}</span>
-        <span className="truncate text-muted-foreground text-xs sm:order-3">{row.actor}</span>
+        <span className="min-w-0 text-muted-foreground text-xs sm:order-3">
+          <ActorChip actor={row.actor} />
+        </span>
       </div>
     </>
   );
@@ -190,7 +194,7 @@ function FilterSelect({
   onChange,
 }: {
   label: string;
-  items: { value: string; label: string }[];
+  items: { value: string; label: ReactNode }[];
   value: string;
   onChange: (value: string) => void;
 }) {

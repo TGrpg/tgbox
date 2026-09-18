@@ -158,7 +158,11 @@ describe("sponsor block with ad slots off", () => {
     data.promos = [];
     data.showAdSlots = false;
     // A paid announcement bar replaces the admin's for as long as it runs.
-    data.sponsoredAnnouncement = { ...paidPromo, id: "52", imageUrl: null };
+    // Two paid bars take turns: both are in the page, the second hidden until the script picks.
+    data.sponsoredAnnouncements = [
+      { ...paidPromo, id: "52", imageUrl: null },
+      { ...paidPromo, id: "53", title: "Second bar", imageUrl: null },
+    ];
     const offDataPath = path.join(work, "site-data-noads.json");
     writeFileSync(offDataPath, JSON.stringify(data));
     execFileSync(path.join(webRoot, "node_modules/.bin/astro"), ["build", "--outDir", offOut], {
@@ -189,12 +193,17 @@ describe("sponsor block with ad slots off", () => {
       [".", "推广"],
       ["en", "Promoted"],
     ] as const) {
-      const bar = page(route).split("data-announcement")[1]?.split("</div>")[0] ?? "";
+      const bar = page(route).split("data-announcement ")[1]?.split("</div>")[0] ?? "";
       expect(bar, route).toContain(label);
       expect(bar, route).toContain("Rocket &lt;VPN&gt; &amp; Proxy · Fast nodes worldwide");
     }
     const link = page("en").match(/<a[^>]*href="\/r\/52"[^>]*>/)?.[0] ?? "";
     expect(link).toContain('rel="sponsored noopener"');
+    // It can be closed, but only until the next page load: no dismissal key is stored for it.
+    expect(page(".")).toMatch(/dismissKey = ""/);
+    expect(page(".")).toMatch(/data-announcement-rotation[^>]*>[\s\S]*href="\/r\/52"/);
+    expect(page(".")).toMatch(/data-announcement-rotation hidden[\s\S]*href="\/r\/53"/);
+    expect(page(".")).toContain("Math.random()");
   });
 
   test("the rest of the page still renders", () => {
@@ -539,7 +548,8 @@ describe("site build from snapshot data", () => {
     for (const [route, label, cards] of [
       ["", "广告", 5],
       ["en/", "Ad", 5],
-      ["detail/techdaily", "广告", 3],
+      // The sidebar: the paid banner plus a single "for rent" card.
+      ["detail/techdaily", "广告", 2],
     ] as const) {
       const page = html(route);
       const start = page.search(/<section[^>]*data-home-promos|<aside[^>]*aria-label="推广"/);
@@ -561,9 +571,11 @@ describe("site build from snapshot data", () => {
     }
     expect(html("")).toContain("广告位招租");
     expect(html("en/")).toContain("Ad space available");
-    // Dismissing the lineup is keyed by the paid banner ids only.
-    expect(html("")).toMatch(/storageKey = "home-promos:41"/);
+    // Closing the block lasts for this page view only: nothing is stored, the next load shows it.
     expect(html("")).toContain("data-promos-dismiss");
+    expect(html("").split("data-home-promos")[1]?.split("</script>")[0]).not.toContain(
+      "localStorage",
+    );
   });
 
   test("the promo click counter is the only outgoing link on a paid card", () => {
@@ -610,10 +622,18 @@ describe("site build from snapshot data", () => {
     expect(html("channel/tech")).not.toContain("data-promoted-badge");
   });
 
-  test("the advertising page lists every placement in both locales, with prices and free slots", () => {
+  test("a site-wide pin leads a detail page's discover-more list of its kind", () => {
+    // aiwatch is the fixture's pinned channel; techdaily's related channels didn't include it.
+    const page = html("detail/techdaily");
+    const related = page.split('id="detail-related-channels"')[1] ?? "";
+    expect(related.match(/data-entry-card="([^"]+)"/)?.[1]).toBe("aiwatch");
+    expect(related).toMatch(/data-entry-card="aiwatch" data-promoted/);
+  });
+
+  test("the advertising page lists every placement in both locales, with free slots but no prices", () => {
     for (const [route, heading, buy] of [
-      ["advertise", "推广我的条目", "在机器人里购买"],
-      ["en/advertise", "Promote my listing", "Buy in the bot"],
+      ["advertise", "推广我的条目", "在机器人里看价格并购买"],
+      ["en/advertise", "Promote my listing", "See prices and buy in the bot"],
     ] as const) {
       const page = html(route);
       expect(page, route).toContain(heading);
@@ -627,6 +647,9 @@ describe("site build from snapshot data", () => {
       expect(page, route).toContain(buy);
       expect(page, route).toMatch(/href="https:\/\/t\.me\/\w+\?start=promote"/);
       expect(page, route).toMatch(/data-ad-availability[^>]*>\s*(共 5 个名额|5 slots)/);
+      // Prices are quoted in the bot only.
+      const main = page.split("<main")[1] ?? "";
+      expect(main, route).not.toMatch(/\d+ ?(USDT|Stars)|⭐/);
       // The sample announcement bar can't dismiss the real one.
       expect(page.match(/<button[^>]*data-announcement-dismiss/g)?.length ?? 0, route).toBeLessThan(
         2,
@@ -1080,13 +1103,15 @@ describe("site build from snapshot data", () => {
   test("the app reads entries, taxonomy and products as static files, not from the Worker", () => {
     const read = (name: string): unknown =>
       JSON.parse(readFileSync(path.join(client, "data", name), "utf8"));
-    const entries = read("app-entries.json");
-    expect(Array.isArray(entries) && entries.length).toBeGreaterThan(0);
-    // The promoted entry leads the browse list, exactly as it leads the site's own listings.
-    expect(Array.isArray(entries) && entries[0]).toMatchObject({
-      username: "aiwatch",
-      kind: "channel",
+    // The promoted entry leads the browse list, tagged, exactly as it leads the site's own
+    // listings; the paid banners ride along so the app shows the site's ads too.
+    expect(read("app-browse.json")).toMatchObject({
+      entries: expect.arrayContaining([expect.anything()]),
+      banners: [{ id: paidPromo.id }],
+      announcements: [],
     });
+    const browse = read("app-browse.json") as { entries: unknown[] };
+    expect(browse.entries[0]).toMatchObject({ username: "aiwatch", kind: "channel", promo: "pin" });
     const taxonomy = read("app-taxonomy.json");
     expect(taxonomy).toMatchObject({
       categories: expect.arrayContaining([

@@ -6,7 +6,7 @@ import { type Locale, promoClickUrl } from "@tgbox/shared";
 import { localizePath } from "@/i18n/locale.ts";
 import { ui } from "@/i18n/ui.ts";
 import { homeUi } from "@/i18n/ui-home.ts";
-import { adSlotLine, promoSlots } from "@/lib/promos.ts";
+import { adSlotLine, bannerSlots, promoSlots } from "@/lib/promos.ts";
 import { getSiteData } from "@/lib/site-data.ts";
 
 interface Props {
@@ -16,15 +16,10 @@ const { locale } = Astro.props;
 const strings = homeUi(locale);
 const { entry, adSlot } = ui(locale);
 const data = getSiteData();
-const items = promoSlots(data.promos, 5, 2, data.showAdSlots);
-const paidIds = items.flatMap((promo) => (promo.type === "paid" ? [promo.id] : []));
-// Every lineup gets a key so a visitor can dismiss the block — including an all-placeholder one,
-// which is otherwise the hardest to get rid of. A new paid lineup gets a new key, so an earlier
-// dismissal never hides a banner someone paid for.
-const storageKey = `home-promos:${paidIds.join(",") || "ads"}`;
-// Layout, not dismissal: a lineup with real banners uses the dense 5-up card grid, while an
-// all-placeholder lineup stays in the calmer 2-up row so unsold space never outshines paid space.
-const hasPaid = paidIds.length > 0;
+const items = promoSlots(data.promos, bannerSlots(data), 2, data.showAdSlots);
+// A lineup with real banners uses the dense card grid, while an all-placeholder lineup stays in
+// the calmer 2-up row so unsold space never outshines paid space.
+const hasPaid = items.some((promo) => promo.type === "paid");
 // Unsold cards open the advertising page: what each placement looks like, costs and has left.
 const advertiseHref = localizePath("/advertise/", locale);
 const slotLine = adSlotLine(data, "banner", adSlot);
@@ -36,20 +31,17 @@ const slotLine = adSlotLine(data, "banner", adSlot);
       aria-label={strings.sponsored}
       class="mx-auto max-w-7xl px-4 pt-2 sm:px-6"
     >
-      {/* Hides the section before its cards paint; runs before the button is parsed, so it listens on the section. */}
-      <script is:inline define:vars={{ storageKey }}>
+      {/*
+        Closing hides the block for this page view only: the banners are paid for, so the next
+        page load shows them again. Nothing is remembered.
+      */}
+      <script is:inline>
       (() => {
         const section = document.currentScript?.closest("[data-home-promos]");
-        if (!section) return;
-        try {
-          if (localStorage.getItem(storageKey)) section.hidden = true;
-        } catch {}
-        section.addEventListener("click", (event) => {
-          if (!(event.target instanceof Element) || !event.target.closest("[data-promos-dismiss]")) return;
-          section.hidden = true;
-          try {
-            localStorage.setItem(storageKey, "1");
-          } catch {}
+        section?.addEventListener("click", (event) => {
+          if (event.target instanceof Element && event.target.closest("[data-promos-dismiss]")) {
+            section.hidden = true;
+          }
         });
       })();
       </script>

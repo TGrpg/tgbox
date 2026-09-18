@@ -149,7 +149,7 @@ describe("settings-driven bot", () => {
     expect(h.lastText()).toContain("请发送要提交的频道");
 
     await h.message(owner, "/start promote");
-    const products = h.lastButtons().filter((b) => b.callback_data?.startsWith("pp:"));
+    const products = h.lastButtons().filter((b) => b.callback_data?.startsWith("pk:"));
     expect(products.length).toBeGreaterThan(0);
     expect(h.calls("sendMessage").some((c) => String(c.payload.text).includes("欢迎"))).toBe(false);
   });

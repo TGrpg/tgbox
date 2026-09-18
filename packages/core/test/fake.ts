@@ -52,6 +52,10 @@ export async function setup(config: Partial<CoreContext["config"]> = {}) {
   const telegram: { method: string; body: unknown }[] = [];
   // Per-recipient Bot API error replies (`chat_id` → body), e.g. a 403 from a user who blocked us.
   const telegramErrors = new Map<number, unknown>();
+  // Per-method `result` of a successful call (profile photos, file paths, uploaded messages…).
+  const telegramResults = new Map<string, unknown>();
+  // Bodies of Telegram file downloads (`/file/bot<token>/<path>`).
+  const telegramFiles: string[] = [];
   // Tests drive the chain: which transfers the address has received, and how TronGrid misbehaves.
   const tron = {
     transfers: [] as {
@@ -75,11 +79,25 @@ export async function setup(config: Partial<CoreContext["config"]> = {}) {
         return new Response(github.body || null, { status: github.status });
       }
       if (url.hostname === "api.telegram.org") {
-        const body = JSON.parse(String(init?.body ?? "null"));
-        telegram.push({ method: url.pathname.split("/").at(-1) ?? "", body });
-        const error = telegramErrors.get(body?.chat_id);
+        if (url.pathname.includes("/file/bot")) {
+          telegramFiles.push(url.pathname);
+          return new Response(new Uint8Array([0xff, 0xd8, 0xff, 9]));
+        }
+        const method = url.pathname.split("/").at(-1) ?? "";
+        // Uploads are multipart; everything else is JSON.
+        const body =
+          init?.body instanceof FormData
+            ? Object.fromEntries(
+                [...init.body.entries()].map(([key, value]) => [
+                  key,
+                  typeof value === "string" ? value : `<file ${value.size}B>`,
+                ]),
+              )
+            : JSON.parse(String(init?.body ?? "null"));
+        telegram.push({ method, body });
+        const error = telegramErrors.get(Number(body?.chat_id));
         if (error) return Response.json(error);
-        return Response.json({ ok: true, result: true });
+        return Response.json({ ok: true, result: telegramResults.get(method) ?? true });
       }
       if (url.hostname === "t.me") {
         tme.push(url.pathname);
@@ -101,7 +119,17 @@ export async function setup(config: Partial<CoreContext["config"]> = {}) {
       throw new Error(`unexpected fetch ${url.href}`);
     },
   };
-  return { ctx, dispatches, github, tme, telegram, telegramErrors, tron };
+  return {
+    ctx,
+    dispatches,
+    github,
+    tme,
+    telegram,
+    telegramErrors,
+    telegramResults,
+    telegramFiles,
+    tron,
+  };
 }
 
 export async function auditRows() {

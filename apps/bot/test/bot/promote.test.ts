@@ -102,10 +102,9 @@ const invoicePaid = (orderId: number, amount = "20") =>
   });
 
 describe("prices follow the enabled payment methods", () => {
-  /** The keyboard labels plus the message text of everything the bot said. */
+  /** The keyboard labels plus the message text of everything the bot said or edited. */
   const said = () =>
-    h
-      .calls("sendMessage")
+    [...h.calls("sendMessage"), ...h.calls("editMessageText")]
       .flatMap((call) => [
         String(call.payload.text ?? ""),
         JSON.stringify(call.payload.reply_markup ?? ""),
@@ -117,6 +116,7 @@ describe("prices follow the enabled payment methods", () => {
     // order summary, quoting a price nobody could pay.
     await setPaymentSettings({ starsEnabled: false, usdtSelfEnabled: true, usdtAddress: ADDRESS });
     await h.message(buyer, "/promote");
+    await press("pk:pin");
     expect(said()).not.toContain("⭐");
     expect(said()).toContain("USDT");
   });
@@ -124,6 +124,7 @@ describe("prices follow the enabled payment methods", () => {
   test("with only Stars on, no USDT price is quoted", async () => {
     await setPaymentSettings({ starsEnabled: true });
     await h.message(buyer, "/promote");
+    await press("pk:pin");
     expect(said()).toContain("⭐");
     expect(said()).not.toContain("USDT");
   });
@@ -131,6 +132,7 @@ describe("prices follow the enabled payment methods", () => {
   test("both on quotes both", async () => {
     await setPaymentSettings({ starsEnabled: true, usdtSelfEnabled: true, usdtAddress: ADDRESS });
     await h.message(buyer, "/promote");
+    await press("pk:pin");
     expect(said()).toContain("⭐");
     expect(said()).toContain("USDT");
   });
@@ -138,6 +140,7 @@ describe("prices follow the enabled payment methods", () => {
   test("the order summary drops the price of a method turned off mid-purchase", async () => {
     await setPaymentSettings({ starsEnabled: false, usdtSelfEnabled: true, usdtAddress: ADDRESS });
     await h.message(buyer, "/promote");
+    await press("pk:pin");
     await h.callback(buyer, "pp:1");
     await h.message(buyer, "@pin_me");
     expect(said()).not.toContain("⭐");
@@ -155,6 +158,7 @@ describe("buying a home banner", () => {
   /** Walks the banner steps up to the image prompt and returns nothing. */
   async function fillBanner() {
     await h.message(buyer, "/promote");
+    await press("pk:banner");
     await press("pp:3");
     await h.message(buyer, banner.title);
     await h.message(buyer, banner.subtitle);
@@ -259,6 +263,7 @@ describe("buying a home banner", () => {
 
   test("an invalid link is refused before the image step", async () => {
     await h.message(buyer, "/promote");
+    await press("pk:banner");
     await press("pp:3");
     await h.message(buyer, banner.title);
     await h.message(buyer, banner.subtitle);
@@ -271,6 +276,7 @@ describe("buying a home banner", () => {
 describe("promotion tiers", () => {
   test("the announcement bar takes title, subtitle and link, and skips the image", async () => {
     await h.message(buyer, "/promote");
+    await press("pk:announcement");
     await press("pp:9");
     await h.message(buyer, banner.title);
     await h.message(buyer, banner.subtitle);
@@ -300,6 +306,7 @@ describe("promotion tiers", () => {
       });
     }
     await h.message(buyer, "/promote");
+    await press("pk:category_pin");
     await press("pp:7");
     await h.message(buyer, "@cat_d");
     expect(h.lastText()).toContain("名额已满");
@@ -309,23 +316,22 @@ describe("promotion tiers", () => {
 describe("buying a pin with Stars", () => {
   test("/promote → product → @username → Stars sends an XTR invoice for the order", async () => {
     await h.message(buyer, "/promote");
-    // Cheapest tier first: highlight, category pin, site-wide pin, banner, announcement bar.
+    // Step one: placements only, cheapest first, and no prices yet.
     expect(h.lastButtons().map((b) => b.callback_data)).toEqual([
-      "pp:5",
-      "pp:6",
-      "pp:7",
-      "pp:8",
-      "pp:1",
-      "pp:2",
-      "pp:3",
-      "pp:4",
-      "pp:9",
-      "pp:10",
+      "pk:highlight",
+      "pk:category_pin",
+      "pk:pin",
+      "pk:banner",
+      "pk:announcement",
     ]);
-    expect(h.lastButtons().find((b) => b.callback_data === "pp:1")?.text).toContain("⭐800");
-    // The intro groups the tiers and points at the advertising page.
-    expect(h.lastText()).toContain("【推广我的条目】");
+    expect(h.lastButtons().some((b) => b.text.includes("⭐"))).toBe(false);
     expect(h.lastText()).toContain("https://tgbox.test/advertise/");
+
+    // Step two: that placement's durations with their prices, and a way back.
+    await press("pk:pin");
+    expect(h.lastButtons().map((b) => b.callback_data)).toEqual(["pp:1", "pp:2", "promote"]);
+    expect(h.lastButtons()[0]?.text).toContain("⭐800");
+    expect(h.lastText()).toContain("全站置顶");
 
     await press("pp:1");
     expect(h.lastText()).toContain("已收录");

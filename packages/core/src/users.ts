@@ -9,7 +9,12 @@ import {
   recordBroadcastBatch,
   setBroadcastStatus,
 } from "@tgbox/db";
-import type { BroadcastAudience } from "@tgbox/shared";
+import {
+  type BroadcastAudience,
+  type BroadcastMedia,
+  type BroadcastMediaType,
+  OutgoingMessage,
+} from "@tgbox/shared";
 import { z } from "zod";
 import { audit } from "./audit.ts";
 import type { Actor, CoreContext } from "./context.ts";
@@ -24,96 +29,196 @@ const LEASE_MS = 2 * 60 * 1000;
 const SendResult = z.object({
   ok: z.boolean(),
   error_code: z.number().optional(),
+  description: z.string().optional(),
   parameters: z.object({ retry_after: z.number().optional() }).optional(),
+  result: z.unknown().optional(),
 });
 
-export type BroadcastMessage = {
-  text: string;
-  buttonText: string | null;
-  buttonUrl: string | null;
-};
+type Sent =
+  | { ok: true; result: unknown }
+  | { ok: false; blocked: boolean; retryAfterMs: number | null; description: string | null };
 
-const MessageInput = z
-  .object({
-    text: z.string().trim().min(1).max(4096),
-    buttonText: z.string().trim().max(40).nullable(),
-    buttonUrl: z
-      .string()
-      .trim()
-      .regex(/^https:\/\/[^\s]+$/)
-      .nullable(),
-  })
-  .refine((m) => (m.buttonText === null) === (m.buttonUrl === null));
+const mediaMethods = {
+  photo: "sendPhoto",
+  video: "sendVideo",
+  animation: "sendAnimation",
+  document: "sendDocument",
+} as const satisfies Record<BroadcastMediaType, string>;
 
-type Sent = { ok: true } | { ok: false; blocked: boolean; retryAfterMs: number | null };
+/** Everything but the content: formatting, buttons and delivery flags, shared by every method. */
+function messageOptions(message: OutgoingMessage) {
+  const rows: { text: string; url: string }[][] = [];
+  for (let i = 0; i < message.buttons.length; i += message.buttonsPerRow) {
+    rows.push(message.buttons.slice(i, i + message.buttonsPerRow));
+  }
+  return {
+    ...(message.format === "html" ? { parse_mode: "HTML" } : {}),
+    ...(rows.length > 0 ? { reply_markup: { inline_keyboard: rows } } : {}),
+    ...(message.silent ? { disable_notification: true } : {}),
+    ...(message.protect ? { protect_content: true } : {}),
+  };
+}
 
-/** Plain text (no parse mode, so nothing the admin types can break formatting) + optional URL button. */
-async function sendMessage(ctx: CoreContext, chatId: number, message: BroadcastMessage) {
+async function callBotApi(ctx: CoreContext, method: string, body: BodyInit, json: boolean) {
   const token = ctx.config.BOT_TOKEN;
   if (!token) throw new Error("BOT_TOKEN is not configured");
-  const res = await ctx.fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+  const res = await ctx.fetch(`https://api.telegram.org/bot${token}/${method}`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text: message.text,
-      ...(message.buttonText && message.buttonUrl
-        ? {
-            reply_markup: {
-              inline_keyboard: [[{ text: message.buttonText, url: message.buttonUrl }]],
-            },
-          }
-        : {}),
-    }),
+    ...(json ? { headers: { "content-type": "application/json" } } : {}),
+    body,
   });
-  const body = SendResult.safeParse(await res.json().catch(() => null));
-  if (body.success && body.data.ok) return { ok: true } satisfies Sent;
-  const code = body.success ? body.data.error_code : res.status;
-  const retryAfter = body.success ? body.data.parameters?.retry_after : undefined;
+  const parsed = SendResult.safeParse(await res.json().catch(() => null));
+  if (parsed.success && parsed.data.ok)
+    return { ok: true, result: parsed.data.result } satisfies Sent;
+  const code = parsed.success ? parsed.data.error_code : res.status;
+  const retryAfter = parsed.success ? parsed.data.parameters?.retry_after : undefined;
   return {
     ok: false,
     blocked: code === 403,
     retryAfterMs: code === 429 ? (retryAfter ?? 5) * 1000 : null,
+    description: (parsed.success ? parsed.data.description : null) ?? null,
   } satisfies Sent;
 }
 
-/** One message from the bot to one user (admin follow-up). A 403 marks the user as blocked. */
-export async function messageUser(
-  ctx: CoreContext,
-  input: { tgUserId: number; message: BroadcastMessage; actor: Actor },
-): Promise<{ ok: true } | { ok: false; error: "invalid" | "blocked" | "failed" }> {
-  const message = MessageInput.safeParse(input.message);
-  if (!message.success) return { ok: false, error: "invalid" };
-  const sent = await sendMessage(ctx, input.tgUserId, message.data);
-  if (!sent.ok) {
-    if (sent.blocked) await markBotUsersBlocked(ctx.db, [input.tgUserId], ctx.now());
-    return { ok: false, error: sent.blocked ? "blocked" : "failed" };
+/** Sends a composed message; media goes by the file id Telegram gave it at upload. */
+function sendOutgoing(ctx: CoreContext, chatId: number, message: OutgoingMessage) {
+  const options = messageOptions(message);
+  if (message.media) {
+    return callBotApi(
+      ctx,
+      mediaMethods[message.media.type],
+      JSON.stringify({
+        chat_id: chatId,
+        [message.media.type]: message.media.fileId,
+        ...(message.text ? { caption: message.text } : {}),
+        ...options,
+      }),
+      true,
+    );
   }
-  await audit(ctx, input.actor, "user.message", `user:${input.tgUserId}`, {
-    text: message.data.text.slice(0, 200),
-  });
-  return { ok: true };
+  return callBotApi(
+    ctx,
+    "sendMessage",
+    JSON.stringify({
+      chat_id: chatId,
+      text: message.text,
+      ...(message.noPreview ? { link_preview_options: { is_disabled: true } } : {}),
+      ...options,
+    }),
+    true,
+  );
 }
 
-/** Starts a broadcast; the admin page and the cron then advance it batch by batch. */
+const FileRef = z.object({ file_id: z.string() });
+const UploadedMessage = z.object({
+  photo: z.array(FileRef).optional(),
+  video: FileRef.optional(),
+  animation: FileRef.optional(),
+  document: FileRef.optional(),
+});
+
+/**
+ * Uploads a file once, by sending the composed message with it to `chatId` (the admin previewing),
+ * and returns the file id every later send reuses — a broadcast never re-uploads the bytes.
+ */
+export async function uploadMessageMedia(
+  ctx: CoreContext,
+  input: {
+    chatId: number;
+    type: BroadcastMediaType;
+    file: Blob;
+    filename: string;
+    message: OutgoingMessage;
+  },
+): Promise<{ ok: true; media: BroadcastMedia } | { ok: false; error: string }> {
+  const form = new FormData();
+  form.append("chat_id", String(input.chatId));
+  form.append(input.type, input.file, input.filename);
+  if (input.message.text) form.append("caption", input.message.text);
+  for (const [key, value] of Object.entries(messageOptions(input.message))) {
+    form.append(key, typeof value === "string" ? value : JSON.stringify(value));
+  }
+  const sent = await callBotApi(ctx, mediaMethods[input.type], form, false);
+  if (!sent.ok) return { ok: false, error: sent.description ?? "upload failed" };
+  const uploaded = UploadedMessage.safeParse(sent.result);
+  // Telegram may file an upload under another type (a GIF sent as a document becomes an animation).
+  const found = uploaded.success
+    ? (["animation", "video", "document", "photo"] as const).flatMap((type) => {
+        const ref = type === "photo" ? uploaded.data.photo?.at(-1) : uploaded.data[type];
+        return ref ? [{ type, fileId: ref.file_id }] : [];
+      })[0]
+    : undefined;
+  return found ? { ok: true, media: found } : { ok: false, error: "no file id in the reply" };
+}
+
+type SendError = "invalid" | "blocked" | "failed";
+
+/** One message from the bot to one user. A 403 marks the user as blocked. */
+async function sendToUser(
+  ctx: CoreContext,
+  tgUserId: number,
+  input: unknown,
+): Promise<{ ok: true } | { ok: false; error: SendError; description?: string }> {
+  const message = OutgoingMessage.safeParse(input);
+  if (!message.success) return { ok: false, error: "invalid" };
+  const sent = await sendOutgoing(ctx, tgUserId, message.data);
+  if (sent.ok) return { ok: true };
+  if (sent.blocked) await markBotUsersBlocked(ctx.db, [tgUserId], ctx.now());
+  return {
+    ok: false,
+    error: sent.blocked ? "blocked" : "failed",
+    ...(sent.description ? { description: sent.description } : {}),
+  };
+}
+
+/** Admin follow-up to one user, audited. */
+export async function messageUser(
+  ctx: CoreContext,
+  input: { tgUserId: number; message: OutgoingMessage; actor: Actor },
+) {
+  const result = await sendToUser(ctx, input.tgUserId, input.message);
+  if (result.ok) {
+    await audit(ctx, input.actor, "user.message", `user:${input.tgUserId}`, {
+      text: input.message.text.slice(0, 200),
+    });
+  }
+  return result;
+}
+
+/** A draft sent to the admin composing it; not audited, it reaches nobody else. */
+export const previewMessage = (
+  ctx: CoreContext,
+  input: { chatId: number; message: OutgoingMessage },
+) => sendToUser(ctx, input.chatId, input.message);
+
+/** Starts a broadcast now or at `startAt`; the admin page and the cron advance it batch by batch. */
 export async function createBroadcast(
   ctx: CoreContext,
-  input: { message: BroadcastMessage; audience: BroadcastAudience; actor: Actor },
+  input: {
+    message: OutgoingMessage;
+    audience: BroadcastAudience;
+    startAt?: number | null;
+    actor: Actor;
+  },
 ): Promise<{ ok: true; broadcast: Broadcast } | { ok: false; error: "invalid" | "empty" }> {
-  const message = MessageInput.safeParse(input.message);
+  const message = OutgoingMessage.safeParse(input.message);
   if (!message.success) return { ok: false, error: "invalid" };
-  const total = await countAudience(ctx.db, input.audience);
+  const now = ctx.now();
+  const total = await countAudience(ctx.db, input.audience, now);
   if (total === 0) return { ok: false, error: "empty" };
+  const startAt = Math.max(now, input.startAt ?? now);
   const broadcast = await insertBroadcast(ctx.db, {
     ...message.data,
     audience: input.audience,
     total,
     createdBy: input.actor,
-    now: ctx.now(),
+    now,
+    startAt,
   });
   await audit(ctx, input.actor, "broadcast.create", `broadcast:${broadcast.id}`, {
     audience: input.audience,
     total,
+    ...(startAt > now ? { startAt } : {}),
   });
   return { ok: true, broadcast };
 }
@@ -143,9 +248,9 @@ export async function advanceBroadcast(ctx: CoreContext, id: number, limit = BRO
     const wait = last + SEND_GAP_MS - Date.now();
     if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
     last = Date.now();
-    const result: Sent = await sendMessage(ctx, userId, broadcast).catch((error: unknown) => {
+    const result: Sent = await sendOutgoing(ctx, userId, broadcast).catch((error: unknown) => {
       console.error("broadcast send failed", error);
-      return { ok: false, blocked: false, retryAfterMs: null };
+      return { ok: false, blocked: false, retryAfterMs: null, description: null };
     });
     if (result.ok) sent++;
     else if (result.blocked) blocked.push(userId);

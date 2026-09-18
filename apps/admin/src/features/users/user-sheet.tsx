@@ -15,6 +15,7 @@ import {
 import { Skeleton } from "@/components/coss/ui/skeleton.tsx";
 import { Textarea } from "@/components/coss/ui/textarea.tsx";
 import { toastManager } from "@/components/coss/ui/toast.tsx";
+import { profileName, UserAvatar } from "@/components/user-chip.tsx";
 import { useIsMobile } from "@/features/entries/use-is-mobile.ts";
 import {
   formatAmount,
@@ -26,10 +27,11 @@ import {
   $messageUser,
   $setUserBlacklisted,
   type UserDetail,
+  userProfileQueryOptions,
   userQueryOptions,
 } from "@/functions/users.ts";
 import { invalidate } from "@/lib/query-keys.ts";
-import { displayName } from "./user-list.tsx";
+import { plainMessage } from "./message.ts";
 
 const submissionLabels: Record<
   SubmissionStatus,
@@ -77,6 +79,7 @@ function UserPanel({ userId }: { userId: number }) {
 
 function UserDetailView({ user }: { user: UserDetail }) {
   const queryClient = useQueryClient();
+  const { data: profile } = useQuery(userProfileQueryOptions(user.tgUserId));
   const [text, setText] = useState("");
 
   const ban = useMutation({
@@ -92,7 +95,7 @@ function UserDetailView({ user }: { user: UserDetail }) {
   const send = useMutation({
     mutationFn: () =>
       $messageUser({
-        data: { id: user.tgUserId, message: { text, buttonText: null, buttonUrl: null } },
+        data: { id: user.tgUserId, message: plainMessage(text) },
       }),
     onSuccess: (result) => {
       if (result.ok) {
@@ -118,8 +121,9 @@ function UserDetailView({ user }: { user: UserDetail }) {
   return (
     <>
       <SheetHeader>
-        <SheetTitle className="flex flex-wrap items-center gap-2">
-          {displayName(user)}
+        <SheetTitle className="flex flex-wrap items-center gap-3">
+          <UserAvatar id={user.tgUserId} profile={profile} size="lg" />
+          {profileName(user.tgUserId, profile)}
           {user.blacklisted && <Badge variant="error">已拉黑</Badge>}
           {user.blockedAt !== null && <Badge variant="secondary">已屏蔽机器人</Badge>}
         </SheetTitle>

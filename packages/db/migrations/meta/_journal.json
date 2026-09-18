@@ -113,6 +113,20 @@
       "when": 1789741398294,
       "tag": "0016_promotion_tiers",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1789743823587,
+      "tag": "0017_rich_broadcasts",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1789743831167,
+      "tag": "0018_drop_single_button",
+      "breakpoints": true
     }
   ]
 }
