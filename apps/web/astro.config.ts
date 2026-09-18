@@ -38,6 +38,19 @@ const staticFileBudget: AstroIntegration = {
   },
 };
 
+/** `client:search`: see src/lib/search-directive.ts. */
+const searchDirective: AstroIntegration = {
+  name: "tgbox:search-directive",
+  hooks: {
+    "astro:config:setup": ({ addClientDirective }) => {
+      addClientDirective({
+        name: "search",
+        entrypoint: fileURLToPath(new URL("./src/lib/search-directive.ts", import.meta.url)),
+      });
+    },
+  },
+};
+
 export default defineConfig({
   site: process.env.SITE_URL ?? "http://localhost:4321",
   output: "static",
@@ -50,6 +63,6 @@ export default defineConfig({
     locales: ["zh", "en"],
     routing: { prefixDefaultLocale: false },
   },
-  integrations: [react(), localized404, staticFileBudget],
+  integrations: [react(), searchDirective, localized404, staticFileBudget],
   vite: { plugins: [tailwindcss()] },
 });

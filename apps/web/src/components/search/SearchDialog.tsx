@@ -97,6 +97,12 @@ export default function SearchDialog({
       setQuery(initial);
       setOpen(true);
     }
+    // The press or shortcut that woke this island (see src/lib/search-directive.ts).
+    const root = document.documentElement;
+    if (root.dataset.searchPending !== undefined) {
+      delete root.dataset.searchPending;
+      setOpen(true);
+    }
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();

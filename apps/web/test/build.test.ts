@@ -453,6 +453,8 @@ describe("site build from snapshot data", () => {
       );
       expect(islands).toHaveLength(1);
       expect(islands[0]).toMatch(/SearchDialog/);
+      // React loads when the visitor reaches for search, not on every page view.
+      expect(page).toMatch(/<astro-island[^>]*SearchDialog[^>]*client="search"/);
     }
     expect(modulesSeen.size).toBe(2);
     // Each entry module plus the chunks it statically imports (Motion is shared between them).
@@ -747,6 +749,17 @@ describe("site build from snapshot data", () => {
     }
     // 61 untagged game channels: nothing to narrow down, no chips.
     expect(html("channel/games")).not.toContain("data-tag-chip");
+  });
+
+  test("kind overviews filter by tag too, and their view-all links carry the filter along", () => {
+    for (const route of ["channel", "en/channel"]) {
+      const page = html(route);
+      expect(page, route).toContain('data-tag-chip="all"');
+      expect(page, route).toContain('href="#tag=chinese"');
+      expect(page, route).toContain("data-filter-empty");
+      expect(page, route).toMatch(/<a href="[^"#]*\/channel\/games\/"[^>]*data-carry-filter/);
+      expect(page, route).not.toMatch(/href="[^"]*[?&]tag=/);
+    }
   });
 
   test("listing pages filter by detected language in the fragment, with no crawlable lang URL", () => {

@@ -4,13 +4,14 @@ import KindListingShell from "@/components/kind/KindListingShell.astro";
 import KindPageHeader from "@/components/kind/KindPageHeader.astro";
 import KindSection from "@/components/kind/KindSection.astro";
 import LangFilter from "@/components/kind/LangFilter.astro";
+import TagFilter from "@/components/kind/TagFilter.astro";
 import SubmitButton from "@/components/SubmitButton.astro";
 import { localizePath } from "@/i18n/locale.ts";
 import { kindTitles, ui } from "@/i18n/ui.ts";
 import { kindUi } from "@/i18n/ui-kind.ts";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import { fill } from "@/lib/format.ts";
-import { kindSections, listingLangs } from "@/lib/kind-listing.ts";
+import { kindSections, listingLangs, listingTags } from "@/lib/kind-listing.ts";
 import { kindSeo } from "@/lib/seo.ts";
 import { byMembers, getSiteData } from "@/lib/site-data.ts";
 
@@ -31,7 +32,9 @@ const seo = kindSeo(locale, kind, {
 });
 const description = seo.description;
 // Only the entries this page renders, so every chip leaves at least one card visible.
-const langs = listingLangs(sections.flatMap((section) => section.entries));
+const rendered = sections.flatMap((section) => section.entries);
+const langs = listingLangs(rendered);
+const tags = listingTags(rendered);
 ---
 
 <BaseLayout locale={locale} title={seo.title} description={seo.description} keywords={seo.keywords}>
@@ -43,9 +46,10 @@ const langs = listingLangs(sections.flatMap((section) => section.entries));
       breadcrumbs={[{ label: t(locale, "site.home"), href: localizePath("/", locale) }, { label: title }]}
     >
       <SubmitButton slot="action" locale={locale} />
-      {langs.length > 1 && (
-          <div class="mt-5 border-t border-border pt-4">
-            <LangFilter locale={locale} langs={langs} />
+      {(langs.length > 1 || tags.length > 0) && (
+          <div class="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-border pt-4">
+            {langs.length > 1 && <LangFilter locale={locale} langs={langs} />}
+            {tags.length > 0 && <TagFilter locale={locale} tags={tags} />}
           </div>
         )}
     </KindPageHeader>
@@ -64,6 +68,13 @@ const langs = listingLangs(sections.flatMap((section) => section.entries));
             />
           ))
         )}
+      <p
+        data-filter-empty
+        hidden
+        class="rounded-2xl border border-dashed border-border bg-card/50 p-10 text-center text-muted-foreground"
+      >
+        {kindUi(locale).tagFilter.empty}
+      </p>
     </div>
   </KindListingShell>
 </BaseLayout>

@@ -103,7 +103,7 @@ const pagefindUrl = (import.meta.env.PUBLIC_PAGEFIND_URL ?? "/pagefind").replace
     <MobileTabBar locale={locale} path={path} />
     <BackToTop locale={locale} />
     <SearchDialog
-      client:idle
+      client:search
       locale={locale}
       pagefindUrl={pagefindUrl}
       siteUrl={siteUrl}

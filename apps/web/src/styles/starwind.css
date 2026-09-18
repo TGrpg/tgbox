@@ -408,19 +408,11 @@
 }
 
 /*
- * Motion layer (src/scripts/motion.ts). Content stays visible without JS: `.js` is set by an inline
- * head script, and a CSS fallback reveals anything the observer never reaches after 2.5s.
+ * Motion layer (src/scripts/motion.ts). Nothing is hidden by CSS alone: the module marks only the
+ * [data-reveal] elements below the fold as pending, so the first screen paints without waiting on JS.
  */
-@media (prefers-reduced-motion: no-preference) {
-  .js [data-reveal]:not([data-revealed]) {
-    opacity: 0;
-    animation: reveal-fallback 0s 2.5s forwards;
-  }
-}
-@keyframes reveal-fallback {
-  to {
-    opacity: 1;
-  }
+[data-reveal-pending] {
+  opacity: 0;
 }
 
 [data-hover-lift] {

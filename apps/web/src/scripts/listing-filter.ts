@@ -14,6 +14,10 @@ if (facets.some((facet) => facet.chips.length > 0)) {
   const items = [...document.querySelectorAll<HTMLElement>("[data-entry-lang]")];
   const sections = [...document.querySelectorAll<HTMLElement>("[data-lang-section]")];
   const empty = document.querySelector<HTMLElement>("[data-filter-empty]");
+  // An overview shows only the top of each category; its "view all" links take the filter along.
+  const carriers = [...document.querySelectorAll<HTMLAnchorElement>("[data-carry-filter]")].map(
+    (link) => ({ link, base: link.getAttribute("href") ?? "" }),
+  );
 
   const apply = () => {
     const params = new URLSearchParams(location.hash.slice(1));
@@ -38,6 +42,7 @@ if (facets.some((facet) => facet.chips.length > 0)) {
     }
     // Each chip alone always leaves an entry; a language and a tag together may not.
     if (empty) empty.hidden = items.some((item) => !item.hidden);
+    for (const { link, base } of carriers) link.setAttribute("href", base + location.hash);
   };
 
   // A chip sets its own facet and keeps the other one, so language and tag combine.

@@ -14,7 +14,7 @@ const bouncy = springTransition(springs.bouncy);
 const gentle = springTransition(springs.gentle);
 
 /** Native stand-in for Motion's `inView` (keeps the layer under budget): fires once per element. */
-function inView(selector: string, callback: (element: Element) => void) {
+function inView(elements: Iterable<Element>, callback: (element: Element) => void) {
   const observer = new IntersectionObserver((records) => {
     for (const record of records) {
       if (!record.isIntersecting) continue;
@@ -22,14 +22,23 @@ function inView(selector: string, callback: (element: Element) => void) {
       callback(record.target);
     }
   });
-  for (const element of document.querySelectorAll(selector)) observer.observe(element);
+  for (const element of elements) observer.observe(element);
 }
 
+/**
+ * Only what starts below the fold is hidden and then revealed. Hiding the first screen until this
+ * module arrives held back the page's largest paint, which is the number visitors feel.
+ */
 function revealOnScroll() {
+  if (reduced) return;
+  const below = [...document.querySelectorAll("[data-reveal]")].filter(
+    (element) => element.getBoundingClientRect().top > innerHeight,
+  );
+  for (const element of below) element.setAttribute("data-reveal-pending", "");
   let batch: Element[] = [];
-  inView("[data-reveal]", (element) => {
-    element.setAttribute("data-revealed", "");
-    if (reduced) return;
+  inView(below, (element) => {
+    // Unhidden now, animated from 0 in the rAF below, which runs before the next paint.
+    element.removeAttribute("data-reveal-pending");
     // Elements entering in the same frame form one staggered group.
     if (batch.push(element) > 1) return;
     requestAnimationFrame(() => {
@@ -85,7 +94,7 @@ function pressScale() {
 
 function countUp() {
   const format = new Intl.NumberFormat(document.documentElement.lang);
-  inView("[data-count-up]", (element) => {
+  inView(document.querySelectorAll("[data-count-up]"), (element) => {
     const target = Number(element.getAttribute("data-count-up"));
     if (reduced || !Number.isFinite(target) || target <= 0) return;
     const start = performance.now();
