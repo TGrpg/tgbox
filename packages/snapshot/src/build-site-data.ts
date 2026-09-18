@@ -236,15 +236,14 @@ export async function buildSiteData(options: BuildSiteDataOptions): Promise<Site
     const promos = liveAds("banner");
     const sponsoredAnnouncement = liveAds("announcement")[0] ?? null;
 
-    // Capacity per kind as the bot counts it (live promotions + paid orders not live yet), for the
-    // advertising page. Category pins are per category, so only their size is published.
+    // Capacity per kind for the advertising page: live promotions only, since `orders` (buyer ids)
+    // is never exported. Category pins are per category, so only their size is published.
     const inventory =
       hasPromotions && hasTable("products")
         ? db
             .prepare(
               `SELECT p.kind, MAX(p.slots) AS slots,
-               (SELECT COUNT(*) FROM promotions pr WHERE pr.kind = p.kind AND pr.ends_at > ?)
-               + (SELECT COUNT(*) FROM orders o WHERE o.kind = p.kind AND o.status = 'paid') AS used
+               (SELECT COUNT(*) FROM promotions pr WHERE pr.kind = p.kind AND pr.ends_at > ?) AS used
              FROM products p WHERE p.active = 1 GROUP BY p.kind`,
             )
             .all(nowMs)

@@ -307,6 +307,8 @@ describe("buildSiteData", () => {
     insert.run(8, "highlight", "techdaily", null, now - 1000, now + 1000);
     insert.run(9, "category_pin", "techdaily", null, now - 1000, now + 1000);
     insert.run(10, "announcement", null, banner("公告条"), now - 1000, now + 1000);
+    // The CI export leaves out private tables such as `orders`; the snapshot must not need them.
+    db.exec("DROP TABLE orders; DROP TABLE submissions; DROP TABLE blacklist;");
     db.close();
 
     const data = await buildSiteData({ dbPath, mediaDir: tempDir(), now: fixtureNow });
