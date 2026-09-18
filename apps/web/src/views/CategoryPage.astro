@@ -6,6 +6,7 @@ import KindListingShell from "@/components/kind/KindListingShell.astro";
 import KindPageHeader from "@/components/kind/KindPageHeader.astro";
 import KindSortTabs from "@/components/kind/KindSortTabs.astro";
 import LangFilter from "@/components/kind/LangFilter.astro";
+import TagFilter from "@/components/kind/TagFilter.astro";
 import JsonLd from "@/components/layout/JsonLd.astro";
 import Pagination from "@/components/Pagination.astro";
 import SubmitButton from "@/components/SubmitButton.astro";
@@ -19,6 +20,7 @@ import {
   categoryListingBase,
   type ListingSort,
   listingLangs,
+  listingTags,
   sortEntries,
 } from "@/lib/kind-listing.ts";
 import { categorySeo, MIN_INDEXED_LISTING_ENTRIES } from "@/lib/seo.ts";
@@ -48,6 +50,7 @@ const sortSuffix = sort === "latest" ? ` · ${kindStrings.latestTitle}` : "";
 const pageSuffix = page > 1 ? ` · ${fill(strings.pagination.page, { n: page })}` : "";
 const visible = pageSlice(entries, page);
 const langs = listingLangs(visible);
+const tags = listingTags(visible);
 const seo = categorySeo(locale, {
   kind: category.kind,
   kindWord: kindTitle,
@@ -108,9 +111,17 @@ const jsonLd = [
       <div class="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-border pt-4">
         <KindSortTabs locale={locale} kind={category.kind} slug={category.slug} sort={sort} />
         {langs.length > 1 && <LangFilter locale={locale} langs={langs} />}
+        {tags.length > 0 && <TagFilter locale={locale} tags={tags} />}
       </div>
     </KindPageHeader>
     <KindGrid locale={locale} entries={visible} eager={10} class="mt-6" />
+    <p
+      data-filter-empty
+      hidden
+      class="mt-6 rounded-2xl border border-dashed border-border bg-card/50 p-10 text-center text-muted-foreground"
+    >
+      {kindStrings.tagFilter.empty}
+    </p>
     <Pagination
       locale={locale}
       current={page}

@@ -6,6 +6,7 @@ import {
   categoryListingPaths,
   kindSections,
   listingLangs,
+  listingTags,
   relatedTags,
   sortEntries,
 } from "./kind-listing.ts";
@@ -177,4 +178,19 @@ test("language chips cover the languages a page renders, most common first", () 
   // A page with nothing to choose between offers no filter at all.
   expect(listingLangs([entry({ username: "a", lang: "zh" })])).toEqual(["zh"]);
   expect(listingLangs([entry({ username: "a", lang: null })])).toEqual([]);
+});
+
+test("tag chips come from the rendered entries, most used first, and each one narrows the page", () => {
+  const entries = [
+    entry({ username: "a", tags: ["free", "ai"] }),
+    entry({ username: "b", tags: ["free", "ai", "open-source"] }),
+    entry({ username: "c", tags: ["free"] }),
+  ];
+  // "free" is on every entry, so choosing it would hide nothing.
+  expect(listingTags(entries)).toEqual([
+    { slug: "ai", count: 2 },
+    { slug: "open-source", count: 1 },
+  ]);
+  expect(listingTags(entries, 1)).toEqual([{ slug: "ai", count: 2 }]);
+  expect(listingTags([entry({ username: "a", tags: [] })])).toEqual([]);
 });

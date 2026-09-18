@@ -1,0 +1,59 @@
+---
+import Hash from "@tabler/icons/outline/hash.svg";
+import type { Locale } from "@tgbox/shared";
+import { kindUi } from "@/i18n/ui-kind.ts";
+import { formatNumber } from "@/lib/format.ts";
+import { findTag, localName } from "@/lib/site-data.ts";
+
+interface Props {
+  locale: Locale;
+  /** From `listingTags` over the entries this page renders; callers skip the filter when empty. */
+  tags: { slug: string; count: number }[];
+}
+
+const { locale, tags } = Astro.props;
+const strings = kindUi(locale).tagFilter;
+const chips = [
+  { slug: "all", label: strings.all, count: null, href: "#" },
+  ...tags.map((tag) => {
+    const view = findTag(tag.slug);
+    return {
+      slug: tag.slug,
+      label: `#${view ? localName(view, locale) : tag.slug}`,
+      count: tag.count,
+      href: `#tag=${tag.slug}`,
+    };
+  }),
+];
+---
+
+{/* Fragment links like the language chips: client-side only, no crawlable duplicate listings. */}
+<nav aria-label={strings.label} class="flex w-full min-w-0 items-start gap-2">
+  <Hash class="mt-2 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+  <ul
+    class="-mr-4 flex min-w-0 flex-1 gap-1.5 overflow-x-auto pr-4 pb-1 no-scrollbar sm:mr-0 sm:flex-wrap sm:overflow-visible sm:pr-0 sm:pb-0"
+  >
+    {chips.map((chip) => (
+        <li class="shrink-0">
+          <a
+            href={chip.href}
+            data-tag-chip={chip.slug}
+            aria-current={chip.slug === "all" ? "true" : undefined}
+            data-press
+            class="flex h-8 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-sm whitespace-nowrap text-muted-foreground transition-colors outline-none hover:border-primary/40 hover:text-primary-accent focus-visible:ring-3 focus-visible:ring-outline/40 aria-[current=true]:border-transparent aria-[current=true]:bg-primary-soft aria-[current=true]:font-semibold aria-[current=true]:text-primary-soft-foreground"
+          >
+            {chip.label}
+            {chip.count !== null && (
+                <span class="font-mono text-[0.7rem] tabular-nums opacity-70">
+                  {formatNumber(chip.count, locale)}
+                </span>
+              )}
+          </a>
+        </li>
+      ))}
+  </ul>
+</nav>
+
+<script>
+import "@/scripts/listing-filter.ts";
+</script>

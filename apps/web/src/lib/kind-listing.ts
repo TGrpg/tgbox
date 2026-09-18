@@ -71,6 +71,25 @@ export function listingLangs(entries: Pick<EntryView, "lang">[], limit = 4): str
     .map(([lang]) => lang);
 }
 
+/**
+ * Tags among the entries a page renders, most used first: the listing pages' tag chips. A tag every
+ * entry carries is left out, since choosing it would hide nothing.
+ */
+export function listingTags(
+  entries: Pick<EntryView, "tags">[],
+  limit = 12,
+): { slug: string; count: number }[] {
+  const counts = new Map<string, number>();
+  for (const entry of entries) {
+    for (const slug of entry.tags) counts.set(slug, (counts.get(slug) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .filter(([, count]) => count < entries.length)
+    .sort(([a, countA], [b, countB]) => countB - countA || a.localeCompare(b))
+    .slice(0, limit)
+    .map(([slug, count]) => ({ slug, count }));
+}
+
 /** Tags that most often appear alongside `slug`. */
 export function relatedTags(data: SiteData, slug: string, limit = 16): TagView[] {
   const counts = new Map<string, number>();

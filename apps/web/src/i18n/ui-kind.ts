@@ -11,6 +11,7 @@ const zh = {
   relatedTags: "相关标签",
   /** Client-side language filter on the kind and category listings. */
   langFilter: { label: "按语言筛选", all: "全部语言" },
+  tagFilter: { label: "按标签筛选", all: "全部标签", empty: "没有同时符合这两个条件的条目。" },
   /** Tag index: the two facet groups tags are shown under. */
   facets: { topic: "主题", attribute: "属性" },
   tagsIndexCount: "{n} 个标签",
@@ -27,6 +28,11 @@ const en: typeof zh = {
   latestTitle: "Newest",
   relatedTags: "Related tags",
   langFilter: { label: "Filter by language", all: "All languages" },
+  tagFilter: {
+    label: "Filter by tag",
+    all: "All tags",
+    empty: "Nothing here matches both filters.",
+  },
   facets: { topic: "Topics", attribute: "Attributes" },
   tagsIndexCount: "{n} tags",
   tagsIndexEmpty: "No entry uses a tag yet.",

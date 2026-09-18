@@ -35,7 +35,7 @@ const { locale, entries, eager = 0, variant = "sidebar", class: className } = As
       )}
     >
       {entries.map((entry, index) => (
-        <li class="min-w-0" data-entry-lang={entry.lang ?? ""}>
+        <li class="min-w-0" data-entry-lang={entry.lang ?? ""} data-entry-tags={entry.tags.join(" ")}>
           <EntryCardCompact entry={entry} locale={locale} eagerAvatar={index < eager} />
         </li>
       ))}

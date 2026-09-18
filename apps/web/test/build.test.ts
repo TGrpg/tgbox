@@ -727,6 +727,28 @@ describe("site build from snapshot data", () => {
     expect(chips.match(/<li[\s>]/g)).toHaveLength(6);
   });
 
+  test("category pages filter by tag in the fragment, with no crawlable tag listing", () => {
+    for (const [route, label] of [
+      ["channel/tech", "#中文"],
+      ["en/channel/tech", "#Chinese"],
+    ] as const) {
+      const page = html(route);
+      const filter =
+        page.split('<nav aria-label="按标签筛选"')[1] ??
+        page.split('<nav aria-label="Filter by tag"')[1] ??
+        "";
+      expect(filter, route).toContain('data-tag-chip="all"');
+      expect(filter, route).toContain('href="#tag=chinese"');
+      expect(filter, route).toContain(label);
+      // Cards carry their tags, so the filter is pure client-side hiding.
+      expect(page, route).toMatch(/data-entry-tags="[^"]*\bchinese\b/);
+      expect(page, route).toContain("data-filter-empty");
+      expect(page, route).not.toMatch(/href="[^"]*[?&]tag=/);
+    }
+    // 61 untagged game channels: nothing to narrow down, no chips.
+    expect(html("channel/games")).not.toContain("data-tag-chip");
+  });
+
   test("listing pages filter by detected language in the fragment, with no crawlable lang URL", () => {
     for (const prefix of ["", "en/"]) {
       for (const route of [`${prefix}channel`, `${prefix}channel/tech`]) {
