@@ -40,6 +40,10 @@ const bySlug: Record<string, CategoryIcon> = {
   local: "map-pin",
   files: "folder",
   analytics: "chart-line",
+  productivity: "briefcase",
+  rss: "article",
+  "channel-tools": "message-circle",
+  translate: "world",
 };
 
 const isIcon = (key: string | null | undefined): key is CategoryIcon =>
