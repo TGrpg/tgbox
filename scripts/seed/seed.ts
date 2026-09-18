@@ -156,7 +156,7 @@ wrangler(["d1", "execute", "tgbox", ...target, "--file", sqlFile, "--yes"], { ca
 
 if (values.remote) {
   for (const item of media) {
-    wrangler([
+    const args = [
       "r2",
       "object",
       "put",
@@ -166,7 +166,23 @@ if (values.remote) {
       "--content-type",
       item.contentType,
       "--remote",
-    ]);
+    ];
+    // The same header the refresh cron writes (packages/core/src/refresh.ts): safe because the site
+    // links avatars as `?v=<avatarVersion>`. Without it Cloudflare falls back to a 4-hour edge TTL,
+    // and re-seeding an entry would downgrade an avatar the cron had already cached for a year.
+    if (item.key.startsWith("avatars/")) {
+      args.push("--cache-control", "public, max-age=31536000, immutable");
+    }
+    // The D1 rows are already written by now, so one dropped connection must not strand the rest.
+    for (let attempt = 1; ; attempt++) {
+      try {
+        wrangler(args);
+        break;
+      } catch (error) {
+        if (attempt === 3) throw error;
+        console.warn(`retrying ${item.key} (attempt ${attempt + 1}/3)`);
+      }
+    }
   }
 }
 console.log(
