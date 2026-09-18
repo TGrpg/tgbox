@@ -20,12 +20,12 @@ const promoteHref = promoteUrl(botUsername);
 ---
 
 {items.length > 0 && (
-    <aside data-pagefind-ignore aria-label={detailUi(locale).promo} class="mt-6">
+    <aside data-pagefind-ignore aria-label={detailUi(locale).promo}>
       <p class="flex items-center gap-1.5 text-xs font-semibold text-primary-accent">
         <Ad class="size-4" aria-hidden="true" />
         {detailUi(locale).promo}
       </p>
-      <ul class:list={["mt-2.5 grid gap-2.5", onlyPlaceholder ? "grid-cols-1" : "grid-cols-3"]}>
+      <ul class:list={["mt-2.5 grid gap-2.5", onlyPlaceholder ? "grid-cols-1" : "grid-cols-3 lg:grid-cols-1"]}>
         {items.map((promo) => (
           <li class="min-w-0">
             {promo.type === "paid" ? (

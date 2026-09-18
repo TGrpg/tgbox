@@ -129,7 +129,7 @@ const badge =
 const iconButton =
   "grid size-10 shrink-0 place-items-center rounded-full bg-muted text-foreground/80 transition-colors outline-none hover:bg-primary-soft hover:text-primary-soft-foreground focus-visible:ring-3 focus-visible:ring-outline/40";
 const statCell =
-  "flex min-w-0 flex-col items-center justify-center gap-1 px-2 py-4 text-center [&:nth-child(even)]:border-l [&:nth-child(n+3)]:border-t sm:[&:nth-child(n+2)]:border-l sm:[&:nth-child(n+3)]:border-t-0";
+  "flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl bg-muted/50 px-2 py-4 text-center";
 ---
 
 <BaseLayout
@@ -150,7 +150,7 @@ const statCell =
       class="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[26rem] bg-[radial-gradient(60%_70%_at_50%_0%,color-mix(in_oklch,var(--primary-accent)_14%,transparent),transparent_70%)]"
     ></div>
 
-    <div class="mx-auto max-w-[800px] space-y-10 px-4 pt-5 pb-16 sm:pt-8">
+    <div class="mx-auto max-w-7xl space-y-10 px-4 pt-5 pb-16 sm:px-6 sm:pt-8">
       <div class="flex items-center justify-between gap-3">
         <a
           href={categoryHref ?? kindHref}
@@ -165,196 +165,143 @@ const statCell =
         <SubmitButton locale={locale} />
       </div>
 
-      <article
-        data-pagefind-body
-        class="-mt-5 rounded-3xl border border-border bg-card p-5 shadow-card sm:p-8"
+      {/*
+        Same width as the home page. Desktop: the entry on the left, its numbers and the promos in a
+        sticky side column. Mobile keeps the old order: entry, numbers, promos, trend, posts.
+      */}
+      <div
+        class="-mt-5 grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] xl:grid-cols-[minmax(0,1fr)_22rem]"
       >
-        <span hidden data-pagefind-filter={`kind:${entry.kind}`}></span>
-        <span hidden data-pagefind-meta={`url:/detail/${entry.username}/`}></span>
-        <span hidden data-pagefind-meta={`image:${entry.avatarUrl ?? defaultAvatar}`}></span>
+        <article
+          data-pagefind-body
+          class="rounded-3xl border border-border bg-card p-5 shadow-card sm:p-8"
+        >
+          <span hidden data-pagefind-filter={`kind:${entry.kind}`}></span>
+          <span hidden data-pagefind-meta={`url:/detail/${entry.username}/`}></span>
+          <span hidden data-pagefind-meta={`image:${entry.avatarUrl ?? defaultAvatar}`}></span>
 
-        <header class="flex flex-col gap-5 sm:flex-row sm:items-center">
-          <div class="flex min-w-0 flex-1 items-center gap-4 sm:gap-5">
-            <div
-              class="shrink-0 rounded-full bg-[conic-gradient(from_210deg,var(--primary-accent),#7dd3fc,#34d399,var(--primary-accent))] p-[3px] shadow-[0_10px_30px_-12px_color-mix(in_oklch,var(--primary-accent)_60%,transparent)]"
-            >
-              <div class="rounded-full bg-card p-[3px]">
-                <Avatar title={entry.title} src={entry.avatarUrl} size={96} eager />
-              </div>
-            </div>
-            <div class="min-w-0">
-              <h1
-                class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xl leading-tight font-bold tracking-tight text-balance sm:text-[1.7rem]"
+          <header class="flex flex-col gap-5 sm:flex-row sm:items-center">
+            <div class="flex min-w-0 flex-1 items-center gap-4 sm:gap-5">
+              <div
+                class="shrink-0 rounded-full bg-[conic-gradient(from_210deg,var(--primary-accent),#7dd3fc,#34d399,var(--primary-accent))] p-[3px] shadow-[0_10px_30px_-12px_color-mix(in_oklch,var(--primary-accent)_60%,transparent)]"
               >
-                <span data-pagefind-meta="title" dir="auto">{entry.title}</span>
-                {entry.verified && (
+                <div class="rounded-full bg-card p-[3px]">
+                  <Avatar title={entry.title} src={entry.avatarUrl} size={96} eager />
+                </div>
+              </div>
+              <div class="min-w-0">
+                <h1
+                  class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xl leading-tight font-bold tracking-tight text-balance sm:text-[1.7rem]"
+                >
+                  <span data-pagefind-meta="title" dir="auto">{entry.title}</span>
+                  {entry.verified && (
                     <RosetteCheck class="size-6 shrink-0 text-primary" aria-label={strings.entry.verified} role="img" />
                   )}
-                {/* Names what this page is, in the words people search for. */}
-                <span class="w-full text-sm font-normal text-muted-foreground sm:text-base">
-                  {kindPhrase}
-                </span>
-              </h1>
-              <p class="mt-1 font-mono text-sm text-muted-foreground" data-pagefind-ignore>
-                @{entry.username}
-              </p>
-              <ul class="mt-2.5 flex flex-wrap items-center gap-1.5">
-                <li class:list={[badge, "bg-primary-soft text-primary-soft-foreground"]}>
-                  {entry.kind === "group" ? (
+                  {/* Names what this page is, in the words people search for. */}
+                  <span class="w-full text-sm font-normal text-muted-foreground sm:text-base">
+                    {kindPhrase}
+                  </span>
+                </h1>
+                <p class="mt-1 font-mono text-sm text-muted-foreground" data-pagefind-ignore>
+                  @{entry.username}
+                </p>
+                <ul class="mt-2.5 flex flex-wrap items-center gap-1.5">
+                  <li class:list={[badge, "bg-primary-soft text-primary-soft-foreground"]}>
+                    {entry.kind === "group" ? (
                     <UsersGroup class="size-3.5" aria-hidden="true" />
                   ) : (
                     <Speakerphone class="size-3.5" aria-hidden="true" />
                   )}
-                  {kindLabel}
-                </li>
-                <li>
-                  {categoryHref ? (
+                    {kindLabel}
+                  </li>
+                  <li>
+                    {categoryHref ? (
                     <a href={categoryHref} class:list={[badge, "bg-primary-soft text-primary-soft-foreground hover:brightness-95"]}>
                       {categoryName}
                     </a>
                   ) : (
                     <span class:list={[badge, "bg-muted"]}>{categoryName}</span>
                   )}
-                </li>
-                {entry.lang && (
+                  </li>
+                  {entry.lang && (
                     <li class:list={[badge, "bg-muted text-muted-foreground"]} data-pagefind-ignore>
                       <span class="sr-only">{detail.lang}:</span>
                       {languageName(entry.lang)}
                     </li>
                   )}
-                {tierLabel && (
+                  {tierLabel && (
                     <li class:list={[badge, "bg-success/12 text-success-foreground"]} data-pagefind-ignore>
                       <span class="size-1.5 rounded-full bg-current" aria-hidden="true"></span>
                       <span class="sr-only">{detail.activity}:</span>
                       {tierLabel}
                     </li>
                   )}
-                {entry.isPromoted && (
+                  {entry.isPromoted && (
                     <li class:list={[badge, "bg-warning text-warning-foreground"]}>{strings.entry.promoted}</li>
                   )}
-              </ul>
+                </ul>
+              </div>
             </div>
-          </div>
 
-          <div
-            data-share
-            data-detail-actions
-            data-pagefind-ignore
-            class="flex items-center gap-2 sm:flex-col sm:items-end md:flex-row md:items-center"
-          >
-            <a
-              href={goHref}
-              data-press
-              class="inline-flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full bg-primary px-5 font-semibold text-primary-foreground shadow-[0_8px_20px_-8px_color-mix(in_oklch,var(--primary)_70%,transparent)] transition-colors outline-none hover:bg-primary-hover focus-visible:ring-3 focus-visible:ring-primary/50 sm:flex-none"
+            <div
+              data-share
+              data-detail-actions
+              data-pagefind-ignore
+              class="flex items-center gap-2 sm:flex-col sm:items-end md:flex-row md:items-center"
             >
-              {text.go}
-              <Send class="size-4" aria-hidden="true" />
-            </a>
-            <div class="flex items-center gap-2">
-              <ShareButton
-                locale={locale}
-                url={pageUrl}
-                title={entry.title}
-                triggerClass="inline-flex h-10 items-center gap-1.5 rounded-full bg-muted px-4 text-sm font-medium text-foreground/80 transition-colors outline-none hover:bg-primary-soft hover:text-primary-soft-foreground focus-visible:ring-3 focus-visible:ring-outline/40 [&_svg]:size-4"
-              />
-              <button
-                type="button"
+              <a
+                href={goHref}
                 data-press
-                data-copy={pageUrl}
-                data-copy-done={text.linkCopied}
-                aria-label={text.copyLink}
-                title={text.copyLink}
-                class={iconButton}
+                class="inline-flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full bg-primary px-5 font-semibold text-primary-foreground shadow-[0_8px_20px_-8px_color-mix(in_oklch,var(--primary)_70%,transparent)] transition-colors outline-none hover:bg-primary-hover focus-visible:ring-3 focus-visible:ring-primary/50 sm:flex-none"
               >
-                <LinkIcon class="size-[1.1rem]" aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                data-press
-                data-share-open
-                aria-label={text.qr}
-                title={text.qr}
-                class={iconButton}
-              >
-                <Qrcode class="size-[1.1rem]" aria-hidden="true" />
-              </button>
+                {text.go}
+                <Send class="size-4" aria-hidden="true" />
+              </a>
+              <div class="flex items-center gap-2">
+                <ShareButton
+                  locale={locale}
+                  url={pageUrl}
+                  title={entry.title}
+                  triggerClass="inline-flex h-10 items-center gap-1.5 rounded-full bg-muted px-4 text-sm font-medium text-foreground/80 transition-colors outline-none hover:bg-primary-soft hover:text-primary-soft-foreground focus-visible:ring-3 focus-visible:ring-outline/40 [&_svg]:size-4"
+                />
+                <button
+                  type="button"
+                  data-press
+                  data-copy={pageUrl}
+                  data-copy-done={text.linkCopied}
+                  aria-label={text.copyLink}
+                  title={text.copyLink}
+                  class={iconButton}
+                >
+                  <LinkIcon class="size-[1.1rem]" aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  data-press
+                  data-share-open
+                  aria-label={text.qr}
+                  title={text.qr}
+                  class={iconButton}
+                >
+                  <Qrcode class="size-[1.1rem]" aria-hidden="true" />
+                </button>
+              </div>
             </div>
-          </div>
-        </header>
+          </header>
 
-        {/* Auto-written from the facts below, so the page opens with a sentence, not a table. */}
-        <p data-entry-summary class="mt-6 text-[0.95rem] leading-relaxed text-foreground/80">
-          {summary}
-        </p>
+          {/* Auto-written from the stats beside it, so the page opens with a sentence, not a table. */}
+          <p data-entry-summary class="mt-6 text-[0.95rem] leading-relaxed text-foreground/80">
+            {summary}
+          </p>
 
-        <dl
-          class="mt-6 grid grid-cols-2 border-y border-border sm:grid-cols-4"
-          data-pagefind-ignore
-        >
-          <div class={statCell}>
-            <dt class="text-xs text-muted-foreground">{membersLabel}</dt>
-            <dd class="font-mono text-xl font-bold text-primary-accent tabular-nums">
-              {entry.members === null ? (
-                <span class="text-muted-foreground">—</span>
-              ) : (
-                <span data-count-up={entry.members}>{formatNumber(entry.members, locale)}</span>
-              )}
-            </dd>
-            {entry.kind === "group" && entry.online !== null && (
-                <dd class="inline-flex items-center gap-1 text-[0.7rem] text-muted-foreground">
-                  <span class="size-1.5 rounded-full bg-success" aria-hidden="true"></span>
-                  {fill(text.onlineNow, { n: formatNumber(entry.online, locale) })}
-                </dd>
-              )}
-          </div>
-          <div class={statCell}>
-            <dt class="text-xs text-muted-foreground">{detail.tgCreated}</dt>
-            <dd class="text-[0.95rem] font-semibold tabular-nums">
-              {entry.tgCreatedAt ? (
-                <time datetime={entry.tgCreatedAt}>{formatDate(entry.tgCreatedAt, locale)}</time>
-              ) : (
-                <span class="text-muted-foreground">{detail.unknown}</span>
-              )}
-            </dd>
-          </div>
-          <div class={statCell}>
-            <dt class="text-xs text-muted-foreground">{detail.listed}</dt>
-            <dd class="text-[0.95rem] font-semibold tabular-nums">
-              <time datetime={entry.listedAt}>{formatDate(entry.listedAt, locale)}</time>
-            </dd>
-          </div>
-          <div class={statCell}>
-            <dt class="text-xs text-muted-foreground">{detail.activity}</dt>
-            {tierLabel ? (
-                <dd class="flex flex-col items-center gap-1.5">
-                  <span class="text-[0.95rem] font-semibold">{tierLabel}</span>
-                  <span class="flex gap-1" aria-hidden="true">
-                    {segments.map((filled) => (
-                      <span
-                        class:list={[
-                          "h-1.5 w-5 rounded-full",
-                          filled ? "bg-primary-accent" : "bg-muted-foreground/20",
-                        ]}
-                      ></span>
-                    ))}
-                  </span>
-                </dd>
-              ) : (
-                <dd class="text-[0.95rem] font-semibold text-muted-foreground">{text.noActivity}</dd>
-              )}
-          </div>
-        </dl>
-
-        <DetailPromos locale={locale} />
-
-        <section class="mt-7" aria-labelledby="detail-about-title">
-          <h2
-            id="detail-about-title"
-            class="flex items-center gap-2 border-b border-border pb-2.5 text-base font-semibold text-primary-accent"
-          >
-            <FileDescription class="size-5" aria-hidden="true" />
-            {fill(text.about, { kind: kindLabel.toLowerCase() })}
-            {translated && (
+          <section class="mt-7" aria-labelledby="detail-about-title">
+            <h2
+              id="detail-about-title"
+              class="flex items-center gap-2 border-b border-border pb-2.5 text-base font-semibold text-primary-accent"
+            >
+              <FileDescription class="size-5" aria-hidden="true" />
+              {fill(text.about, { kind: kindLabel.toLowerCase() })}
+              {translated && (
                 <span
                   data-auto-translated
                   data-pagefind-ignore
@@ -363,14 +310,14 @@ const statCell =
                   {strings.entry.autoTranslated}
                 </span>
               )}
-          </h2>
-          <p
-            class="mt-4 text-[0.95rem] leading-relaxed break-words whitespace-pre-line text-foreground/85 [&_a]:text-primary-accent [&_a]:underline [&_a]:underline-offset-4"
-            dir="auto"
-            lang={translated ? htmlLang[locale] : (entry.lang ?? undefined)}
-            set:html={description ? linkify(description) : strings.entry.noDescription}
-          />
-          {tags.length > 0 && (
+            </h2>
+            <p
+              class="mt-4 text-[0.95rem] leading-relaxed break-words whitespace-pre-line text-foreground/85 [&_a]:text-primary-accent [&_a]:underline [&_a]:underline-offset-4"
+              dir="auto"
+              lang={translated ? htmlLang[locale] : (entry.lang ?? undefined)}
+              set:html={description ? linkify(description) : strings.entry.noDescription}
+            />
+            {tags.length > 0 && (
               <ul class="mt-5 flex flex-wrap gap-1.5 text-sm" aria-label={detail.tags}>
                 {tags.map((tag) => (
                   <li>
@@ -384,37 +331,103 @@ const statCell =
                 ))}
               </ul>
             )}
-          <p
-            class="mt-6 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-dashed border-border pt-4 text-sm text-muted-foreground"
-            data-pagefind-ignore
-          >
-            <a
-              href={`tg://resolve?domain=${entry.username}`}
-              class="inline-flex items-center gap-1 hover:text-primary-accent"
+            <p
+              class="mt-6 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-dashed border-border pt-4 text-sm text-muted-foreground"
+              data-pagefind-ignore
             >
-              <BrandTelegram class="size-4" aria-hidden="true" />
-              {detail.openApp}
-            </a>
-            <a
-              href={tmeUrl}
-              rel="noopener nofollow"
-              target="_blank"
-              class="inline-flex items-center gap-1 hover:text-primary-accent"
-            >
-              <World class="size-4" aria-hidden="true" />
-              {detail.openWeb}
-            </a>
-          </p>
-        </section>
-      </article>
+              <a
+                href={`tg://resolve?domain=${entry.username}`}
+                class="inline-flex items-center gap-1 hover:text-primary-accent"
+              >
+                <BrandTelegram class="size-4" aria-hidden="true" />
+                {detail.openApp}
+              </a>
+              <a
+                href={tmeUrl}
+                rel="noopener nofollow"
+                target="_blank"
+                class="inline-flex items-center gap-1 hover:text-primary-accent"
+              >
+                <World class="size-4" aria-hidden="true" />
+                {detail.openWeb}
+              </a>
+            </p>
+          </section>
+        </article>
 
-      <div data-pagefind-ignore>
-        <DetailTrend locale={locale} history={entry.memberHistory} />
-      </div>
+        <div
+          data-pagefind-ignore
+          class="space-y-4 lg:sticky lg:top-36 lg:col-start-2 lg:row-span-3 lg:row-start-1"
+        >
+          <div class="rounded-3xl border border-border bg-card p-3 shadow-card sm:p-4">
+            <dl class="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2" data-pagefind-ignore>
+              <div class={statCell}>
+                <dt class="text-xs text-muted-foreground">{membersLabel}</dt>
+                <dd class="font-mono text-xl font-bold text-primary-accent tabular-nums">
+                  {entry.members === null ? (
+                    <span class="text-muted-foreground">—</span>
+                  ) : (
+                    <span data-count-up={entry.members}>{formatNumber(entry.members, locale)}</span>
+                  )}
+                </dd>
+                {entry.kind === "group" && entry.online !== null && (
+                    <dd class="inline-flex items-center gap-1 text-[0.7rem] text-muted-foreground">
+                      <span class="size-1.5 rounded-full bg-success" aria-hidden="true"></span>
+                      {fill(text.onlineNow, { n: formatNumber(entry.online, locale) })}
+                    </dd>
+                  )}
+              </div>
+              <div class={statCell}>
+                <dt class="text-xs text-muted-foreground">{detail.tgCreated}</dt>
+                <dd class="text-[0.95rem] font-semibold tabular-nums">
+                  {entry.tgCreatedAt ? (
+                    <time datetime={entry.tgCreatedAt}>{formatDate(entry.tgCreatedAt, locale)}</time>
+                  ) : (
+                    <span class="text-muted-foreground">{detail.unknown}</span>
+                  )}
+                </dd>
+              </div>
+              <div class={statCell}>
+                <dt class="text-xs text-muted-foreground">{detail.listed}</dt>
+                <dd class="text-[0.95rem] font-semibold tabular-nums">
+                  <time datetime={entry.listedAt}>{formatDate(entry.listedAt, locale)}</time>
+                </dd>
+              </div>
+              <div class={statCell}>
+                <dt class="text-xs text-muted-foreground">{detail.activity}</dt>
+                {tierLabel ? (
+                    <dd class="flex flex-col items-center gap-1.5">
+                      <span class="text-[0.95rem] font-semibold">{tierLabel}</span>
+                      <span class="flex gap-1" aria-hidden="true">
+                        {segments.map((filled) => (
+                          <span
+                            class:list={[
+                              "h-1.5 w-5 rounded-full",
+                              filled ? "bg-primary-accent" : "bg-muted-foreground/20",
+                            ]}
+                          ></span>
+                        ))}
+                      </span>
+                    </dd>
+                  ) : (
+                    <dd class="text-[0.95rem] font-semibold text-muted-foreground">{text.noActivity}</dd>
+                  )}
+              </div>
+            </dl>
+          </div>
+          <DetailPromos locale={locale} />
+        </div>
 
-      {entry.kind === "channel" && entry.posts.length > 0 && (
-          <DetailPosts locale={locale} username={entry.username} posts={entry.posts} />
+        <div data-pagefind-ignore class="min-w-0 lg:col-start-1">
+          <DetailTrend locale={locale} history={entry.memberHistory} />
+        </div>
+
+        {entry.kind === "channel" && entry.posts.length > 0 && (
+          <div class="min-w-0 lg:col-start-1">
+            <DetailPosts locale={locale} username={entry.username} posts={entry.posts} />
+          </div>
         )}
+      </div>
 
       {[
           { id: "channels", title: text.relatedChannels, entries: relatedChannels, icon: Speakerphone },
@@ -427,7 +440,7 @@ const statCell =
                 <group.icon class="size-5 text-primary-accent" aria-hidden="true" />
                 {group.title}
               </h2>
-              <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
+              <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {group.entries.map((related) => (
                   <EntryCardCompact entry={related} locale={locale} />
                 ))}
