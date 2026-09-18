@@ -17,6 +17,9 @@ describe("parseTelegramRef", () => {
     ["@kuai", "kuai"],
     ["https://t.me/kuai", "kuai"],
     ["@abcd", "abcd"],
+    // Three characters: Telegram's own inline bots.
+    ["@gif", "gif"],
+    ["https://t.me/vid", "vid"],
   ])("accepts %s", (input, expected) => {
     expect(parseTelegramRef(input)).toBe(expected);
   });
@@ -25,7 +28,10 @@ describe("parseTelegramRef", () => {
     ["", "empty"],
     ["https://t.me/+AbCdEfGhIjK", "invite hash"],
     ["https://t.me/joinchat/AbCdEfGhIjK", "joinchat link"],
-    ["@abc", "too short"],
+    ["@ab", "too short"],
+    // t.me's reserved one- and two-letter paths are not usernames.
+    ["https://t.me/iv?url=https://example.com", "instant view path"],
+    ["https://t.me/k/", "web client path"],
     [`@a${"b".repeat(32)}`, "too long"],
     ["@1durov", "starts with digit"],
     ["@durov-news", "invalid character"],

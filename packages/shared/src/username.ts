@@ -1,6 +1,8 @@
-// Telegram allows 5–32 characters for people to pick, but older/reserved names go down to 4
-// (e.g. @kuai). Accept 4–32 so a real bot is never refused as "not a link".
-const USERNAME_RE = /^[a-zA-Z][a-zA-Z0-9_]{3,31}$/;
+// Telegram allows 5–32 characters for people to pick, but older/reserved names go shorter: @kuai
+// has 4, and Telegram's own inline bots (@gif, @vid, @pic) have 3. Accept 3–32 so a real account
+// is never refused as "not a link". t.me's own reserved paths (/s/, /c/, /k, /a, /iv) are all
+// shorter than 3, so they still never parse as a username.
+const USERNAME_RE = /^[a-zA-Z][a-zA-Z0-9_]{2,31}$/;
 const HOSTS = new Set(["t.me", "telegram.me", "telegram.dog"]);
 
 /**

@@ -92,6 +92,13 @@
       "when": 1789712350178,
       "tag": "0013_taxonomy_ai",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1789729766146,
+      "tag": "0014_taxonomy_bots",
+      "breakpoints": true
     }
   ]
 }

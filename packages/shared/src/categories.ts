@@ -89,6 +89,12 @@ export const categories: Category[] = [
     ["crypto", "加密钱包", "Crypto & Wallets", "coin"],
     ["games", "游戏娱乐", "Games & Fun", "device-gamepad-2"],
     ["analytics", "数据分析", "Analytics", "chart-line"],
+    // Appended 2026-09 with the bot directory import: each of these held 7–17 bots that would
+    // otherwise have been piled into `tools`, which is where a directory stops being browsable.
+    ["productivity", "效率提醒", "Productivity", "briefcase"],
+    ["rss", "订阅推送", "RSS & Feeds", "article"],
+    ["channel-tools", "频道运营", "Channel Tools", "message-circle"],
+    ["translate", "翻译", "Translation", "world"],
   ]),
 ];
 

@@ -8,7 +8,7 @@ import { z } from "zod";
 import { queryKeys } from "@/lib/query-keys.ts";
 import { adminMiddleware } from "@/server/middleware.ts";
 
-const username = z.string().regex(/^[A-Za-z0-9_]{4,32}$/);
+const username = z.string().regex(/^[A-Za-z0-9_]{3,32}$/);
 const postId = z.number().int().positive();
 
 /**

@@ -58,6 +58,11 @@ describe("the keyword pass", () => {
     ["group", "同城交流", "本地华人留学生交流群", "local"],
     ["bot", "群管助手", "反垃圾、验证、封禁，一站式群组管理", "group-admin"],
     ["bot", "视频下载机器人", "解析并下载 YouTube、TikTok 视频", "media"],
+    // The four bot categories added with the bot import, each routed by its own narrow rule.
+    ["bot", "翻译助手", "中英互译，支持群聊自动翻译", "translate"],
+    ["bot", "RSS 机器人", "把 RSS 订阅推送到 Telegram", "rss"],
+    ["bot", "番茄钟", "待办清单和定时提醒", "productivity"],
+    ["bot", "频道助手", "频道发帖、定时发布和评论区", "channel-tools"],
   ] satisfies [EntryKind, string, string, string][])(
     "%s %j → %s",
     async (kind, title, description, slug) => {

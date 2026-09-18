@@ -55,6 +55,9 @@ export const tags: Tag[] = [
   { slug: "short-drama", nameZh: "短剧", nameEn: "Short Drama" },
   { slug: "vps", nameZh: "主机VPS", nameEn: "Hosting & VPS" },
   { slug: "gadgets", nameZh: "数码硬件", nameEn: "Gadgets" },
+  // Run by Telegram itself. An attribute, not a topic: it says who operates the entry. Appended
+  // last so the bot's tag bitmask, which indexes tags in id order, keeps every old draft's meaning.
+  { slug: "official", nameZh: "官方", nameEn: "Official" },
 ];
 
 export function findTag(slug: string): Tag | undefined {
@@ -67,7 +70,7 @@ export function findTag(slug: string): Tag | undefined {
  */
 export type TagFacet = "topic" | "attribute";
 
-/** The six tags that describe the entry itself rather than its subject. */
+/** The tags that describe the entry itself rather than its subject. */
 const attributeTags: readonly string[] = [
   "free",
   "open-source",
@@ -75,6 +78,7 @@ const attributeTags: readonly string[] = [
   "ios",
   "windows",
   "linux",
+  "official",
 ];
 
 export const tagFacets: Record<string, TagFacet> = Object.fromEntries(
@@ -213,6 +217,10 @@ export const categoryTagHints: Record<`${EntryKind}:${string}`, readonly string[
   "bot:files": ["cloud-drive", "torrent", "ebooks", "free"],
   "bot:stickers": ["memes", "anime", "ai-art", "design"],
   "bot:crypto": ["airdrop", "finance", "security", "free"],
+  "bot:productivity": ["free", "open-source", "finance", "programming"],
+  "bot:rss": ["free", "open-source", "daily-news", "programming"],
+  "bot:channel-tools": ["free", "finance", "open-source"],
+  "bot:translate": ["free", "llm", "open-source"],
   "bot:games": ["memes", "anime", "free"],
   "bot:analytics": ["finance", "free", "open-source"],
 };

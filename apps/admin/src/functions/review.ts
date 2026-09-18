@@ -36,7 +36,7 @@ const $previewSubmission = createServerFn({ method: "GET" })
   .middleware([adminMiddleware])
   .inputValidator(
     z.object({
-      username: z.string().regex(/^[A-Za-z0-9_]{4,32}$/),
+      username: z.string().regex(/^[A-Za-z0-9_]{3,32}$/),
       kind: z.enum(["channel", "group", "bot"]),
     }),
   )
