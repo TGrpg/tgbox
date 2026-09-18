@@ -3,10 +3,10 @@ import Ad from "@tabler/icons/outline/ad-2.svg";
 import Speakerphone from "@tabler/icons/outline/speakerphone.svg";
 import X from "@tabler/icons/outline/x.svg";
 import { type Locale, promoClickUrl } from "@tgbox/shared";
+import { localizePath } from "@/i18n/locale.ts";
 import { ui } from "@/i18n/ui.ts";
 import { homeUi } from "@/i18n/ui-home.ts";
-import { promoSlots, promoteUrl } from "@/lib/promos.ts";
-import { botUsername } from "@/lib/site.ts";
+import { adSlotLine, promoSlots } from "@/lib/promos.ts";
 import { getSiteData } from "@/lib/site-data.ts";
 
 interface Props {
@@ -25,7 +25,9 @@ const storageKey = `home-promos:${paidIds.join(",") || "ads"}`;
 // Layout, not dismissal: a lineup with real banners uses the dense 5-up card grid, while an
 // all-placeholder lineup stays in the calmer 2-up row so unsold space never outshines paid space.
 const hasPaid = paidIds.length > 0;
-const promoteHref = promoteUrl(botUsername);
+// Unsold cards open the advertising page: what each placement looks like, costs and has left.
+const advertiseHref = localizePath("/advertise/", locale);
+const slotLine = adSlotLine(data, "banner", adSlot);
 ---
 
 {items.length > 0 && (
@@ -110,12 +112,10 @@ const promoteHref = promoteUrl(botUsername);
               </a>
             ) : (
               <a
-                href={promoteHref}
+                href={advertiseHref}
                 data-hover-lift
                 data-press
                 data-promo-slot
-                rel="noopener"
-                target="_blank"
                 class:list={[
                   "ad-slot group relative flex flex-col overflow-hidden rounded-2xl border-2 border-dashed border-primary/30 p-3 text-foreground outline-none transition-colors hover:border-primary/60 focus-visible:ring-4 focus-visible:ring-outline/50 sm:p-4",
                   hasPaid ? "aspect-[16/10] justify-end" : "min-h-24 justify-center pr-24 sm:min-h-28",
@@ -129,7 +129,7 @@ const promoteHref = promoteUrl(botUsername);
                   {adSlot.title}
                 </span>
                 <span class="relative mt-0.5 line-clamp-2 text-xs text-muted-foreground sm:text-[0.8rem]">
-                  {adSlot.subtitle}
+                  {slotLine}
                 </span>
               </a>
             )}

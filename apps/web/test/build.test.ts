@@ -157,6 +157,8 @@ describe("sponsor block with ad slots off", () => {
     const data = await buildSiteData({ dbPath, mediaBaseUrl, mediaDir, now: fixtureNow });
     data.promos = [];
     data.showAdSlots = false;
+    // A paid announcement bar replaces the admin's for as long as it runs.
+    data.sponsoredAnnouncement = { ...paidPromo, id: "52", imageUrl: null };
     const offDataPath = path.join(work, "site-data-noads.json");
     writeFileSync(offDataPath, JSON.stringify(data));
     execFileSync(path.join(webRoot, "node_modules/.bin/astro"), ["build", "--outDir", offOut], {
@@ -180,6 +182,19 @@ describe("sponsor block with ad slots off", () => {
   test("detail pages drop it too", () => {
     expect(page("detail/techdaily")).not.toContain("广告位招租");
     expect(page("detail/techdaily")).not.toContain("data-promo-slot");
+  });
+
+  test("a paid announcement bar is labelled, counted and marked sponsored on every page", () => {
+    for (const [route, label] of [
+      [".", "推广"],
+      ["en", "Promoted"],
+    ] as const) {
+      const bar = page(route).split("data-announcement")[1]?.split("</div>")[0] ?? "";
+      expect(bar, route).toContain(label);
+      expect(bar, route).toContain("Rocket &lt;VPN&gt; &amp; Proxy · Fast nodes worldwide");
+    }
+    const link = page("en").match(/<a[^>]*href="\/r\/52"[^>]*>/)?.[0] ?? "";
+    expect(link).toContain('rel="sponsored noopener"');
   });
 
   test("the rest of the page still renders", () => {
@@ -538,10 +553,10 @@ describe("site build from snapshot data", () => {
       expect(links[0]).toContain('target="_blank"');
       expect(promos).toContain(`>${label}<`);
       expect(promos).toContain("Rocket &lt;VPN&gt; &amp; Proxy");
+      // Unsold cards open the advertising page in the same tab, in the page's language.
       for (const slot of links.slice(1)) {
-        expect(slot).toMatch(/href="https:\/\/t\.me\/\w+\?start=promote"/);
-        expect(slot).toContain('rel="noopener"');
-        expect(slot).toContain('target="_blank"');
+        expect(slot).toContain(`href="/${route.startsWith("en/") ? "en/" : ""}advertise/"`);
+        expect(slot).not.toContain("target=");
       }
     }
     expect(html("")).toContain("广告位招租");
@@ -556,9 +571,9 @@ describe("site build from snapshot data", () => {
       const card = html(route).match(/<a[^>]*data-promo-sponsored[^>]*>/)?.[0] ?? "";
       expect(card, route).toContain(`href="/r/${paidPromo.id}"`);
       expect(card, route).toContain('target="_blank"');
-      // Placeholder cards still deep-link into the bot's purchase flow.
+      // Placeholder cards lead to the advertising page, which links on to the bot.
       const slot = html(route).match(/<a[^>]*data-promo-slot[^>]*>/)?.[0] ?? "";
-      expect(slot, route).toMatch(/href="https:\/\/t\.me\/\w+\?start=promote"/);
+      expect(slot, route).toMatch(/href="(\/en)?\/advertise\/"/);
     }
     // robots.txt keeps the counter out of the index.
     expect(readFileSync(path.join(client, "robots.txt"), "utf8")).toContain("Disallow: /r/");
@@ -582,6 +597,8 @@ describe("site build from snapshot data", () => {
   test("promoted entries lead listings and hot columns with a promoted badge", () => {
     const ai = html("channel/ai");
     expect(ai).toMatch(/data-entry-card="aiwatch"[\s\S]*?data-promoted-badge[\s\S]*?推广/);
+    // Every tier shares one look, switched on by the attribute (the hot shuffle toggles it too).
+    expect(ai).toMatch(/data-entry-card="aiwatch" data-promoted/);
     const home = html("");
     const channelColumn =
       home.split('data-home-hot="channel"')[1]?.split("data-home-hot=")[0] ?? "";
@@ -591,6 +608,32 @@ describe("site build from snapshot data", () => {
     );
     expect(Array.isArray(pool) && pool[0]).toMatchObject({ u: "aiwatch", p: true });
     expect(html("channel/tech")).not.toContain("data-promoted-badge");
+  });
+
+  test("the advertising page lists every placement in both locales, with prices and free slots", () => {
+    for (const [route, heading, buy] of [
+      ["advertise", "推广我的条目", "在机器人里购买"],
+      ["en/advertise", "Promote my listing", "Buy in the bot"],
+    ] as const) {
+      const page = html(route);
+      expect(page, route).toContain(heading);
+      expect([...page.matchAll(/data-ad-offer="([a-z_]+)"/g)].map((match) => match[1])).toEqual([
+        "highlight",
+        "category_pin",
+        "pin",
+        "banner",
+        "announcement",
+      ]);
+      expect(page, route).toContain(buy);
+      expect(page, route).toMatch(/href="https:\/\/t\.me\/\w+\?start=promote"/);
+      expect(page, route).toMatch(/data-ad-availability[^>]*>\s*(共 5 个名额|5 slots)/);
+      // The sample announcement bar can't dismiss the real one.
+      expect(page.match(/<button[^>]*data-announcement-dismiss/g)?.length ?? 0, route).toBeLessThan(
+        2,
+      );
+    }
+    expect(html("")).toMatch(/<a href="\/advertise\/"[^>]*>广告投放</);
+    expect(readFileSync(path.join(client, "sitemap-pages.xml"), "utf8")).toContain("/advertise/");
   });
 
   test("kind, category and tag listing pages exist in both locales", () => {
@@ -1060,17 +1103,24 @@ describe("site build from snapshot data", () => {
     // together with the methods a buyer can pay with: a price with no button behind it is the bug
     // this shape exists to prevent.
     expect(read("app-products.json")).toMatchObject({
+      // Cheapest tier first, as the admin sorts them.
       products: [
         {
-          id: 1,
-          kind: "pin",
+          id: 5,
+          kind: "highlight",
           days: 7,
           priceStars: expect.any(Number),
           priceUsdt: expect.any(String),
         },
+        { id: 6, kind: "highlight", days: 30 },
+        { id: 7, kind: "category_pin", days: 7 },
+        { id: 8, kind: "category_pin", days: 30 },
+        { id: 1, kind: "pin", days: 7 },
         { id: 2, kind: "pin", days: 30 },
         { id: 3, kind: "banner", days: 7 },
         { id: 4, kind: "banner", days: 30 },
+        { id: 9, kind: "announcement", days: 7 },
+        { id: 10, kind: "announcement", days: 30 },
       ],
       payments: { stars: expect.any(Boolean), usdt: expect.any(Boolean) },
     });

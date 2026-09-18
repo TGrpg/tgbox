@@ -40,6 +40,8 @@ export async function setup(config: Partial<CoreContext["config"]> = {}) {
       "promotions",
       "hidden_posts",
       "usdt_payments",
+      "bot_users",
+      "broadcasts",
     ].map((table) => env.DB.prepare(`DELETE FROM ${table}`)),
   );
   await syncTaxonomy(db);
@@ -48,6 +50,8 @@ export async function setup(config: Partial<CoreContext["config"]> = {}) {
   const github = { status: 204, body: "" };
   const tme: string[] = [];
   const telegram: { method: string; body: unknown }[] = [];
+  // Per-recipient Bot API error replies (`chat_id` → body), e.g. a 403 from a user who blocked us.
+  const telegramErrors = new Map<number, unknown>();
   // Tests drive the chain: which transfers the address has received, and how TronGrid misbehaves.
   const tron = {
     transfers: [] as {
@@ -71,10 +75,10 @@ export async function setup(config: Partial<CoreContext["config"]> = {}) {
         return new Response(github.body || null, { status: github.status });
       }
       if (url.hostname === "api.telegram.org") {
-        telegram.push({
-          method: url.pathname.split("/").at(-1) ?? "",
-          body: JSON.parse(String(init?.body ?? "null")),
-        });
+        const body = JSON.parse(String(init?.body ?? "null"));
+        telegram.push({ method: url.pathname.split("/").at(-1) ?? "", body });
+        const error = telegramErrors.get(body?.chat_id);
+        if (error) return Response.json(error);
         return Response.json({ ok: true, result: true });
       }
       if (url.hostname === "t.me") {
@@ -97,7 +101,7 @@ export async function setup(config: Partial<CoreContext["config"]> = {}) {
       throw new Error(`unexpected fetch ${url.href}`);
     },
   };
-  return { ctx, dispatches, github, tme, telegram, tron };
+  return { ctx, dispatches, github, tme, telegram, telegramErrors, tron };
 }
 
 export async function auditRows() {

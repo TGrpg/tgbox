@@ -33,25 +33,25 @@ test("promoted entries lead both orders, keeping the order among themselves", ()
       username: "big",
       members: 90,
       listedAt: "2026-01-03T00:00:00.000Z",
-      isPromoted: false,
+      promo: null,
     }),
     entry({
       username: "pin-small",
       members: 5,
       listedAt: "2026-01-01T00:00:00.000Z",
-      isPromoted: true,
+      promo: "pin",
     }),
     entry({
       username: "pin-mid",
       members: 20,
       listedAt: "2026-01-02T00:00:00.000Z",
-      isPromoted: true,
+      promo: "pin",
     }),
     entry({
       username: "mid",
       members: 50,
       listedAt: "2026-01-04T00:00:00.000Z",
-      isPromoted: false,
+      promo: null,
     }),
   ];
   expect(sortEntries(entries, "members").map((item) => item.username)).toEqual([
@@ -64,6 +64,19 @@ test("promoted entries lead both orders, keeping the order among themselves", ()
     "pin-mid",
     "pin-small",
     "mid",
+    "big",
+  ]);
+});
+
+test("a category pin sits under the site-wide pins and above everything else", () => {
+  const entries = [
+    entry({ username: "big", members: 90, promo: "highlight" }),
+    entry({ username: "category", members: 10, promo: "category_pin" }),
+    entry({ username: "site", members: 5, promo: "pin" }),
+  ];
+  expect(sortEntries(entries, "members").map((item) => item.username)).toEqual([
+    "site",
+    "category",
     "big",
   ]);
 });

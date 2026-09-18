@@ -28,7 +28,7 @@ export function PromotionsPage({
   const counts = useQuery(promotionCountsQueryOptions());
   const badge = (item: PromotionTab) => {
     const count =
-      item === "orders" ? counts.data?.pendingBanners : item === "active" ? counts.data?.active : 0;
+      item === "orders" ? counts.data?.pendingAds : item === "active" ? counts.data?.active : 0;
     return count ? (
       <Badge variant={item === "orders" ? "warning" : "secondary"} size="sm">
         {count}
@@ -40,7 +40,7 @@ export function PromotionsPage({
     <>
       <PageHeader
         title="推广"
-        description="置顶和首页横幅：订单审核、投放管理、手动推广与价格。上线或下架会触发网站重建。"
+        description="条目推广（高亮 / 分类置顶 / 全站置顶）和品牌广告（首页横幅 / 顶部公告条）：订单审核、投放管理、手动推广与价格。上线或下架会触发网站重建。"
       />
       <Tabs
         value={tab}

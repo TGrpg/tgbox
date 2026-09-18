@@ -10,7 +10,7 @@ import SiteHeader from "@/components/layout/SiteHeader.astro";
 import SearchDialog from "@/components/search/SearchDialog.tsx";
 import { htmlLang } from "@/i18n/locale.ts";
 import { ui } from "@/i18n/ui.ts";
-import { announcementKey } from "@/lib/announcement.ts";
+import { announcementKey, paidAnnouncement } from "@/lib/announcement.ts";
 import { siteUrl } from "@/lib/site.ts";
 import { byMembers, getSiteData } from "@/lib/site-data.ts";
 
@@ -40,7 +40,13 @@ const {
 const path = Astro.url.pathname;
 const strings = ui(locale);
 const data = getSiteData();
-const announcement = showAnnouncement ? data.announcement : null;
+// A paid announcement bar takes the admin's place while it runs.
+const sponsored = showAnnouncement && data.sponsoredAnnouncement !== null;
+const announcement = !showAnnouncement
+  ? null
+  : data.sponsoredAnnouncement
+    ? paidAnnouncement(data.sponsoredAnnouncement)
+    : data.announcement;
 // Titles of the largest entries always hit the (zh-built) index, unlike localized tag names.
 const hotKeywords = byMembers(data.entries)
   .slice(0, 6)
@@ -95,7 +101,7 @@ const pagefindUrl = (import.meta.env.PUBLIC_PAGEFIND_URL ?? "/pagefind").replace
       {ui(locale).nav.skipToContent}
     </a>
     <SiteHeader locale={locale} path={path} />
-    {announcement && <Announcement locale={locale} announcement={announcement} />}
+    {announcement && <Announcement locale={locale} announcement={announcement} sponsored={sponsored} />}
     <main id="main" class="flex-1">
       <slot />
     </main>

@@ -23,6 +23,7 @@ export const queryKeys = {
   promotionClicks: ["promotion-clicks"],
   promotionCounts: ["promotion-counts"],
   products: ["products"],
+  users: ["users"],
 } as const;
 
 export type QueryKeyRoot = keyof typeof queryKeys;

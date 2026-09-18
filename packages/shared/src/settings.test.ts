@@ -53,7 +53,7 @@ describe("EntryView translations", () => {
     tgCreatedAt: null,
     listedAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
-    isPromoted: false,
+    promo: null,
     posts: [],
     memberHistory: [],
     related: { channels: [], groups: [] },

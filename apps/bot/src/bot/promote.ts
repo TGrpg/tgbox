@@ -18,7 +18,7 @@ import {
   setOrderBanner,
   setOrderInvoice,
 } from "@tgbox/db";
-import { BannerContent, type Locale, parseTelegramRef } from "@tgbox/shared";
+import { BannerContent, isEntryProduct, type Locale, parseTelegramRef } from "@tgbox/shared";
 import { Composer, type Context, InlineKeyboard } from "grammy";
 import type { Message, PhotoSize } from "grammy/types";
 import type { App } from "./app.ts";
@@ -78,7 +78,8 @@ function bannerImageOf(message: Message): { fileId: string; contentType: string 
 export const productName = (locale: Locale, product: Product) =>
   locale === "en" ? product.nameEn : product.nameZh;
 
-export const orderTarget = (order: Pick<Order, "targetUsername" | "banner">) => ({
+export const orderTarget = (order: Pick<Order, "kind" | "targetUsername" | "banner">) => ({
+  kind: order.kind,
   username: order.targetUsername,
   bannerTitle: order.banner?.title ?? null,
 });
@@ -131,7 +132,10 @@ export function promote(app: App) {
       });
       keyboard.text(label, `pp:${product.id}`).row();
     }
-    await ctx.reply(m.intro, { reply_markup: keyboard });
+    await ctx.reply(m.intro(`${app.env.SITE_URL}${locale === "en" ? "/en" : ""}/advertise/`), {
+      reply_markup: keyboard,
+      link_preview_options: { is_disabled: true },
+    });
   }
 
   composer.command("promote", showProducts);
@@ -153,13 +157,15 @@ export function promote(app: App) {
       await ctx.reply(m.productUnavailable);
       return;
     }
-    // Checked up front so nobody fills in a banner only to hear the slots are gone.
+    // Checked up front so nobody fills in an ad only to hear the slots are gone. A category pin's
+    // slots depend on the entry, so it is checked again once the buyer names one.
     const slots = await checkSlots(app.core, product.kind);
     if (slots.available === 0) {
       await ctx.reply(m.noSlots(slots.nextFreeAt));
       return;
     }
-    const step: PromoteStep = product.kind === "pin" ? "promote_target" : "promote_title";
+    const forEntry = isEntryProduct(product.kind);
+    const step: PromoteStep = forEntry ? "promote_target" : "promote_title";
     const draft: PromoteDraft = { productId: product.id };
     await putBotDraft(app.db, {
       tgUserId: ctx.from.id,
@@ -167,7 +173,7 @@ export function promote(app: App) {
       payload: draft,
       updatedAt: app.now(),
     });
-    await ctx.reply(product.kind === "pin" ? m.askTarget : m.askTitle, {
+    await ctx.reply(forEntry ? m.askTarget : m.askTitle, {
       reply_markup: cancelKeyboard(locale),
     });
   });
@@ -233,15 +239,8 @@ export function promote(app: App) {
       await again(prompt);
     };
 
-    if (step === "promote_image") {
-      const skipped = text !== undefined && /^\/skip(@\w+)?$/.test(text);
-      const image = skipped ? null : bannerImageOf(ctx.message);
-      if (!skipped && !image) {
-        await again(m.invalidImage);
-        return;
-      }
-      // Title, subtitle and link were validated as they came in, so the order is created before
-      // the upload: the R2 key is the order id.
+    /** Title, subtitle and link were validated as they came in; the image (banner only) is optional. */
+    const createAd = async (image: { fileId: string; contentType: string } | null) => {
       await deleteBotDraft(app.db, userId);
       const created = await createOrder(app.core, {
         tgUserId: userId,
@@ -258,6 +257,7 @@ export function promote(app: App) {
         );
         return;
       }
+      // The order exists before the upload: the R2 key is the order id.
       let banner = created.order.banner;
       if (image && banner) {
         const imageUrl = await storeBannerImage(ctx, created.order.id, image);
@@ -269,6 +269,16 @@ export function promote(app: App) {
         }
       }
       await offerPayment(ctx, locale, { ...created.order, banner });
+    };
+
+    if (step === "promote_image") {
+      const skipped = text !== undefined && /^\/skip(@\w+)?$/.test(text);
+      const image = skipped ? null : bannerImageOf(ctx.message);
+      if (!skipped && !image) {
+        await again(m.invalidImage);
+        return;
+      }
+      await createAd(image);
       return;
     }
 
@@ -297,10 +307,15 @@ export function promote(app: App) {
         await again(m.invalidHref);
         return;
       }
-      return advance("promote_image", { ...draft, href: href.data }, m.askImage);
+      draft.href = href.data;
+      // Only the home banner carries an image; the announcement bar is text.
+      const product = await getProduct(app.db, draft.productId);
+      if (product?.kind === "banner") return advance("promote_image", draft, m.askImage);
+      await createAd(null);
+      return;
     }
 
-    // promote_target: the pin's entry, the only step that still creates the order from text.
+    // promote_target: the promoted entry, the only step that creates the order from text alone.
     const result = await createOrder(app.core, {
       tgUserId: userId,
       productId: draft.productId,

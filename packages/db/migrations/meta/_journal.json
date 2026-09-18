@@ -99,6 +99,20 @@
       "when": 1789729766146,
       "tag": "0014_taxonomy_bots",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "6",
+      "when": 1789740418552,
+      "tag": "0015_bot_users",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "6",
+      "when": 1789741398294,
+      "tag": "0016_promotion_tiers",
+      "breakpoints": true
     }
   ]
 }

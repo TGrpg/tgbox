@@ -34,6 +34,11 @@ export const auditActions = [
   "promotion.end",
   "promotion.extend",
   "promotion.expire",
+  "user.message",
+  "broadcast.create",
+  "broadcast.pause",
+  "broadcast.resume",
+  "broadcast.cancel",
   /** An incoming USDT transfer that matched no order: wrong amount, or paid twice. */
   "usdt.unmatched",
 ] as const;

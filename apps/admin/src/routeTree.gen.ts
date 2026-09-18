@@ -18,6 +18,7 @@ import { Route as PromotionsRouteImport } from './routes/promotions'
 import { Route as ReviewRouteImport } from './routes/review'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as TaxonomyRouteImport } from './routes/taxonomy'
+import { Route as UsersRouteImport } from './routes/users'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -64,6 +65,11 @@ const TaxonomyRoute = TaxonomyRouteImport.update({
   path: '/taxonomy',
   getParentRoute: () => rootRouteImport,
 } as any)
+const UsersRoute = UsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -75,6 +81,7 @@ export interface FileRoutesByFullPath {
   '/review': typeof ReviewRoute
   '/settings': typeof SettingsRoute
   '/taxonomy': typeof TaxonomyRoute
+  '/users': typeof UsersRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -86,6 +93,7 @@ export interface FileRoutesByTo {
   '/review': typeof ReviewRoute
   '/settings': typeof SettingsRoute
   '/taxonomy': typeof TaxonomyRoute
+  '/users': typeof UsersRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -98,6 +106,7 @@ export interface FileRoutesById {
   '/review': typeof ReviewRoute
   '/settings': typeof SettingsRoute
   '/taxonomy': typeof TaxonomyRoute
+  '/users': typeof UsersRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -111,6 +120,7 @@ export interface FileRouteTypes {
     | '/review'
     | '/settings'
     | '/taxonomy'
+    | '/users'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -122,6 +132,7 @@ export interface FileRouteTypes {
     | '/review'
     | '/settings'
     | '/taxonomy'
+    | '/users'
   id:
     | '__root__'
     | '/'
@@ -133,6 +144,7 @@ export interface FileRouteTypes {
     | '/review'
     | '/settings'
     | '/taxonomy'
+    | '/users'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -145,6 +157,7 @@ export interface RootRouteChildren {
   ReviewRoute: typeof ReviewRoute
   SettingsRoute: typeof SettingsRoute
   TaxonomyRoute: typeof TaxonomyRoute
+  UsersRoute: typeof UsersRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -212,6 +225,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TaxonomyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/users': {
+      id: '/users'
+      path: '/users'
+      fullPath: '/users'
+      preLoaderRoute: typeof UsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -225,6 +245,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReviewRoute: ReviewRoute,
   SettingsRoute: SettingsRoute,
   TaxonomyRoute: TaxonomyRoute,
+  UsersRoute: UsersRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

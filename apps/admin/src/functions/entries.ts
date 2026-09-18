@@ -57,7 +57,7 @@ export const $listEntries = createServerFn({ method: "GET" })
       db,
       rows.map((row) => row.entry.id),
     );
-    // A live paid pin re-asserts `isPromoted` at every site build, so the raw column alone would
+    // A live paid site-wide pin shows as pinned at every site build, so the raw column alone would
     // let an admin "turn promotion off", watch it come back, and have no idea why. `promotions`
     // only holds what is currently running and is deleted on expiry, so this scan is a few rows.
     const pinned = new Set(

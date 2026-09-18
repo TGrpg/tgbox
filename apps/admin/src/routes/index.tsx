@@ -11,7 +11,9 @@ import {
   MegaphoneIcon,
   RocketIcon,
   Trash2Icon,
+  UserPlusIcon,
   UsersIcon,
+  WalletIcon,
 } from "lucide-react";
 import { motion } from "motion/react";
 import type { ReactNode } from "react";
@@ -27,6 +29,7 @@ import {
 } from "@/features/dashboard/dashboard-activity.tsx";
 import { promotionCountsQueryOptions } from "@/functions/promotions.ts";
 import { adminStatsQueryOptions } from "@/functions/stats.ts";
+import { userStatsQueryOptions } from "@/functions/users.ts";
 
 export const Route = createFileRoute("/")({
   component: Dashboard,
@@ -53,6 +56,7 @@ function Dashboard() {
         <DashboardCards data={stats.data} />
       )}
       <PromotionCards />
+      <UserCards />
       <div className="mt-4">
         <DashboardActivity />
       </div>
@@ -146,11 +150,11 @@ function PromotionCards() {
   if (!counts.data) return null;
   const cards = [
     {
-      label: "待审核横幅",
-      value: counts.data.pendingBanners,
+      label: "待审核广告",
+      value: counts.data.pendingAds,
       icon: ImageIcon,
       tab: "orders" as const,
-      warn: counts.data.pendingBanners > 0,
+      warn: counts.data.pendingAds > 0,
     },
     { label: "投放中推广", value: counts.data.active, icon: RocketIcon, tab: "active" as const },
   ];
@@ -172,6 +176,41 @@ function PromotionCards() {
                 className={card.warn ? "size-4 text-warning-foreground" : "size-4"}
                 aria-hidden
               />
+              {card.label}
+            </span>
+            <span className="font-semibold text-2xl tracking-tight">
+              <NumberRoll value={card.value} />
+            </span>
+          </Card>
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
+function UserCards() {
+  const stats = useQuery(userStatsQueryOptions());
+  if (!stats.data) return null;
+  const cards = [
+    { label: "机器人用户", value: stats.data.total, icon: UsersIcon },
+    { label: "7 日新增", value: stats.data.new7d, icon: UserPlusIcon },
+    { label: "付费用户", value: stats.data.paying, icon: WalletIcon },
+  ];
+  return (
+    <div className="mt-4 grid grid-cols-3 gap-3 md:gap-4">
+      {cards.map((card, index) => (
+        <motion.div
+          key={card.label}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: index * 0.03, duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <Card
+            render={<Link to="/users" search={{ tab: "list" }} />}
+            className="h-full gap-2 p-4 transition-colors hover:bg-accent/40"
+          >
+            <span className="flex items-center gap-2 text-muted-foreground text-sm">
+              <card.icon className="size-4" aria-hidden />
               {card.label}
             </span>
             <span className="font-semibold text-2xl tracking-tight">

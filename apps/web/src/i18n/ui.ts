@@ -82,6 +82,7 @@ const zh = {
   },
   page: {
     enroll: "提交收录",
+    advertise: "广告投放",
     about: "关于本站",
     guides: "使用指南",
     tags: "标签索引",
@@ -125,6 +126,7 @@ const zh = {
   adSlot: {
     title: "广告位招租",
     subtitle: "在此展示你的频道 · 按周购买",
+    offer: "剩 {left} 个位置 · {price} 起",
   },
   pagination: {
     label: "分页",
@@ -259,6 +261,7 @@ const en: typeof zh = {
   },
   page: {
     enroll: "Submit a listing",
+    advertise: "Advertise",
     about: "About",
     guides: "Guides",
     tags: "All tags",
@@ -298,6 +301,7 @@ const en: typeof zh = {
   adSlot: {
     title: "Ad space available",
     subtitle: "Feature your channel here · weekly",
+    offer: "{left} left · from {price}",
   },
   pagination: {
     label: "Pagination",

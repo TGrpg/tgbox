@@ -1,7 +1,8 @@
 import { env } from "cloudflare:workers";
 import {
-  approveBannerOrder,
+  approveAdOrder,
   type CoreContext,
+  checkOrderSlots,
   checkSlots,
   createManualPromotion,
   createOrder,
@@ -17,6 +18,7 @@ import {
   getSiteState,
   insertApprovedEntry,
   listActivePromotions,
+  listProducts,
   setEntryStatus,
 } from "@tgbox/db";
 import { describe, expect, test } from "vitest";
@@ -28,9 +30,9 @@ const PIN_7 = 1;
 const BANNER_7 = 3;
 const banner = { title: "新频道", subtitle: "每天更新", href: "https://t.me/new_channel" };
 
-async function listed(username: string) {
+async function listed(username: string, categoryId = 1) {
   const { id } = await insertApprovedEntry(db, {
-    entry: { username, kind: "channel", categoryId: 1, title: username, listedAt: NOW - 1 },
+    entry: { username, kind: "channel", categoryId, title: username, listedAt: NOW - 1 },
     stats: { members: 1, online: null, activityTier: null, statsWrittenAt: NOW - 1 },
     tagIds: [],
     now: NOW - 1,
@@ -137,11 +139,11 @@ describe("paying", () => {
     expect(await listActivePromotions(db, NOW)).toEqual([]);
     expect(await checkSlots(ctx, "banner")).toEqual({ available: 4, nextFreeAt: null });
 
-    expect(await approveBannerOrder(ctx, { orderId: created.id, actor })).toMatchObject({
+    expect(await approveAdOrder(ctx, { orderId: created.id, actor })).toMatchObject({
       status: "active",
       endsAt: NOW + 7 * DAY,
     });
-    expect(await approveBannerOrder(ctx, { orderId: created.id, actor })).toBeNull();
+    expect(await approveAdOrder(ctx, { orderId: created.id, actor })).toBeNull();
     expect(await listActivePromotions(db, NOW, "banner")).toMatchObject([{ banner }]);
     expect(await checkSlots(ctx, "banner")).toEqual({ available: 4, nextFreeAt: NOW + 7 * DAY });
   });
@@ -184,6 +186,60 @@ describe("paying", () => {
       order: { status: "rejected" },
     });
     expect(telegram).toEqual([]);
+  });
+});
+
+/** The 7-day product of a kind, looked up rather than hard-coding migration ids. */
+async function weekOf(kind: string) {
+  const product = (await listProducts(db)).find((p) => p.kind === kind && p.days === 7);
+  if (!product) throw new Error(`no 7-day ${kind} product`);
+  return product.id;
+}
+
+describe("promotion tiers", () => {
+  test("a paid highlight goes live at once, like any entry promotion", async () => {
+    const { ctx } = await setup();
+    await listed("shiny");
+    const created = await order(ctx, await weekOf("highlight"), { targetUsername: "@shiny" });
+    await markOrderPaid(ctx, starsPayment(created.id));
+    expect(await listActivePromotions(db, NOW)).toMatchObject([
+      { kind: "highlight", entryUsername: "shiny" },
+    ]);
+  });
+
+  test("category pins have three slots per category", async () => {
+    const { ctx } = await setup();
+    for (const name of ["news_a", "news_b", "news_c", "news_d"]) await listed(name, 1);
+    await listed("games_a", 2);
+    const product = await weekOf("category_pin");
+    for (const name of ["news_a", "news_b", "news_c"]) {
+      const created = await order(ctx, product, { targetUsername: name });
+      await markOrderPaid(ctx, starsPayment(created.id));
+    }
+    expect(
+      await createOrder(ctx, { tgUserId: BUYER, productId: product, targetUsername: "news_d" }),
+    ).toEqual({
+      ok: false,
+      error: "no_slots",
+      nextFreeAt: NOW + 7 * DAY,
+    });
+    // Another category is untouched by the first one filling up.
+    const games = await order(ctx, product, { targetUsername: "games_a" });
+    expect(await checkOrderSlots(ctx, games)).toEqual({ available: 3, nextFreeAt: null });
+    expect(await checkSlots(ctx, "category_pin", 1)).toMatchObject({ available: 0 });
+  });
+
+  test("the announcement bar is a reviewed ad without an image", async () => {
+    const { ctx } = await setup();
+    const created = await order(ctx, await weekOf("announcement"), {
+      banner: { ...banner, imageUrl: "https://media.example.org/promos/1.jpg" },
+    });
+    expect(created.banner).toEqual(banner);
+    await markOrderPaid(ctx, starsPayment(created.id));
+    expect(await listActivePromotions(db, NOW)).toEqual([]);
+    expect(await checkSlots(ctx, "announcement")).toEqual({ available: 0, nextFreeAt: null });
+    await approveAdOrder(ctx, { orderId: created.id, actor });
+    expect(await listActivePromotions(db, NOW)).toMatchObject([{ kind: "announcement", banner }]);
   });
 });
 

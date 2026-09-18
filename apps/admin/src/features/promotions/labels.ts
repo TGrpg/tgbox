@@ -1,8 +1,28 @@
-import type { OrderStatus, PaymentProvider, ProductKind } from "@tgbox/shared";
+import { type OrderStatus, type PaymentProvider, ProductKind } from "@tgbox/shared";
 
 type BadgeVariant = "success" | "warning" | "error" | "info" | "secondary" | "outline";
 
-export const productKindLabels: Record<ProductKind, string> = { pin: "置顶", banner: "横幅" };
+export const productKindLabels: Record<ProductKind, string> = {
+  highlight: "高亮",
+  category_pin: "分类置顶",
+  pin: "全站置顶",
+  banner: "首页横幅",
+  announcement: "顶部公告条",
+};
+
+/** Entry promotions in warm tones, brand ads in blue: the two families at a glance. */
+export const productKindVariants: Record<ProductKind, "warning" | "info"> = {
+  highlight: "warning",
+  category_pin: "warning",
+  pin: "warning",
+  banner: "info",
+  announcement: "info",
+};
+
+export const productKindOptions = ProductKind.options.map((value) => ({
+  value,
+  label: productKindLabels[value],
+}));
 
 export const orderStatusLabels: Record<OrderStatus, string> = {
   pending: "待支付",
@@ -66,6 +86,6 @@ export const remainingDays = (endsAt: number, now: number) =>
 export const promotionErrorText: Record<string, string> = {
   invalid_target: "用户名格式不正确",
   target_not_listed: "该用户名不是已收录的条目",
-  invalid_banner: "横幅内容不符合要求：标题 ≤ 20 字、副标题 ≤ 40 字、链接以 https:// 开头",
+  invalid_banner: "广告内容不符合要求：标题 ≤ 20 字、副标题 ≤ 40 字、链接以 https:// 开头",
   invalid_days: "天数需在 1–365 之间",
 };

@@ -1,6 +1,8 @@
 import type {
   ActivityTier,
   BannerContent,
+  BroadcastAudience,
+  BroadcastStatus,
   EntryKind,
   EntryStatus,
   Liveness,
@@ -317,3 +319,46 @@ export const promotionClicks = sqliteTable(
   },
   (t) => [primaryKey({ columns: [t.promotionId, t.day] })],
 );
+
+/**
+ * Private: everyone who has used the bot in a private chat. Never exported to the site build.
+ * Refreshed by a conditional upsert per private update, so a returning user costs a row only when
+ * their profile changed or on their first update of a UTC day (`last_seen_day`).
+ */
+export const botUsers = sqliteTable("bot_users", {
+  tgUserId: integer("tg_user_id").primaryKey(),
+  /** Null for users backfilled from older tables until they next talk to the bot. */
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  username: text(),
+  languageCode: text("language_code"),
+  firstSeenAt: integer("first_seen_at").notNull(),
+  /** UTC calendar day, `YYYY-MM-DD`. */
+  lastSeenDay: text("last_seen_day").notNull(),
+  /** Set when a message to the user failed with 403 (they blocked the bot); cleared on return. */
+  blockedAt: integer("blocked_at"),
+});
+
+/**
+ * An admin broadcast. Recipients are walked in `tg_user_id` order; `cursor` is the last id handed
+ * to a batch, and claiming a batch is a conditional update on it, so two senders never overlap.
+ */
+export const broadcasts = sqliteTable("broadcasts", {
+  id: integer().primaryKey(),
+  text: text().notNull(),
+  buttonText: text("button_text"),
+  buttonUrl: text("button_url"),
+  audience: text().$type<BroadcastAudience>().notNull(),
+  status: text().$type<BroadcastStatus>().notNull().default("running"),
+  cursor: integer().notNull().default(0),
+  /** Audience size when the broadcast was created, for the progress bar. */
+  total: integer().notNull(),
+  sent: integer().notNull().default(0),
+  failed: integer().notNull().default(0),
+  blocked: integer().notNull().default(0),
+  /** Telegram asked us to slow down: no batch before this time. */
+  notBefore: integer("not_before").notNull().default(0),
+  createdBy: text("created_by").notNull(),
+  createdAt: integer("created_at").notNull(),
+  finishedAt: integer("finished_at"),
+});

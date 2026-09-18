@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { OrderStatus } from "@tgbox/shared";
+import { isEntryProduct, type OrderStatus } from "@tgbox/shared";
 import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, ReceiptIcon, XIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
@@ -68,7 +68,7 @@ export function OrdersTab() {
   const total = list.data?.total ?? 0;
   const pages = Math.max(1, Math.ceil(total / ORDERS_PAGE_SIZE));
   const actions = (order: OrderRow, wide?: boolean) =>
-    order.kind === "banner" && order.status === "paid" ? (
+    !isEntryProduct(order.kind) && order.status === "paid" ? (
       <div className={wide ? "flex gap-2 *:flex-1" : "flex justify-end gap-2"}>
         <Button
           size={wide ? "default" : "sm"}
@@ -277,7 +277,7 @@ function OrderStatusBadge({ order }: { order: OrderRow }) {
   return (
     <div className="flex flex-col items-start gap-1">
       <Badge variant={orderStatusVariants[order.status]}>
-        {order.kind === "banner" && order.status === "paid"
+        {!isEntryProduct(order.kind) && order.status === "paid"
           ? "待审核"
           : orderStatusLabels[order.status]}
       </Badge>
@@ -321,7 +321,7 @@ function useApproveOrder() {
       result.ok
         ? toastManager.add({
             type: "success",
-            title: "横幅已上线",
+            title: "广告已上线",
             description: "已标记网站待构建",
           })
         : toastManager.add({
@@ -386,7 +386,7 @@ function RejectForm({ order }: { order: OrderRow }) {
   return (
     <>
       <DialogHeader>
-        <DialogTitle>拒绝横幅订单 #{order.id}</DialogTitle>
+        <DialogTitle>拒绝广告订单 #{order.id}</DialogTitle>
         <DialogDescription>
           {order.provider === "stars"
             ? "拒绝后会自动退还 Stars。"

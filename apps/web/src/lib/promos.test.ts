@@ -1,6 +1,6 @@
-import type { PromoView } from "@tgbox/shared";
+import type { ProductView, PromoView } from "@tgbox/shared";
 import { describe, expect, test } from "vitest";
-import { promoBackgrounds, promoSlots, promoteUrl } from "./promos.ts";
+import { adOffers, promoBackgrounds, promoSlots, promoteUrl } from "./promos.ts";
 
 function paid(id: string, href = `https://t.me/sponsor${id}`): PromoView {
   return { id, title: `Sponsor ${id}`, subtitle: "Join us", href, imageUrl: null, sponsored: true };
@@ -103,5 +103,41 @@ describe("promoSlots", () => {
 
   test("the promote deep link opens the bot's promote flow", () => {
     expect(promoteUrl("tgboxccbot")).toBe("https://t.me/tgboxccbot?start=promote");
+  });
+});
+
+describe("adOffers", () => {
+  const product = (id: number, kind: ProductView["kind"], days: number, priceUsdt: string) => ({
+    id,
+    kind,
+    nameZh: "",
+    nameEn: "",
+    days,
+    priceStars: 1,
+    priceUsdt,
+  });
+
+  test("lists placements on sale in tier order, with slots left and the cheapest price", () => {
+    const offers = adOffers({
+      products: [
+        product(1, "banner", 30, "60"),
+        product(2, "banner", 7, "20"),
+        product(3, "highlight", 7, "3"),
+        product(4, "category_pin", 7, "5"),
+      ],
+      inventory: [
+        { kind: "banner", slots: 5, used: 6 },
+        { kind: "highlight", slots: 30, used: 2 },
+        { kind: "category_pin", slots: 3, used: null },
+        { kind: "announcement", slots: 1, used: 0 },
+      ],
+    });
+    expect(offers.map((offer) => [offer.kind, offer.slots, offer.left, offer.fromUsdt])).toEqual([
+      ["highlight", 30, 28, 3],
+      ["category_pin", 3, null, 5],
+      // Over-full (an admin added one by hand) reads as none left, never negative.
+      ["banner", 5, 0, 20],
+    ]);
+    expect(offers[2]?.products.map((item) => item.days)).toEqual([7, 30]);
   });
 });

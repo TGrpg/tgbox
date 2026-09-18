@@ -25,7 +25,7 @@ function entry(username: string, overrides: Partial<EntryView> = {}): EntryView 
     tgCreatedAt: null,
     listedAt: daysAgo(60),
     updatedAt: daysAgo(60),
-    isPromoted: false,
+    promo: null,
     posts: [],
     memberHistory: [],
     related: { channels: [], groups: [] },
@@ -126,7 +126,7 @@ describe("buildRankings", () => {
   test("promoted entries are not moved up", () => {
     const data = buildRankings(
       site([
-        entry("pinned", { isPromoted: true, members: 1010, memberHistory: history([8, 1000]) }),
+        entry("pinned", { promo: "pin", members: 1010, memberHistory: history([8, 1000]) }),
         entry("grower", { members: 2000, memberHistory: history([8, 1000]) }),
       ]),
       now,

@@ -33,6 +33,11 @@ export const auditActionLabels: Record<AuditAction, string> = {
   "promotion.end": "结束推广",
   "promotion.extend": "延长推广",
   "promotion.expire": "推广到期",
+  "user.message": "私信用户",
+  "broadcast.create": "发起群发",
+  "broadcast.pause": "暂停群发",
+  "broadcast.resume": "继续群发",
+  "broadcast.cancel": "取消群发",
   "usdt.unmatched": "USDT 无主入账",
 };
 

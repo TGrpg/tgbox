@@ -69,7 +69,7 @@ describe("buildSiteData", () => {
       members: 5000,
       activityTier: 4,
       listedAt: "2026-08-02T00:00:00.000Z",
-      isPromoted: false,
+      promo: null,
     });
     expect(entry(data, "devchat")).toMatchObject({ avatarUrl: null, online: 30 });
     expect(entry(data, "helperbot")).toMatchObject({
@@ -77,7 +77,8 @@ describe("buildSiteData", () => {
       online: null,
       activityTier: null,
     });
-    expect(entry(data, "aiwatch").isPromoted).toBe(true);
+    // The admin's manual flag is a site-wide pin.
+    expect(entry(data, "aiwatch").promo).toBe("pin");
     expect(entry(data, "worldnews").verified).toBe(true);
   });
 
@@ -301,6 +302,11 @@ describe("buildSiteData", () => {
     insert.run(4, "banner", null, "{broken", now - 3000, now + 1000);
     insert.run(5, "pin", "devnotes", null, now - 1000, now + 1000);
     insert.run(6, "pin", "movieshare", null, now - 2000, now);
+    // Several tiers on one entry: the highest wins.
+    insert.run(7, "highlight", "devnotes", null, now - 1000, now + 1000);
+    insert.run(8, "highlight", "techdaily", null, now - 1000, now + 1000);
+    insert.run(9, "category_pin", "techdaily", null, now - 1000, now + 1000);
+    insert.run(10, "announcement", null, banner("公告条"), now - 1000, now + 1000);
     db.close();
 
     const data = await buildSiteData({ dbPath, mediaDir: tempDir(), now: fixtureNow });
@@ -325,9 +331,21 @@ describe("buildSiteData", () => {
         sponsored: true,
       },
     ]);
-    expect(entry(data, "devnotes").isPromoted).toBe(true);
-    expect(entry(data, "movieshare").isPromoted).toBe(false);
-    expect(entry(data, "aiwatch").isPromoted).toBe(true);
+    expect(entry(data, "devnotes").promo).toBe("pin");
+    expect(entry(data, "techdaily").promo).toBe("category_pin");
+    expect(entry(data, "movieshare").promo).toBeNull();
+    expect(entry(data, "aiwatch").promo).toBe("pin");
+    expect(data.sponsoredAnnouncement).toMatchObject({ id: "10", title: "公告条" });
+    // Capacity as the bot counts it; category pins publish only their per-category size.
+    expect(data.inventory).toEqual(
+      expect.arrayContaining([
+        { kind: "banner", slots: 5, used: 3 },
+        { kind: "pin", slots: 10, used: 1 },
+        { kind: "highlight", slots: 30, used: 2 },
+        { kind: "category_pin", slots: 3, used: null },
+        { kind: "announcement", slots: 1, used: 1 },
+      ]),
+    );
   });
 
   test("an export without settings and promotions tables has no announcement or promos", async () => {
@@ -338,8 +356,8 @@ describe("buildSiteData", () => {
 
     const data = await buildSiteData({ dbPath, mediaDir: tempDir(), now: fixtureNow });
 
-    expect(data).toMatchObject({ announcement: null, promos: [] });
-    expect(entry(data, "aiwatch").isPromoted).toBe(true);
+    expect(data).toMatchObject({ announcement: null, promos: [], sponsoredAnnouncement: null });
+    expect(entry(data, "aiwatch").promo).toBe("pin");
   });
 
   test("fails when the media URL returns a server error", async () => {

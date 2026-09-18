@@ -1,16 +1,22 @@
 import {
-  approveBannerOrder,
-  checkSlots,
+  approveAdOrder,
+  checkOrderSlots,
   markOrderPaid,
   refundStars,
   rejectOrder,
   tgActor,
 } from "@tgbox/core";
 import { getOrder, getProduct, type Order } from "@tgbox/db";
-import type { Locale, PaymentCurrency, PaymentProvider } from "@tgbox/shared";
+import {
+  isEntryProduct,
+  type Locale,
+  type PaymentCurrency,
+  type PaymentProvider,
+} from "@tgbox/shared";
 import { Composer, type Context, InlineKeyboard } from "grammy";
 import type { App } from "./app.ts";
 import { messages } from "./i18n/index.ts";
+import { orderTarget } from "./promote.ts";
 import { answerAlreadyHandled } from "./review.ts";
 
 type Messages = ReturnType<typeof messages>;
@@ -56,14 +62,13 @@ export async function recordPayment(
   if (!result.changed) return;
   const { order } = result;
   await app.background(async () => {
-    const buyerText =
-      order.kind === "pin"
-        ? localized(input.locale, (l) => l.promote.paidPin(order.targetUsername ?? "", order.days))
-        : localized(input.locale, (l) => l.promote.paidBanner);
+    const buyerText = isEntryProduct(order.kind)
+      ? localized(input.locale, (l) => l.promote.paidEntry(orderTarget(order), order.days))
+      : localized(input.locale, (l) => l.promote.paidAd);
     await app.api
       .sendMessage(order.tgUserId, buyerText)
       .catch((error: unknown) => console.error("payment notice failed", error));
-    if (order.kind === "banner") await sendBannerReview(app, order);
+    if (!isEntryProduct(order.kind)) await sendAdReview(app, order);
   });
 }
 
@@ -92,15 +97,15 @@ async function handleOrphanPayment(app: App, input: Parameters<typeof recordPaym
   );
 }
 
-async function sendBannerReview(app: App, order: Order) {
+async function sendAdReview(app: App, order: Order) {
   if (!order.banner) {
-    console.error("banner order without content", order.id);
+    console.error("ad order without content", order.id);
     return;
   }
   const product = await getProduct(app.db, order.productId);
   const m = messages("zh").admin;
   await app.sendReview(
-    m.bannerReview({
+    m.adReview({
       id: order.id,
       product: product?.nameZh ?? String(order.productId),
       ...order.banner,
@@ -135,7 +140,7 @@ export function payments(app: App) {
       await ctx.answerPreCheckoutQuery(false, { error_message: m.checkoutInvalid });
       return;
     }
-    if ((await checkSlots(app.core, order.kind)).available === 0) {
+    if ((await checkOrderSlots(app.core, order)).available === 0) {
       await ctx.answerPreCheckoutQuery(false, { error_message: m.checkoutNoSlots });
       return;
     }
@@ -173,7 +178,7 @@ export function payments(app: App) {
   }
 
   composer.callbackQuery(/^ba:(\d+)$/, async (ctx) => {
-    const order = await approveBannerOrder(app.core, {
+    const order = await approveAdOrder(app.core, {
       orderId: Number(ctx.match[1]),
       actor: tgActor(ctx.from.id),
     });
@@ -185,7 +190,7 @@ export function payments(app: App) {
     await app.background(() =>
       app.api.sendMessage(
         order.tgUserId,
-        localized(null, (m) => m.promote.bannerApproved(endsAt)),
+        localized(null, (m) => m.promote.adApproved(orderTarget(order), endsAt)),
       ),
     );
     await ctx.answerCallbackQuery();
@@ -207,16 +212,14 @@ export function payments(app: App) {
       app.api.sendMessage(
         order.tgUserId,
         localized(null, (m) =>
-          refunded
-            ? m.promote.bannerRejectedRefunded
-            : m.promote.bannerRejectedManual(order.id, support),
+          refunded ? m.promote.adRejectedRefunded : m.promote.adRejectedManual(order.id, support),
         ),
       ),
     );
     await ctx.answerCallbackQuery();
     await closeReview(
       ctx,
-      messages("zh").admin.bannerRejected(
+      messages("zh").admin.adRejected(
         reviewer(ctx),
         refunded,
         `${order.amount ?? ""} ${order.currency ?? ""}`.trim(),

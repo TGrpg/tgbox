@@ -28,7 +28,7 @@ const devEntries: DevEntry[] = [
     activityTier: 2,
     tgCreatedAt: "2015-09-01T00:00:00.000Z",
     listedAt: "2026-09-12T00:00:00.000Z",
-    isPromoted: true,
+    promo: "pin",
     posts: [
       {
         id: 2,
@@ -59,7 +59,7 @@ const devEntries: DevEntry[] = [
     online: null,
     activityTier: 3,
     listedAt: "2026-09-01T00:00:00.000Z",
-    isPromoted: false,
+    promo: null,
   },
   {
     username: "devnews_cn",
@@ -77,7 +77,7 @@ const devEntries: DevEntry[] = [
     online: null,
     activityTier: 4,
     listedAt: "2026-09-14T00:00:00.000Z",
-    isPromoted: false,
+    promo: null,
   },
   {
     username: "example_devs",
@@ -93,7 +93,7 @@ const devEntries: DevEntry[] = [
     online: 812,
     activityTier: null,
     listedAt: "2026-09-10T00:00:00.000Z",
-    isPromoted: false,
+    promo: null,
   },
   {
     username: "example_chat",
@@ -109,7 +109,7 @@ const devEntries: DevEntry[] = [
     online: 45,
     activityTier: null,
     listedAt: "2026-09-08T00:00:00.000Z",
-    isPromoted: false,
+    promo: null,
   },
   {
     username: "example_tools_bot",
@@ -125,7 +125,7 @@ const devEntries: DevEntry[] = [
     online: null,
     activityTier: null,
     listedAt: "2026-09-13T00:00:00.000Z",
-    isPromoted: false,
+    promo: null,
   },
 ];
 
@@ -174,26 +174,31 @@ export const devSiteData: SiteData = {
   },
   announcement: null,
   promos: [],
+  sponsoredAnnouncement: null,
   showAdSlots: true,
   payments: { stars: true, usdt: true },
-  products: [
-    {
-      id: 1,
-      kind: "pin",
-      nameZh: "分类置顶 · 7 天",
-      nameEn: "Category pin · 7 days",
-      days: 7,
-      priceStars: 300,
-      priceUsdt: "5",
-    },
-    {
-      id: 2,
-      kind: "banner",
-      nameZh: "首页横幅 · 7 天",
-      nameEn: "Home banner · 7 days",
-      days: 7,
-      priceStars: 600,
-      priceUsdt: "10",
-    },
+  products: (
+    [
+      ["highlight", "高亮", "Highlight", "3"],
+      ["category_pin", "分类置顶", "Category pin", "5"],
+      ["pin", "全站置顶", "Site-wide pin", "10"],
+      ["banner", "首页横幅", "Home banner", "20"],
+      ["announcement", "顶部公告条", "Top announcement bar", "30"],
+    ] as const
+  ).map(([kind, nameZh, nameEn, usdt], index) => ({
+    id: index + 1,
+    kind,
+    nameZh: `${nameZh} 7 天`,
+    nameEn: `${nameEn} for 7 days`,
+    days: 7,
+    priceStars: Number(usdt) * 80,
+    priceUsdt: usdt,
+  })),
+  inventory: [
+    { kind: "highlight", slots: 30, used: 1 },
+    { kind: "category_pin", slots: 3, used: null },
+    { kind: "pin", slots: 10, used: 1 },
+    { kind: "banner", slots: 5, used: 0 },
+    { kind: "announcement", slots: 1, used: 0 },
   ],
 };

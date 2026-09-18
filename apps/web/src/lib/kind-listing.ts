@@ -12,8 +12,9 @@ function byListedAt(entries: EntryView[]): EntryView[] {
   );
 }
 
+/** Every caller lists one category (its page, or its section of an overview). */
 export function sortEntries(entries: EntryView[], sort: ListingSort): EntryView[] {
-  return promotedFirst(sort === "latest" ? byListedAt(entries) : byMembers(entries));
+  return promotedFirst(sort === "latest" ? byListedAt(entries) : byMembers(entries), "category");
 }
 
 /** Locale-neutral first-page path of a category listing in the given order. */

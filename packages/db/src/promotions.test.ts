@@ -11,6 +11,7 @@ import {
   extendPromotionRow,
   getOrder,
   getPromotion,
+  insertApprovedEntry,
   insertPromotion,
   listActivePromotions,
   listExpiredPromotions,
@@ -46,17 +47,26 @@ const pinOrder = (createdAt = NOW, tgUserId = 7) =>
 describe("products", () => {
   test("seeded by the migration, editable, and filterable by active", async () => {
     const seeded = await listProducts(db);
-    expect(seeded.map((p) => [p.kind, p.days, p.priceStars, p.priceUsdt, p.slots])).toEqual([
-      ["pin", 7, 800, "10", 10],
-      ["pin", 30, 2400, "30", 10],
-      ["banner", 7, 1600, "20", 5],
-      ["banner", 30, 4800, "60", 5],
+    expect(
+      seeded.map((p) => [p.kind, p.nameZh, p.days, p.priceStars, p.priceUsdt, p.slots]),
+    ).toEqual([
+      ["highlight", "高亮 7 天", 7, 240, "3", 30],
+      ["highlight", "高亮 30 天", 30, 720, "9", 30],
+      ["category_pin", "分类置顶 7 天", 7, 400, "5", 3],
+      ["category_pin", "分类置顶 30 天", 30, 1200, "15", 3],
+      ["pin", "全站置顶 7 天", 7, 800, "10", 10],
+      ["pin", "全站置顶 30 天", 30, 2400, "30", 10],
+      ["banner", "首页横幅 7 天", 7, 1600, "20", 5],
+      ["banner", "首页横幅 30 天", 30, 4800, "60", 5],
+      ["announcement", "顶部公告条 7 天", 7, 2400, "30", 1],
+      ["announcement", "顶部公告条 30 天", 30, 7200, "90", 1],
     ]);
-    const [, , , bannerMonth] = seeded;
+    expect(seeded.find((p) => p.kind === "pin")?.nameEn).toBe("Site-wide pin for 7 days");
+    const bannerMonth = seeded.find((p) => p.kind === "banner" && p.days === 30);
     if (!bannerMonth) throw new Error("missing seed");
     expect(await upsertProductRow(db, { ...bannerMonth, active: false })).toBe(bannerMonth.id);
     expect(await upsertProductRow(db, { ...bannerMonth, id: 999 })).toBeNull();
-    expect(await listProducts(db, { activeOnly: true })).toHaveLength(3);
+    expect(await listProducts(db, { activeOnly: true })).toHaveLength(9);
   });
 });
 
@@ -112,7 +122,7 @@ describe("orders", () => {
     const page2 = await listOrders(db, { status: "pending", page: 2, pageSize: 1 });
     expect(page2.rows.map((row) => row.id)).toEqual([a.id]);
     expect((await listOrders(db, { page: 1 })).total).toBe(3);
-    expect(await countPaidOrders(db, "pin")).toBe(1);
+    expect(await countPaidOrders(db, { kind: "pin" })).toBe(1);
   });
 
   test("stale pending orders are deleted; paid ones stay", async () => {
@@ -177,15 +187,70 @@ describe("promotions", () => {
     expect(await listActivePromotions(db, NOW, "banner")).toMatchObject([
       { id: banner.id, banner: { title: "T" } },
     ]);
-    expect(await countActivePromotions(db, "pin", NOW)).toBe(2);
-    expect(await earliestPromotionEnd(db, "pin", NOW)).toBe(NOW + DAY);
-    expect(await earliestPromotionEnd(db, "banner", NOW + 8 * DAY)).toBeNull();
+    expect(await countActivePromotions(db, { kind: "pin" }, NOW)).toBe(2);
+    expect(await earliestPromotionEnd(db, { kind: "pin" }, NOW)).toBe(NOW + DAY);
+    expect(await earliestPromotionEnd(db, { kind: "banner" }, NOW + 8 * DAY)).toBeNull();
     expect((await listExpiredPromotions(db, NOW)).map((row) => row.id)).toEqual([expired.id]);
 
     expect(await extendPromotionRow(db, pinB.id, 3 * DAY)).toBe(true);
     expect((await getPromotion(db, pinB.id))?.endsAt).toBe(NOW + 4 * DAY);
     expect((await endPromotionRows(db, [expired.id, pinA.id])).promotions).toHaveLength(2);
-    expect(await countActivePromotions(db, "pin", NOW)).toBe(1);
+    expect(await countActivePromotions(db, { kind: "pin" }, NOW)).toBe(1);
+  });
+
+  test("category pins count per category, other kinds site-wide", async () => {
+    await env.DB.batch(
+      ["entries", "entry_stats", "entry_tags", "entries_fts"].map((t) =>
+        env.DB.prepare(`DELETE FROM ${t}`),
+      ),
+    );
+    const list = (username: string, categoryId: number) =>
+      insertApprovedEntry(db, {
+        entry: { username, kind: "channel", categoryId, title: username, listedAt: NOW },
+        stats: { members: 1, online: null, activityTier: null, statsWrittenAt: NOW },
+        tagIds: [],
+        now: NOW,
+      });
+    await list("news_a", 1);
+    await list("news_b", 1);
+    await list("games_a", 2);
+    const pin = (entryUsername: string, endsAt: number) =>
+      insertPromotion(db, {
+        kind: "category_pin",
+        orderId: null,
+        entryUsername,
+        banner: null,
+        startsAt: NOW,
+        endsAt,
+        createdAt: NOW,
+      });
+    await pin("news_a", NOW + DAY);
+    await pin("news_b", NOW + 2 * DAY);
+    await pin("games_a", NOW + 3 * DAY);
+    const news = { kind: "category_pin", categoryId: 1 } as const;
+    expect(await countActivePromotions(db, news, NOW)).toBe(2);
+    expect(await countActivePromotions(db, { ...news, categoryId: 2 }, NOW)).toBe(1);
+    expect(await countActivePromotions(db, { kind: "category_pin" }, NOW)).toBe(3);
+    expect(await earliestPromotionEnd(db, { ...news, categoryId: 2 }, NOW)).toBe(NOW + 3 * DAY);
+    await createPendingOrder(db, {
+      tgUserId: 1,
+      productId: 1,
+      kind: "category_pin",
+      days: 7,
+      targetUsername: "games_a",
+      createdAt: NOW,
+    }).then((order) =>
+      markOrderPaidRow(db, {
+        id: order.id,
+        provider: "manual",
+        chargeId: "x",
+        amount: "5",
+        currency: "USDT",
+        paidAt: NOW,
+      }),
+    );
+    expect(await countPaidOrders(db, news)).toBe(0);
+    expect(await countPaidOrders(db, { ...news, categoryId: 2 })).toBe(1);
   });
 
   test("ending a promotion expires its active order in the same transaction", async () => {

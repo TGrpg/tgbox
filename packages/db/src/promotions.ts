@@ -1,11 +1,38 @@
 import type { BannerContent, OrderStatus, ProductKind } from "@tgbox/shared";
-import { and, asc, count, desc, eq, gt, inArray, isNull, lt, lte, min, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gt,
+  inArray,
+  isNull,
+  lt,
+  lte,
+  min,
+  type SQL,
+  sql,
+} from "drizzle-orm";
+import type { SQLiteColumn } from "drizzle-orm/sqlite-core";
 import type { Db } from "./access.ts";
-import { orders, products, promotions } from "./schema.ts";
+import { entries, orders, products, promotions } from "./schema.ts";
 
 export type Product = typeof products.$inferSelect;
 export type Order = typeof orders.$inferSelect;
 export type Promotion = typeof promotions.$inferSelect;
+
+/**
+ * Which slots a count covers: every promotion of a kind, or — for category pins, whose slots are
+ * per category — only those whose entry is in `categoryId`.
+ */
+export type SlotScope = { kind: ProductKind; categoryId?: number };
+
+/** Promotions and orders store the entry's username as it was listed, so this is exact. */
+const entryInCategory = (username: SQL | SQLiteColumn, categoryId: number | undefined) =>
+  categoryId === undefined
+    ? undefined
+    : sql`${username} IN (SELECT ${entries.username} FROM ${entries} WHERE ${entries.categoryId} = ${categoryId})`;
 
 /* ---------------------------------------------------------------- products */
 
@@ -128,12 +155,18 @@ export async function setOrderStatus(
   return result.meta.changes > 0;
 }
 
-/** Paid orders awaiting review hold a slot of their kind. */
-export async function countPaidOrders(db: Db, kind: ProductKind) {
+/** Paid orders not live yet (awaiting review, or a full slot) hold a slot of their kind. */
+export async function countPaidOrders(db: Db, scope: SlotScope) {
   const [row] = await db
     .select({ value: count() })
     .from(orders)
-    .where(and(eq(orders.kind, kind), eq(orders.status, "paid")));
+    .where(
+      and(
+        eq(orders.kind, scope.kind),
+        eq(orders.status, "paid"),
+        entryInCategory(orders.targetUsername, scope.categoryId),
+      ),
+    );
   return row?.value ?? 0;
 }
 
@@ -198,20 +231,32 @@ export function listActivePromotions(db: Db, now: number, kind?: ProductKind) {
     .orderBy(asc(promotions.startsAt), asc(promotions.id));
 }
 
-export async function countActivePromotions(db: Db, kind: ProductKind, now: number) {
+export async function countActivePromotions(db: Db, scope: SlotScope, now: number) {
   const [row] = await db
     .select({ value: count() })
     .from(promotions)
-    .where(and(eq(promotions.kind, kind), gt(promotions.endsAt, now)));
+    .where(
+      and(
+        eq(promotions.kind, scope.kind),
+        gt(promotions.endsAt, now),
+        entryInCategory(promotions.entryUsername, scope.categoryId),
+      ),
+    );
   return row?.value ?? 0;
 }
 
-/** When the next slot of `kind` frees up; null when nothing of that kind is live. */
-export async function earliestPromotionEnd(db: Db, kind: ProductKind, now: number) {
+/** When the next slot in `scope` frees up; null when none of them is taken. */
+export async function earliestPromotionEnd(db: Db, scope: SlotScope, now: number) {
   const [row] = await db
     .select({ value: min(promotions.endsAt) })
     .from(promotions)
-    .where(and(eq(promotions.kind, kind), gt(promotions.endsAt, now)));
+    .where(
+      and(
+        eq(promotions.kind, scope.kind),
+        gt(promotions.endsAt, now),
+        entryInCategory(promotions.entryUsername, scope.categoryId),
+      ),
+    );
   return row?.value ?? null;
 }
 

@@ -264,7 +264,7 @@ describe("submission flow", () => {
     });
 
     test.each([
-      ["a too-short username", "@abc"],
+      ["a too-short username", "@ab"],
       ["a broken t.me link", "https://t.me/+AbCdEf123"],
       ["a link with a typo", "t.me/ab"],
     ])("%s is relayed, but the buyer is pointed at /submit first", async (_label, text) => {

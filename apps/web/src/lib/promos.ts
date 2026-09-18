@@ -1,5 +1,6 @@
-import type { PromoView } from "@tgbox/shared";
+import { ProductKind, type ProductView, type PromoView, type SiteData } from "@tgbox/shared";
 import { hashText } from "./announcement.ts";
+import { fill } from "./format.ts";
 
 /** CSS backgrounds for paid banners (no external images), picked per banner id. */
 export const promoBackgrounds = [
@@ -76,4 +77,56 @@ export function promoSlots(
     (_, index): PromoSlot => ({ type: "placeholder", id: `slot-${paidSlots.length + index + 1}` }),
   );
   return [...paidSlots, ...placeholders];
+}
+
+/** One placement as the advertising page and the empty sponsor cards describe it. */
+export type AdOffer = {
+  kind: ProductKind;
+  /** On sale, shortest first. */
+  products: ProductView[];
+  /** Size of the placement; per category for `category_pin`. */
+  slots: number;
+  /** Free slots at build time; null for per-category slots. */
+  left: number | null;
+  /** Cheapest prices, for "from …". */
+  fromUsdt: number;
+  fromStars: number;
+};
+
+/**
+ * The line under an unsold sponsor card: free slots and the cheapest price when the build knows
+ * them, else the generic pitch.
+ */
+export function adSlotLine(
+  data: Pick<SiteData, "products" | "inventory" | "payments">,
+  kind: ProductKind,
+  strings: { subtitle: string; offer: string },
+) {
+  const offer = adOffers(data).find((item) => item.kind === kind);
+  if (!offer?.left) return strings.subtitle;
+  // Quote the currency a buyer can pay in, as the bot does.
+  const price = data.payments.usdt ? `${offer.fromUsdt} USDT` : `${offer.fromStars} Stars`;
+  return fill(strings.offer, { left: offer.left, price });
+}
+
+/** Placements that have a product on sale, cheapest family first (the ProductKind order). */
+export function adOffers(data: Pick<SiteData, "products" | "inventory">): AdOffer[] {
+  return ProductKind.options.flatMap((kind) => {
+    const products = data.products
+      .filter((product) => product.kind === kind)
+      .sort((a, b) => a.days - b.days);
+    if (products.length === 0) return [];
+    const inventory = data.inventory.find((item) => item.kind === kind);
+    const slots = inventory?.slots ?? 0;
+    return [
+      {
+        kind,
+        products,
+        slots,
+        left: inventory?.used == null ? null : Math.max(0, slots - inventory.used),
+        fromUsdt: Math.min(...products.map((product) => Number(product.priceUsdt))),
+        fromStars: Math.min(...products.map((product) => product.priceStars)),
+      },
+    ];
+  });
 }

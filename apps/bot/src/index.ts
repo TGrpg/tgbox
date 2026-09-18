@@ -1,4 +1,4 @@
-import { runRefresh } from "@tgbox/core";
+import { runDueBroadcasts, runRefresh } from "@tgbox/core";
 import { webhookCallback } from "grammy";
 import { createApp, createBot } from "./bot/index.ts";
 import { handleCryptoPayWebhook } from "./cryptopay.ts";
@@ -8,6 +8,9 @@ import { runUsdtWatch } from "./usdt-watch.ts";
 
 /** Second cron trigger in wrangler.jsonc; a separate invocation with its own subrequest budget. */
 const HOURLY_CRON = "0 * * * *";
+
+/** Broadcast messages the 5-minute tick may send, leaving the rest of its budget to refresh. */
+const BROADCAST_BUDGET = 25;
 
 // Wrapped: workerd throws "Illegal invocation" when fetch is called as a method of another object.
 const deps = (ctx: ExecutionContext, now?: () => number) => ({
@@ -53,9 +56,10 @@ export default {
       }
       return;
     }
-    // The 5-minute tick carries two jobs. USDT first: it is a single D1 read when no order is
-    // awaiting a transfer, and whatever it spends is handed to the refresh batch so the shared
-    // 50-subrequest budget is respected by processing one entry fewer, not by overrunning.
+    // The 5-minute tick carries three jobs sharing one 50-subrequest budget. USDT first: it is a
+    // single D1 read when no order is awaiting a transfer. Then a batch of any broadcast the admin
+    // left running (its page drives it faster while open). Whatever both spend is handed to the
+    // refresh batch, which processes fewer entries instead of overrunning.
     ctx.waitUntil(
       (async () => {
         const app = createApp(
@@ -66,7 +70,18 @@ export default {
           console.error("usdt watch failed", error);
           return 0;
         });
-        const result = await runRefresh(env, controller.scheduledTime, undefined, spent);
+        const broadcast = await runDueBroadcasts(app.core, BROADCAST_BUDGET).catch(
+          (error: unknown) => {
+            console.error("broadcast failed", error);
+            return 0;
+          },
+        );
+        const result = await runRefresh(
+          env,
+          controller.scheduledTime,
+          undefined,
+          spent + broadcast,
+        );
         // One line per run in Workers Logs: the only record of what the cron did.
         console.log("refresh", JSON.stringify(result));
       })(),

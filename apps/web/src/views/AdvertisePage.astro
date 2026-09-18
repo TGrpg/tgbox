@@ -1,0 +1,182 @@
+---
+import BrandTelegram from "@tabler/icons/outline/brand-telegram.svg";
+import Check from "@tabler/icons/outline/check.svg";
+import { type EntryProductKind, isEntryProduct, type Locale } from "@tgbox/shared";
+import EntryListRow from "@/components/EntryListRow.astro";
+import Announcement from "@/components/layout/Announcement.astro";
+import { ui } from "@/i18n/ui.ts";
+import { advertiseUi } from "@/i18n/ui-advertise.ts";
+import PageLayout from "@/layouts/PageLayout.astro";
+import { fill } from "@/lib/format.ts";
+import { type AdOffer, adOffers, promoBackgrounds, promoteUrl } from "@/lib/promos.ts";
+import { botUsername } from "@/lib/site.ts";
+import { byMembers, getSiteData } from "@/lib/site-data.ts";
+
+interface Props {
+  locale: Locale;
+}
+const { locale } = Astro.props;
+const strings = advertiseUi(locale);
+const { entry: entryStrings } = ui(locale);
+const data = getSiteData();
+const offers = adOffers(data);
+const entryOffers = offers.filter((offer) => isEntryProduct(offer.kind));
+const adOffersList = offers.filter((offer) => !isEntryProduct(offer.kind));
+const buyHref = promoteUrl(botUsername);
+// Quote only what a buyer can actually pay with, like the bot does; USDT when nothing is set up.
+const showStars = data.payments.stars;
+const showUsdt = data.payments.usdt || !data.payments.stars;
+
+const availability = (offer: AdOffer) =>
+  offer.left === null
+    ? fill(strings.slotsPerCategory, { slots: offer.slots })
+    : offer.left === 0
+      ? strings.slotsFull
+      : fill(strings.slotsLeft, { slots: offer.slots, left: offer.left });
+
+// Three real listings for the previews; the promoted one is shown where its tier puts it.
+const sample = byMembers(data.entries.filter((entry) => entry.kind === "channel")).slice(0, 3);
+const previewRows = (kind: EntryProductKind) => {
+  const [first, second, third] = sample;
+  if (!first || !second || !third) return [];
+  const rows = [
+    { ...first, promo: null },
+    { ...second, promo: null },
+    { ...third, promo: kind },
+  ];
+  // A highlight keeps its place; the pins move to the top.
+  return kind === "highlight" ? [rows[0], rows[2], rows[1]] : [rows[2], rows[0], rows[1]];
+};
+---
+
+<PageLayout
+  locale={locale}
+  title={strings.title}
+  metaTitle={strings.metaTitle}
+  description={strings.description}
+  eyebrow="Advertise"
+  prose={false}
+>
+  <div class="space-y-14">
+    {[
+      { title: strings.entryFamily, lead: strings.entryFamilyLead, items: entryOffers },
+      { title: strings.adFamily, lead: strings.adFamilyLead, items: adOffersList },
+    ]
+      .filter((family) => family.items.length > 0)
+      .map((family) => (
+        <section>
+          <h2 class="text-xl font-bold tracking-tight sm:text-2xl">{family.title}</h2>
+          <p class="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+            {family.lead}
+          </p>
+          <ul class="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {family.items.map((offer) => {
+              const placement = strings.placements[offer.kind];
+              return (
+                <li
+                  data-ad-offer={offer.kind}
+                  class="flex flex-col rounded-3xl border border-border bg-card p-5 shadow-card"
+                >
+                  <div class="flex items-baseline justify-between gap-3">
+                    <h3 class="text-lg font-semibold">{placement.name}</h3>
+                    <span class="text-sm font-medium whitespace-nowrap text-primary-accent">
+                      {fill(strings.from, {
+                        price: showUsdt
+                          ? fill(strings.usdt, { n: offer.fromUsdt })
+                          : fill(strings.stars, { n: offer.fromStars }),
+                      })}
+                    </span>
+                  </div>
+                  <p class="mt-2 text-sm leading-relaxed text-muted-foreground">{placement.effect}</p>
+                  {placement.includes && (
+                    <p class="mt-2 inline-flex items-center gap-1 text-xs font-medium text-success-foreground">
+                      <Check class="size-3.5" aria-hidden="true" />
+                      {placement.includes}
+                    </p>
+                  )}
+
+                  <div class="mt-4 rounded-2xl bg-muted/50 p-3">
+                    <p class="mb-2 text-[0.7rem] font-medium tracking-wide text-muted-foreground uppercase">
+                      {strings.preview}
+                    </p>
+                    {isEntryProduct(offer.kind) ? (
+                      <div class="space-y-1">
+                        {previewRows(offer.kind).map((row) => row && <EntryListRow locale={locale} entry={row} />)}
+                      </div>
+                    ) : offer.kind === "banner" ? (
+                      <div
+                        class="relative flex aspect-[16/7] flex-col justify-end overflow-hidden rounded-2xl p-4 text-white"
+                        style={`background:${promoBackgrounds[0]}`}
+                      >
+                        <span class="absolute top-3 left-3 rounded-md bg-black/30 px-1.5 py-0.5 text-[0.7rem] font-semibold backdrop-blur-sm">
+                          {entryStrings.ad}
+                        </span>
+                        <span class="text-lg leading-tight font-bold drop-shadow-sm">{strings.bannerTitle}</span>
+                        <span class="mt-0.5 text-[0.8rem] text-white/85">{strings.bannerSubtitle}</span>
+                      </div>
+                    ) : (
+                      <Announcement
+                        locale={locale}
+                        announcement={{ zh: strings.announcementText, en: strings.announcementText, href: buyHref }}
+                        sponsored
+                        preview
+                      />
+                    )}
+                  </div>
+
+                  <dl class="mt-4 space-y-1.5 text-sm">
+                    {offer.products.map((product) => (
+                      <div class="flex items-baseline justify-between gap-3">
+                        <dt class="text-muted-foreground">{fill(strings.days, { n: product.days })}</dt>
+                        <dd class="font-medium tabular-nums">
+                          {[
+                            showUsdt && fill(strings.usdt, { n: product.priceUsdt }),
+                            showStars && fill(strings.stars, { n: product.priceStars }),
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                  <p
+                    data-ad-availability
+                    class:list={[
+                      "mt-3 mb-4 text-xs font-medium",
+                      offer.left === 0 ? "text-warning-foreground" : "text-muted-foreground",
+                    ]}
+                  >
+                    {availability(offer)}
+                  </p>
+                  <a
+                    href={buyHref}
+                    rel="noopener"
+                    target="_blank"
+                    data-press
+                    class="mt-auto inline-flex h-10 items-center justify-center gap-1.5 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors outline-none hover:bg-primary/90 focus-visible:ring-3 focus-visible:ring-outline/40"
+                  >
+                    <BrandTelegram class="size-4" aria-hidden="true" />
+                    {strings.buy}
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ))}
+
+    <p class="text-sm text-muted-foreground">{fill(strings.buyHint, { bot: botUsername })}</p>
+
+    <section>
+      <h2 class="text-xl font-bold tracking-tight sm:text-2xl">{strings.faqTitle}</h2>
+      <dl class="mt-4 divide-y divide-border rounded-3xl border border-border bg-card shadow-card">
+        {strings.faq.map((item) => (
+          <div class="p-5">
+            <dt class="font-medium">{item.q}</dt>
+            <dd class="mt-1.5 text-sm leading-relaxed text-muted-foreground">{item.a}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  </div>
+</PageLayout>

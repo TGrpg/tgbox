@@ -32,7 +32,7 @@ const reviewMessage = {
   message_id: 88,
   date: 0,
   chat: { id: ADMIN_CHAT_ID, type: "supergroup", title: "Admins" },
-  text: "🖼 首页横幅待审核",
+  text: "🖼 广告待审核",
 };
 
 let h: Harness;
@@ -268,11 +268,64 @@ describe("buying a home banner", () => {
   });
 });
 
+describe("promotion tiers", () => {
+  test("the announcement bar takes title, subtitle and link, and skips the image", async () => {
+    await h.message(buyer, "/promote");
+    await press("pp:9");
+    await h.message(buyer, banner.title);
+    await h.message(buyer, banner.subtitle);
+    await h.message(buyer, banner.href);
+    expect(h.lastText()).not.toContain("/skip");
+    const orderId = Number(String(h.lastButtons()[0]?.callback_data).slice(3));
+    expect(await getOrder(db, orderId)).toMatchObject({ kind: "announcement", banner });
+  });
+
+  test("a category pin is refused once its category is full, not elsewhere", async () => {
+    for (const username of ["cat_a", "cat_b", "cat_c", "cat_d"]) {
+      await insertApprovedEntry(db, {
+        entry: { username, kind: "channel", categoryId: 1, title: username, listedAt: 1 },
+        stats: { members: 10, online: null, activityTier: null, statsWrittenAt: 1 },
+        tagIds: [],
+        now: 1,
+      });
+    }
+    for (const username of ["cat_a", "cat_b", "cat_c"]) {
+      const created = await order({ productId: 7, targetUsername: username });
+      await markOrderPaid(core, {
+        orderId: created.id,
+        provider: "manual",
+        chargeId: `c-${username}`,
+        amount: "5",
+        currency: "USDT",
+      });
+    }
+    await h.message(buyer, "/promote");
+    await press("pp:7");
+    await h.message(buyer, "@cat_d");
+    expect(h.lastText()).toContain("名额已满");
+  });
+});
+
 describe("buying a pin with Stars", () => {
   test("/promote → product → @username → Stars sends an XTR invoice for the order", async () => {
     await h.message(buyer, "/promote");
-    expect(h.lastButtons().map((b) => b.callback_data)).toEqual(["pp:1", "pp:2", "pp:3", "pp:4"]);
-    expect(h.lastButtons()[0]?.text).toContain("⭐800");
+    // Cheapest tier first: highlight, category pin, site-wide pin, banner, announcement bar.
+    expect(h.lastButtons().map((b) => b.callback_data)).toEqual([
+      "pp:5",
+      "pp:6",
+      "pp:7",
+      "pp:8",
+      "pp:1",
+      "pp:2",
+      "pp:3",
+      "pp:4",
+      "pp:9",
+      "pp:10",
+    ]);
+    expect(h.lastButtons().find((b) => b.callback_data === "pp:1")?.text).toContain("⭐800");
+    // The intro groups the tiers and points at the advertising page.
+    expect(h.lastText()).toContain("【推广我的条目】");
+    expect(h.lastText()).toContain("https://tgbox.test/advertise/");
 
     await press("pp:1");
     expect(h.lastText()).toContain("已收录");
@@ -344,7 +397,7 @@ describe("buying a pin with Stars", () => {
     ]);
     const notices = h.calls("sendMessage").filter((c) => c.payload.chat_id === buyer.id);
     expect(notices).toHaveLength(1);
-    expect(notices[0]?.payload.text).toContain("已置顶 7 天");
+    expect(notices[0]?.payload.text).toContain("全站置顶 @pin_me 已上线 7 天");
   });
 
   test("a second charge for an already paid order is refunded", async () => {
@@ -408,7 +461,7 @@ describe("paying with USDT through Crypto Pay", () => {
       currency: "USDT",
     });
     const buyerNotice = h.calls("sendMessage").find((c) => c.payload.chat_id === buyer.id);
-    expect(buyerNotice?.payload.text).toContain("横幅已提交审核");
+    expect(buyerNotice?.payload.text).toContain("广告已提交审核");
     expect(buyerNotice?.payload.text).toContain("awaiting review");
     const review = h
       .calls("sendMessage")

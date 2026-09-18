@@ -2,7 +2,7 @@ import type { CoreContext } from "@tgbox/core";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 const core = vi.hoisted(() => ({
-  approveBannerOrder: vi.fn(),
+  approveAdOrder: vi.fn(),
   rejectOrder: vi.fn(),
   promotionClickTotals: vi.fn(),
 }));
@@ -60,7 +60,7 @@ describe("rejectPaidOrder", () => {
 });
 
 test("approveOrder reports orders already handled", async () => {
-  core.approveBannerOrder.mockResolvedValueOnce({ id: 1 }).mockResolvedValueOnce(null);
+  core.approveAdOrder.mockResolvedValueOnce({ id: 1 }).mockResolvedValueOnce(null);
   expect(await approveOrder(ctx, { orderId: 1, actor: "tg:900" })).toEqual({ ok: true });
   expect(await approveOrder(ctx, { orderId: 1, actor: "tg:900" })).toEqual({
     ok: false,

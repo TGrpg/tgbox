@@ -1,5 +1,6 @@
+import type { ProductKind } from "@tgbox/shared";
 import {
-  type BannerOrderSummary,
+  type AdOrderSummary,
   type EntryStatusSummary,
   type OrderSummary,
   type ProductLabel,
@@ -10,8 +11,18 @@ import {
   type zh,
 } from "./zh.ts";
 
+const enProductKinds: Record<ProductKind, string> = {
+  highlight: "highlight",
+  category_pin: "category pin",
+  pin: "site-wide pin",
+  banner: "home banner",
+  announcement: "announcement bar",
+};
+
 const enTarget = (t: PromotionTarget) =>
-  t.username ? `pin @${t.username}` : `home banner "${t.bannerTitle ?? ""}"`;
+  t.username
+    ? `${enProductKinds[t.kind]} @${t.username}`
+    : `${enProductKinds[t.kind]} "${t.bannerTitle ?? ""}"`;
 
 export const en: typeof zh = {
   welcome:
@@ -93,21 +104,36 @@ export const en: typeof zh = {
   openTelegram: "Open in Telegram",
   openSite: "Details",
   promote: {
-    intro:
-      "📣 Promotions\n\nPin: a listed entry is pinned to the top of the site's lists.\nHome banner: a promo card on the site's home page (reviewed).\n\nChoose a product:",
+    intro: (advertiseUrl: string) =>
+      [
+        "📣 Promotions (cheapest first)",
+        "",
+        "Promote my listing — a listed channel, group or bot; live once paid, each tier includes the one before:",
+        "· Highlight: gold tint and a “Promoted” tag, same position",
+        "· Category pin: first in its own category",
+        "· Site-wide pin: first on home, overviews and categories",
+        "",
+        "Brand ad — any link; live after review:",
+        "· Home banner: large home sponsor card + detail page sidebar",
+        "· Announcement bar: one line of text at the top of every page",
+        "",
+        `Previews and free slots: ${advertiseUrl}`,
+        "",
+        "Choose:",
+      ].join("\n"),
     unavailable:
       "Promotions can't be bought right now. Try again later or contact support (/support).",
     product: (p: ProductLabel) =>
       `${p.name} · ${[p.stars === null ? "" : `⭐${p.stars}`, p.usdt === null ? "" : `${p.usdt} USDT`].filter(Boolean).join(" / ")}`,
     askTarget:
-      "Send the channel, group or bot to pin (@username or t.me link). It must already be listed.",
-    askTitle: "Send the banner title (1–20 characters):",
-    askSubtitle: "Send the banner subtitle (1–40 characters):",
-    askHref: "Send the banner link (starting with https://, t.me links work too):",
+      "Send the channel, group or bot to promote (@username or t.me link). It must already be listed.",
+    askTitle: "Send the ad title (1–20 characters):",
+    askSubtitle: "Send the ad subtitle (1–40 characters):",
+    askHref: "Send the ad link (starting with https://, t.me links work too):",
     askImage: "Optional: send a banner image (jpg/png/webp, up to 1MB), or send /skip.",
     invalidTarget: "That wasn't recognized. Send an @username or t.me link.",
     targetNotListed: (username: string) =>
-      `@${username} isn't listed yet; only listed entries can be pinned. Send /submit to submit it first.`,
+      `@${username} isn't listed yet; only listed entries can be promoted. Send /submit to submit it first.`,
     invalidTitle: "The title must be 1–20 characters. Please send it again.",
     invalidSubtitle: "The subtitle must be 1–40 characters. Please send it again.",
     invalidHref: "The link must start with https://. Please send it again.",
@@ -154,15 +180,14 @@ export const en: typeof zh = {
     cancelled: "Cancelled.",
     checkoutInvalid: "This order is no longer valid. Please order again.",
     checkoutNoSlots: "All slots are taken; you haven't been charged.",
-    paidPin: (username: string, days: number) =>
-      `✅ Payment received! @${username} is pinned for ${days} days. The site updates in a few minutes.`,
-    paidBanner:
-      "✅ Payment received! Your banner is awaiting review; you'll be notified of the result.",
-    bannerApproved: (endsAt: number) =>
-      `🎉 Your home banner was approved and is live until ${utcTime(endsAt)}.`,
-    bannerRejectedRefunded: "Sorry, your home banner was not approved. Your Stars were refunded.",
-    bannerRejectedManual: (orderId: number, support: string | null) =>
-      `Sorry, your home banner was not approved. Please contact support${support ? ` @${support}` : ""} for a refund (order #${orderId}).`,
+    paidEntry: (t: PromotionTarget, days: number) =>
+      `✅ Payment received! Your ${enTarget(t)} is live for ${days} days. The site updates in a few minutes.`,
+    paidAd: "✅ Payment received! Your ad is awaiting review; you'll be notified of the result.",
+    adApproved: (t: PromotionTarget, endsAt: number) =>
+      `🎉 Your ad (${enTarget(t)}) was approved and is live until ${utcTime(endsAt)}.`,
+    adRejectedRefunded: "Sorry, your ad was not approved. Your Stars were refunded.",
+    adRejectedManual: (orderId: number, support: string | null) =>
+      `Sorry, your ad was not approved. Please contact support${support ? ` @${support}` : ""} for a refund (order #${orderId}).`,
     orphanRefunded: "This order is no longer valid, so your Stars were refunded.",
     expired: (t: PromotionTarget) =>
       `Your promotion (${enTarget(t)}) has ended. Send /promote to buy again.`,
@@ -213,9 +238,9 @@ export const en: typeof zh = {
       relayFailed: (reason: string) =>
         `⚠️ Support relay failed: ${reason}\nCheck that the support group has topics enabled and the bot is an admin with "Manage topics".`,
     },
-    bannerReview: (o: BannerOrderSummary) =>
+    adReview: (o: AdOrderSummary) =>
       [
-        "🖼 Home banner awaiting review",
+        "🖼 Ad awaiting review",
         `Order #${o.id}: ${o.product}`,
         `Title: ${o.title}`,
         `Subtitle: ${o.subtitle}`,
@@ -224,7 +249,7 @@ export const en: typeof zh = {
         `Paid: ${o.amount} ${o.currency}`,
         `Buyer: ${o.buyerId}`,
       ].join("\n"),
-    bannerRejected: (name: string, refunded: boolean, amount: string) =>
+    adRejected: (name: string, refunded: boolean, amount: string) =>
       `❌ Rejected (${name})${refunded ? ", refunded automatically" : `, refund ${amount} by hand`}`,
     orphanPayment: (orderId: number, provider: string, chargeId: string, amount: string) =>
       `⚠️ Payment for invalid order #${orderId} (${provider} ${chargeId}, ${amount}). Check and refund by hand.`,

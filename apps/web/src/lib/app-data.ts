@@ -35,11 +35,11 @@ export type AppTag = { id: number; slug: string; nameZh: string; nameEn: string 
 
 export type AppTaxonomy = { categories: AppCategory[]; tags: AppTag[] };
 
-/** Promoted entries first, then the largest, capped per kind. */
+/** Site-wide pins first, then the largest, capped per kind. */
 export function appEntries(data: SiteData): AppEntry[] {
   const ranked = [...data.entries].sort(
     (a, b) =>
-      Number(b.isPromoted) - Number(a.isPromoted) ||
+      Number(b.promo === "pin") - Number(a.promo === "pin") ||
       (b.members ?? -1) - (a.members ?? -1) ||
       a.username.localeCompare(b.username),
   );

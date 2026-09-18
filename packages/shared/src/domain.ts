@@ -75,3 +75,10 @@ export type EntrySort = (typeof entrySorts)[number];
 
 export const locales = ["zh", "en"] as const;
 export type Locale = (typeof locales)[number];
+
+/** Who an admin broadcast goes to; language follows /lang, else the Telegram client language. */
+export const BroadcastAudience = z.enum(["all", "zh", "en", "paying"]);
+export type BroadcastAudience = z.infer<typeof BroadcastAudience>;
+
+export const BroadcastStatus = z.enum(["running", "paused", "done", "cancelled"]);
+export type BroadcastStatus = z.infer<typeof BroadcastStatus>;

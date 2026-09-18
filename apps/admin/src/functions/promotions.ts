@@ -2,7 +2,7 @@ import { keepPreviousData, queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
 import { createManualPromotion, endPromotion, extendPromotion, upsertProduct } from "@tgbox/core";
 import { countActivePromotions, countPaidOrders, listProducts } from "@tgbox/db";
-import type { OrderStatus } from "@tgbox/shared";
+import { isEntryProduct, type OrderStatus, ProductKind } from "@tgbox/shared";
 import { queryKeys } from "@/lib/query-keys.ts";
 import { ClickHistoryInput, loadActivePromotions, loadClickHistory } from "@/server/clicks.ts";
 import { adminMiddleware } from "@/server/middleware.ts";
@@ -104,25 +104,29 @@ export const $createManualPromotion = createServerFn({ method: "POST" })
     const result = await createManualPromotion(context.core, {
       kind: data.kind,
       days: data.days,
-      targetUsername: data.kind === "pin" ? data.username : null,
-      banner: data.kind === "banner" ? data.banner : undefined,
+      ...("username" in data ? { targetUsername: data.username } : { banner: data.banner }),
       actor: context.auth.actor,
     });
     return result.ok ? { ok: true as const, id: result.promotion.id } : result;
   });
 
-/** Dashboard counters: banners waiting for review and live promotions. */
+const sum = (values: number[]) => values.reduce((total, value) => total + value, 0);
+
+/** Dashboard counters: brand ads waiting for review and live promotions of every kind. */
 const $getPromotionCounts = createServerFn({ method: "GET" })
   .middleware([adminMiddleware])
   .handler(async ({ context }) => {
     const { db } = context.core;
     const now = context.core.now();
-    const [pendingBanners, pins, banners] = await Promise.all([
-      countPaidOrders(db, "banner"),
-      countActivePromotions(db, "pin", now),
-      countActivePromotions(db, "banner", now),
+    const [pending, active] = await Promise.all([
+      Promise.all(
+        ProductKind.options
+          .filter((kind) => !isEntryProduct(kind))
+          .map((kind) => countPaidOrders(db, { kind })),
+      ),
+      Promise.all(ProductKind.options.map((kind) => countActivePromotions(db, { kind }, now))),
     ]);
-    return { pendingBanners, active: pins + banners };
+    return { pendingAds: sum(pending), active: sum(active) };
   });
 
 export const promotionCountsQueryOptions = () =>

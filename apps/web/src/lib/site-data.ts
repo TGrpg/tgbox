@@ -40,9 +40,14 @@ export function findEntries(usernames: string[]): EntryView[] {
   return usernames.flatMap((username) => byUsername?.get(username) ?? []);
 }
 
-/** Promoted (pinned) entries lead; the sort is stable, so the incoming order holds within each group. */
-export function promotedFirst(entries: EntryView[]): EntryView[] {
-  return [...entries].sort((a, b) => Number(b.isPromoted) - Number(a.isPromoted));
+/**
+ * Paid positions lead: site-wide pins on every list, category pins on the lists of their own
+ * category. The sort is stable, so the incoming order holds within each group.
+ */
+export function promotedFirst(entries: EntryView[], scope: "site" | "category"): EntryView[] {
+  const rank = ({ promo }: EntryView) =>
+    promo === "pin" ? 2 : scope === "category" && promo === "category_pin" ? 1 : 0;
+  return [...entries].sort((a, b) => rank(b) - rank(a));
 }
 
 /** Largest first; entries without a member count go last. */

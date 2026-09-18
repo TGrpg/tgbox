@@ -131,6 +131,8 @@ export async function startHarness() {
       "user_prefs",
       "support_threads",
       "hidden_posts",
+      "bot_users",
+      "broadcasts",
     ].map((table) => env.DB.prepare(`DELETE FROM ${table}`)),
   );
   // R2 persists between tests as well, and order ids restart at 1 in every test.

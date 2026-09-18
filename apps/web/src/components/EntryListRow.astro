@@ -9,7 +9,7 @@ import { formatNumber } from "@/lib/format.ts";
 interface Props {
   entry: Pick<
     EntryView,
-    "username" | "kind" | "title" | "verified" | "avatarUrl" | "members" | "isPromoted"
+    "username" | "kind" | "title" | "verified" | "avatarUrl" | "members" | "promo"
   >;
   locale: Locale;
 }
@@ -21,8 +21,9 @@ const strings = ui(locale).entry;
 <a
   href={localizePath(`/detail/${entry.username}/`, locale)}
   data-entry-row={entry.username}
+  data-promoted={entry.promo ? "" : undefined}
   data-press
-  class="group flex items-center gap-3 rounded-xl px-2 py-2 transition-colors outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-outline/40"
+  class="group flex items-center gap-3 rounded-xl px-2 py-2 transition-colors outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-outline/40 data-promoted:bg-warning/45"
 >
   <Avatar title={entry.title} src={entry.avatarUrl} size={36} />
   <span class="flex min-w-0 flex-1 items-center gap-1">
@@ -32,11 +33,11 @@ const strings = ui(locale).entry;
     {entry.verified && (
         <RosetteCheck class="size-4 shrink-0 text-primary" aria-label={strings.verified} role="img" />
       )}
-    {entry.isPromoted && (
+    {entry.promo && (
         <span
           data-promoted-badge
           data-pagefind-ignore
-          class="shrink-0 rounded-md bg-warning px-1.5 py-px text-[0.675rem] leading-4 font-medium whitespace-nowrap text-warning-foreground"
+          class="shrink-0 rounded-md bg-warning-foreground px-1.5 py-px text-[0.675rem] leading-4 font-medium whitespace-nowrap text-warning"
         >{strings.promoted}</span>
       )}
   </span>

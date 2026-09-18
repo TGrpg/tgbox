@@ -1,6 +1,6 @@
-import { type Actor, approveBannerOrder, type CoreContext, rejectOrder } from "@tgbox/core";
+import { type Actor, approveAdOrder, type CoreContext, rejectOrder } from "@tgbox/core";
 import { listOrders, listProducts } from "@tgbox/db";
-import { OrderStatus, ProductKind } from "@tgbox/shared";
+import { entryProductKinds, OrderStatus, ProductKind } from "@tgbox/shared";
 import { z } from "zod";
 import { clicksByOrder } from "./clicks.ts";
 
@@ -42,9 +42,9 @@ export const RejectOrderInput = OrderReviewInput.extend({
   reason: z.string().trim().max(200),
 });
 
-/** Approves a paid banner order; `not_awaiting_review` when someone else handled it first. */
+/** Approves a paid brand-ad order; `not_awaiting_review` when someone else handled it first. */
 export async function approveOrder(core: CoreContext, input: { orderId: number; actor: Actor }) {
-  const order = await approveBannerOrder(core, input);
+  const order = await approveAdOrder(core, input);
   return order ? { ok: true as const } : { ok: false as const, error: "not_awaiting_review" };
 }
 
@@ -65,9 +65,13 @@ export async function rejectPaidOrder(
 const username = z.string().trim().min(1).max(100);
 
 export const ManualPromotionInput = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("pin"), days: z.number().int().min(1).max(365), username }),
   z.object({
-    kind: z.literal("banner"),
+    kind: z.enum(entryProductKinds),
+    days: z.number().int().min(1).max(365),
+    username,
+  }),
+  z.object({
+    kind: z.enum(["banner", "announcement"]),
     days: z.number().int().min(1).max(365),
     banner: z.object({
       title: z.string().max(100),

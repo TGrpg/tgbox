@@ -41,7 +41,10 @@ function fillRow(template: HTMLTemplateElement, item: HotItem, rank: number) {
   const title = row.querySelector(".truncate");
   if (title) title.textContent = item.t;
   if (!item.v) row.querySelector("svg[role='img']")?.remove();
-  if (!item.p) row.querySelector("[data-promoted-badge]")?.remove();
+  if (!item.p) {
+    row.removeAttribute("data-promoted");
+    row.querySelector("[data-promoted-badge]")?.remove();
+  }
   const members = row.querySelector("span[title]");
   if (item.m === null) members?.remove();
   else if (members) members.textContent = compact.format(item.m);

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ActivityTier, EntryKind } from "./domain.ts";
-import { ProductKind } from "./settings.ts";
+import { entryProductKinds, ProductKind } from "./settings.ts";
 
 /**
  * Snapshot contract: produced by @tgbox/snapshot at build time, consumed by apps/web.
@@ -65,7 +65,8 @@ export const EntryView = z.object({
    * refreshes don't touch it, which is what makes it usable as a sitemap `<lastmod>`.
    */
   updatedAt: z.string(),
-  isPromoted: z.boolean(),
+  /** Highest live entry promotion (paid, or the admin's manual flag = `pin`); null when none. */
+  promo: z.enum(entryProductKinds).nullable(),
   posts: z.array(PostView),
   memberHistory: z.array(MemberPoint),
   related: RelatedRefs,
@@ -128,6 +129,17 @@ export const PromoView = z.object({
 });
 export type PromoView = z.infer<typeof PromoView>;
 
+/**
+ * Build-time snapshot of each product kind's capacity, for the advertising page and the empty
+ * sponsor cards. `slots` is per category for `category_pin`, whose `used` is therefore null.
+ */
+export const InventoryView = z.object({
+  kind: ProductKind,
+  slots: z.number().int(),
+  used: z.number().int().nullable(),
+});
+export type InventoryView = z.infer<typeof InventoryView>;
+
 /** A promotion product on sale. Public information: the bot quotes the same list in chat. */
 export const ProductView = z.object({
   id: z.number().int(),
@@ -153,6 +165,9 @@ export const SiteData = z.object({
   announcement: AnnouncementView.nullable(),
   /** Live paid banners, ordered by start time. */
   promos: z.array(PromoView),
+  /** The live paid announcement bar; shown instead of the admin announcement while it runs. */
+  sponsoredAnnouncement: PromoView.nullable().default(null),
+  inventory: z.array(InventoryView).default([]),
   /** Admin setting: pad the unsold sponsor slots with "for rent" cards instead of hiding them. */
   showAdSlots: z.boolean(),
   /**

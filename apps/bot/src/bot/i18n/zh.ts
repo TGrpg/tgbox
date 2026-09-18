@@ -1,5 +1,5 @@
 import type { Entry } from "@tgbox/db";
-import type { EntryKind } from "@tgbox/shared";
+import type { EntryKind, ProductKind } from "@tgbox/shared";
 
 export type SubmissionSummary = {
   username: string;
@@ -22,8 +22,12 @@ export type ProductLabel = {
   usdt: string | null;
 };
 
-/** What a promotion shows: a pinned entry or a banner. */
-export type PromotionTarget = { username: string | null; bannerTitle: string | null };
+/** What a promotion shows: a promoted entry, or a brand ad's title. */
+export type PromotionTarget = {
+  kind: ProductKind;
+  username: string | null;
+  bannerTitle: string | null;
+};
 
 export type OrderSummary = PromotionTarget & {
   id: number;
@@ -32,7 +36,7 @@ export type OrderSummary = PromotionTarget & {
   usdt: string | null;
 };
 
-export type BannerOrderSummary = {
+export type AdOrderSummary = {
   id: number;
   product: string;
   title: string;
@@ -66,8 +70,18 @@ export type EntryStatusSummary = {
 };
 
 const zhKinds = { channel: "频道", group: "群组", bot: "机器人" };
+const zhProductKinds: Record<ProductKind, string> = {
+  highlight: "高亮",
+  category_pin: "分类置顶",
+  pin: "全站置顶",
+  banner: "首页横幅",
+  announcement: "顶部公告条",
+};
+
 const zhTarget = (t: PromotionTarget) =>
-  t.username ? `置顶 @${t.username}` : `首页横幅「${t.bannerTitle ?? ""}」`;
+  t.username
+    ? `${zhProductKinds[t.kind]} @${t.username}`
+    : `${zhProductKinds[t.kind]}「${t.bannerTitle ?? ""}」`;
 
 export const zh = {
   welcome:
@@ -148,19 +162,34 @@ export const zh = {
   openTelegram: "打开 Telegram",
   openSite: "网站详情",
   promote: {
-    intro:
-      "📣 推广位\n\n置顶：已收录的条目在网站列表中置顶展示。\n首页横幅：网站首页的推广卡片（需审核）。\n\n请选择商品：",
+    intro: (advertiseUrl: string) =>
+      [
+        "📣 推广位（价格从低到高）",
+        "",
+        "【推广我的条目】已收录的频道、群组、机器人，付款后立即生效，每一档都包含上一档：",
+        "· 高亮：金色底和「推广」角标，位置不变",
+        "· 分类置顶：在自己的分类排第一",
+        "· 全站置顶：首页、总览和分类页都排最前",
+        "",
+        "【投放品牌广告】任意链接，审核通过后上线：",
+        "· 首页横幅：首页赞助区大卡片 + 详情页侧栏",
+        "· 顶部公告条：全站每页顶部一行文字链接",
+        "",
+        `效果示意和剩余名额：${advertiseUrl}`,
+        "",
+        "请选择：",
+      ].join("\n"),
     unavailable: "暂时无法购买推广，请稍后再试或联系客服（/support）。",
     product: (p: ProductLabel) =>
       `${p.name} · ${[p.stars === null ? "" : `⭐${p.stars}`, p.usdt === null ? "" : `${p.usdt} USDT`].filter(Boolean).join(" / ")}`,
-    askTarget: "请发送要置顶的频道、群组或机器人（@用户名或 t.me 链接），必须是已收录的条目。",
-    askTitle: "请发送横幅标题（1–20 字）：",
-    askSubtitle: "请发送横幅副标题（1–40 字）：",
-    askHref: "请发送横幅链接（https:// 开头，可以是 t.me 链接）：",
+    askTarget: "请发送要推广的频道、群组或机器人（@用户名或 t.me 链接），必须是已收录的条目。",
+    askTitle: "请发送广告标题（1–20 字）：",
+    askSubtitle: "请发送广告副标题（1–40 字）：",
+    askHref: "请发送广告链接（https:// 开头，可以是 t.me 链接）：",
     askImage: "可选：发送一张横幅图片（jpg/png/webp，1MB 以内），或发送 /skip 跳过。",
     invalidTarget: "无法识别，请发送 @用户名或 t.me 链接。",
     targetNotListed: (username: string) =>
-      `@${username} 还没有被收录，只能置顶已收录的条目。可以先发送 /submit 提交收录。`,
+      `@${username} 还没有被收录，只能推广已收录的条目。可以先发送 /submit 提交收录。`,
     invalidTitle: "标题需要 1–20 个字，请重新发送。",
     invalidSubtitle: "副标题需要 1–40 个字，请重新发送。",
     invalidHref: "链接需要以 https:// 开头，请重新发送。",
@@ -206,14 +235,14 @@ export const zh = {
     cancelled: "已取消。",
     checkoutInvalid: "订单已失效，请重新下单。",
     checkoutNoSlots: "名额已满，本次不会扣款。",
-    paidPin: (username: string, days: number) =>
-      `✅ 支付成功！@${username} 已置顶 ${days} 天，网站几分钟后更新。`,
-    paidBanner: "✅ 支付成功！横幅已提交审核，通过后会通知你。",
-    bannerApproved: (endsAt: number) =>
-      `🎉 你的首页横幅已通过审核并上线，展示至 ${utcTime(endsAt)}。`,
-    bannerRejectedRefunded: "很抱歉，你的首页横幅未通过审核，Stars 已原路退回。",
-    bannerRejectedManual: (orderId: number, support: string | null) =>
-      `很抱歉，你的首页横幅未通过审核。请联系客服${support ? ` @${support}` : ""}办理退款（订单 #${orderId}）。`,
+    paidEntry: (t: PromotionTarget, days: number) =>
+      `✅ 支付成功！${zhTarget(t)} 已上线 ${days} 天，网站几分钟后更新。`,
+    paidAd: "✅ 支付成功！广告已提交审核，通过后会通知你。",
+    adApproved: (t: PromotionTarget, endsAt: number) =>
+      `🎉 你的广告（${zhTarget(t)}）已通过审核并上线，展示至 ${utcTime(endsAt)}。`,
+    adRejectedRefunded: "很抱歉，你的广告未通过审核，Stars 已原路退回。",
+    adRejectedManual: (orderId: number, support: string | null) =>
+      `很抱歉，你的广告未通过审核。请联系客服${support ? ` @${support}` : ""}办理退款（订单 #${orderId}）。`,
     orphanRefunded: "该订单已失效，本次支付的 Stars 已原路退回。",
     expired: (t: PromotionTarget) =>
       `你的推广（${zhTarget(t)}）已到期下架。发送 /promote 可以再次购买。`,
@@ -264,9 +293,9 @@ export const zh = {
       relayFailed: (reason: string) =>
         `⚠️ 客服转发失败：${reason}\n请确认客服群已开启「话题」，且机器人是管理员并有「管理话题」权限。`,
     },
-    bannerReview: (o: BannerOrderSummary) =>
+    adReview: (o: AdOrderSummary) =>
       [
-        "🖼 首页横幅待审核",
+        "🖼 广告待审核",
         `订单 #${o.id}：${o.product}`,
         `标题：${o.title}`,
         `副标题：${o.subtitle}`,
@@ -275,7 +304,7 @@ export const zh = {
         `支付：${o.amount} ${o.currency}`,
         `买家：${o.buyerId}`,
       ].join("\n"),
-    bannerRejected: (name: string, refunded: boolean, amount: string) =>
+    adRejected: (name: string, refunded: boolean, amount: string) =>
       `❌ 已拒绝（${name}）${refunded ? "，已自动退款" : `，需人工退款 ${amount}`}`,
     orphanPayment: (orderId: number, provider: string, chargeId: string, amount: string) =>
       `⚠️ 收到无效订单 #${orderId} 的付款（${provider} ${chargeId}，${amount}），请人工核对并退款。`,

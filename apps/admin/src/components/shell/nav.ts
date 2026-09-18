@@ -9,6 +9,7 @@ import {
   ScrollTextIcon,
   SettingsIcon,
   TagsIcon,
+  UsersIcon,
 } from "lucide-react";
 
 export type NavItem = {
@@ -19,6 +20,7 @@ export type NavItem = {
     | "/add"
     | "/taxonomy"
     | "/promotions"
+    | "/users"
     | "/blacklist"
     | "/audit"
     | "/settings";
@@ -35,6 +37,7 @@ export const navItems: NavItem[] = [
   { to: "/add", label: "收录", icon: PlusCircleIcon, primary: true },
   { to: "/taxonomy", label: "分类标签", icon: TagsIcon, primary: false },
   { to: "/promotions", label: "推广", icon: RocketIcon, primary: false },
+  { to: "/users", label: "用户", icon: UsersIcon, primary: false },
   { to: "/blacklist", label: "黑名单", icon: BanIcon, primary: false },
   { to: "/audit", label: "操作日志", icon: ScrollTextIcon, primary: false },
   { to: "/settings", label: "设置", icon: SettingsIcon, primary: false },

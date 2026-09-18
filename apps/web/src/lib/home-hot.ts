@@ -9,7 +9,7 @@ export interface HotItem {
   v: boolean;
   a: string | null;
   m: number | null;
-  /** promoted */
+  /** promoted (any tier: they all look the same) */
   p: boolean;
 }
 

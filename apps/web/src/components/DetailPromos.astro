@@ -2,10 +2,10 @@
 import Ad from "@tabler/icons/outline/ad-2.svg";
 import Speakerphone from "@tabler/icons/outline/speakerphone.svg";
 import { type Locale, promoClickUrl } from "@tgbox/shared";
+import { localizePath } from "@/i18n/locale.ts";
 import { ui } from "@/i18n/ui.ts";
 import { detailUi } from "@/i18n/ui-detail.ts";
-import { promoSlots, promoteUrl } from "@/lib/promos.ts";
-import { botUsername } from "@/lib/site.ts";
+import { adSlotLine, promoSlots } from "@/lib/promos.ts";
 import { getSiteData } from "@/lib/site-data.ts";
 
 interface Props {
@@ -16,7 +16,8 @@ const { entry, adSlot } = ui(locale);
 const data = getSiteData();
 const items = promoSlots(data.promos, 3, 1, data.showAdSlots);
 const onlyPlaceholder = items.length === 1 && items[0]?.type === "placeholder";
-const promoteHref = promoteUrl(botUsername);
+const advertiseHref = localizePath("/advertise/", locale);
+const slotLine = adSlotLine(data, "banner", adSlot);
 ---
 
 {items.length > 0 && (
@@ -55,11 +56,9 @@ const promoteHref = promoteUrl(botUsername);
               </a>
             ) : (
               <a
-                href={promoteHref}
+                href={advertiseHref}
                 data-press
                 data-promo-slot
-                rel="noopener"
-                target="_blank"
                 class:list={[
                   "ad-slot group relative flex flex-col overflow-hidden rounded-xl border-2 border-dashed border-primary/30 p-2.5 outline-none transition-colors hover:border-primary/60 focus-visible:ring-3 focus-visible:ring-outline/50 sm:p-3",
                   onlyPlaceholder ? "min-h-16 justify-center pr-20" : "h-20 justify-end sm:h-24",
@@ -78,7 +77,7 @@ const promoteHref = promoteUrl(botUsername);
                     !onlyPlaceholder && "hidden sm:block",
                   ]}
                 >
-                  {adSlot.subtitle}
+                  {slotLine}
                 </span>
               </a>
             )}

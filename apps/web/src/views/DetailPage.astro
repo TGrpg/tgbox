@@ -236,8 +236,8 @@ const statCell =
                       {tierLabel}
                     </li>
                   )}
-                  {entry.isPromoted && (
-                    <li class:list={[badge, "bg-warning text-warning-foreground"]}>{strings.entry.promoted}</li>
+                  {entry.promo && (
+                    <li class:list={[badge, "bg-warning-foreground text-warning"]}>{strings.entry.promoted}</li>
                   )}
                 </ul>
               </div>

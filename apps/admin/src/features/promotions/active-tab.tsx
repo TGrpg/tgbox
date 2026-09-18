@@ -53,7 +53,7 @@ import {
 import { invalidate } from "@/lib/query-keys.ts";
 import { ClickBadge, ClickCount, ClickHistory } from "./clicks.tsx";
 import { PromotionContent } from "./content.tsx";
-import { dateTime, productKindLabels, remainingDays } from "./labels.ts";
+import { dateTime, productKindLabels, productKindVariants, remainingDays } from "./labels.ts";
 
 const ease = [0.16, 1, 0.3, 1] as const;
 
@@ -184,7 +184,7 @@ export function ActiveTab() {
                   className="border-b last:border-b-0"
                 >
                   <TableCell className="pl-4">
-                    <Badge variant={promotion.kind === "pin" ? "warning" : "info"}>
+                    <Badge variant={productKindVariants[promotion.kind]}>
                       {productKindLabels[promotion.kind]}
                     </Badge>
                     <div className="mt-1 text-muted-foreground text-xs">{source(promotion)}</div>
@@ -236,7 +236,7 @@ export function ActiveTab() {
               <Card className="gap-3 p-3">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <Badge variant={promotion.kind === "pin" ? "warning" : "info"}>
+                    <Badge variant={productKindVariants[promotion.kind]}>
                       {productKindLabels[promotion.kind]}
                     </Badge>
                     <span className="text-muted-foreground text-xs">{source(promotion)}</span>

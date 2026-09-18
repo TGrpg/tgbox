@@ -16,7 +16,7 @@ interface Props {
     | "descriptionEn"
     | "verified"
     | "avatarUrl"
-    | "isPromoted"
+    | "promo"
   >;
   locale: Locale;
   eagerAvatar?: boolean | undefined;
@@ -27,11 +27,13 @@ const strings = ui(locale).entry;
 const { text: description } = localizedDescription(entry, locale);
 ---
 
+{/* Every promotion tier looks the same (the tiers differ by position): tinted card + 推广 badge. */}
 <article
   data-entry-card={entry.username}
+  data-promoted={entry.promo ? "" : undefined}
   data-reveal
   data-hover-lift
-  class="group relative rounded-2xl border border-border bg-card p-3.5 shadow-card hover:border-primary/30"
+  class="group relative rounded-2xl border border-border bg-card p-3.5 shadow-card hover:border-primary/30 data-promoted:border-warning-foreground/35 data-promoted:bg-warning/50"
 >
   <div class="flex items-center gap-2.5">
     <Avatar title={entry.title} src={entry.avatarUrl} size={40} eager={eagerAvatar} />
@@ -45,11 +47,11 @@ const { text: description } = localizedDescription(entry, locale);
       {entry.verified && (
           <RosetteCheck class="size-4 shrink-0 text-primary" aria-label={strings.verified} role="img" />
         )}
-      {entry.isPromoted && (
+      {entry.promo && (
           <span
             data-promoted-badge
           data-pagefind-ignore
-            class="shrink-0 rounded-md bg-warning px-1.5 py-px text-[0.675rem] leading-4 font-medium whitespace-nowrap text-warning-foreground"
+            class="shrink-0 rounded-md bg-warning-foreground px-1.5 py-px text-[0.675rem] leading-4 font-medium whitespace-nowrap text-warning"
           >{strings.promoted}</span>
         )}
     </h3>

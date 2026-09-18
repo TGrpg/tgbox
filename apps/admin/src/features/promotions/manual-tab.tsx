@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { ProductKind } from "@tgbox/shared";
+import { isEntryProduct, type ProductKind } from "@tgbox/shared";
 import { PlusIcon } from "lucide-react";
 import { motion } from "motion/react";
 import { type FormEvent, useState } from "react";
@@ -7,13 +7,19 @@ import { Button } from "@/components/coss/ui/button.tsx";
 import { Card } from "@/components/coss/ui/card.tsx";
 import { Input } from "@/components/coss/ui/input.tsx";
 import { Label } from "@/components/coss/ui/label.tsx";
-import { Tabs, TabsList, TabsTab } from "@/components/coss/ui/tabs.tsx";
+import {
+  Select,
+  SelectItem,
+  SelectPopup,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/coss/ui/select.tsx";
 import { toastManager } from "@/components/coss/ui/toast.tsx";
 import { Field } from "@/features/settings/fields.tsx";
 import { $createManualPromotion } from "@/functions/promotions.ts";
 import { invalidate } from "@/lib/query-keys.ts";
 import { BannerPreview } from "./content.tsx";
-import { promotionErrorText } from "./labels.ts";
+import { productKindOptions, promotionErrorText } from "./labels.ts";
 
 type ManualForm = {
   kind: ProductKind;
@@ -35,10 +41,9 @@ export function ManualTab({ onCreated }: { onCreated: () => void }) {
   const create = useMutation({
     mutationFn: (input: ManualForm) =>
       $createManualPromotion({
-        data:
-          input.kind === "pin"
-            ? { kind: "pin", days: input.days, username: input.username }
-            : { kind: "banner", days: input.days, banner: input.banner },
+        data: isEntryProduct(input.kind)
+          ? { kind: input.kind, days: input.days, username: input.username }
+          : { kind: input.kind, days: input.days, banner: input.banner },
       }),
     onSuccess: (result) => {
       if (result.ok) {
@@ -78,7 +83,8 @@ export function ManualTab({ onCreated }: { onCreated: () => void }) {
     banner.subtitle.trim().length <= 40 &&
     banner.href.trim().startsWith("https://");
   const daysValid = Number.isInteger(form.days) && form.days >= 1 && form.days <= 365;
-  const valid = daysValid && (form.kind === "pin" ? form.username.trim() !== "" : bannerValid);
+  const forEntry = isEntryProduct(form.kind);
+  const valid = daysValid && (forEntry ? form.username.trim() !== "" : bannerValid);
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -92,18 +98,22 @@ export function ManualTab({ onCreated }: { onCreated: () => void }) {
       <form onSubmit={submit} className="flex flex-col gap-5">
         <div className="flex flex-col gap-2">
           <Label>类型</Label>
-          <Tabs
+          <Select
+            items={productKindOptions}
             value={form.kind}
-            onValueChange={(value) =>
-              (value === "pin" || value === "banner") &&
-              setForm((current) => ({ ...current, kind: value }))
-            }
+            onValueChange={(value) => value && setForm((current) => ({ ...current, kind: value }))}
           >
-            <TabsList className="self-start">
-              <TabsTab value="pin">置顶条目</TabsTab>
-              <TabsTab value="banner">首页横幅</TabsTab>
-            </TabsList>
-          </Tabs>
+            <SelectTrigger aria-label="类型" className="max-w-56">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectPopup>
+              {productKindOptions.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectPopup>
+          </Select>
           <p className="text-muted-foreground text-xs">
             手动推广不收费、立即生效，会占用同类型的名额。
           </p>
@@ -116,7 +126,7 @@ export function ManualTab({ onCreated }: { onCreated: () => void }) {
           transition={{ duration: 0.18 }}
           className="flex flex-col gap-5"
         >
-          {form.kind === "pin" ? (
+          {forEntry ? (
             <Field label="条目用户名" htmlFor="manual-username" hint="必须是已收录的条目。">
               <Input
                 id="manual-username"
@@ -164,9 +174,11 @@ export function ManualTab({ onCreated }: { onCreated: () => void }) {
                   onChange={(event) => setBanner({ href: event.target.value })}
                 />
               </Field>
-              <Field label="预览">
-                <BannerPreview banner={banner} />
-              </Field>
+              {form.kind === "banner" && (
+                <Field label="预览">
+                  <BannerPreview banner={banner} />
+                </Field>
+              )}
             </>
           )}
         </motion.div>

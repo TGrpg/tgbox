@@ -45,7 +45,8 @@ export {
   watchUsdtPayments,
 } from "./payments/usdt-watch.ts";
 export {
-  approveBannerOrder,
+  approveAdOrder,
+  checkOrderSlots,
   checkSlots,
   createManualPromotion,
   createOrder,
@@ -89,3 +90,12 @@ export {
   upsertCategory,
   upsertTag,
 } from "./taxonomy.ts";
+export {
+  advanceBroadcast,
+  BROADCAST_BATCH,
+  type BroadcastMessage,
+  createBroadcast,
+  messageUser,
+  runDueBroadcasts,
+  setBroadcastState,
+} from "./users.ts";

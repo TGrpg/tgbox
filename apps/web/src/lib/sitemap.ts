@@ -58,6 +58,7 @@ const STATIC_PAGES = [
   "/tags/",
   "/random/",
   "/enroll/",
+  "/advertise/",
   "/about/",
   "/privacy-policy/",
   "/donate/",

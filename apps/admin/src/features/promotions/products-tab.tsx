@@ -22,13 +22,8 @@ import { OptionSelect } from "@/features/entries/option-select.tsx";
 import { useIsMobile } from "@/features/entries/use-is-mobile.ts";
 import { $upsertProduct, type ProductRow, productsQueryOptions } from "@/functions/promotions.ts";
 import { invalidate } from "@/lib/query-keys.ts";
-import { productKindLabels } from "./labels.ts";
+import { productKindLabels, productKindOptions, productKindVariants } from "./labels.ts";
 import { newProductDraft, type ProductDraft, parseProductDraft, toDraft } from "./product-draft.ts";
-
-const kindOptions = [
-  { value: "pin", label: productKindLabels.pin },
-  { value: "banner", label: productKindLabels.banner },
-];
 
 const columns = ["类型", "中文名", "英文名", "天数", "Stars", "USDT", "名额", "上架", "排序"];
 
@@ -137,16 +132,17 @@ function ProductEditor({
   const error = dirty && !parsed.ok ? parsed.error : null;
   const fields = {
     kind: product ? (
-      <Badge variant={draft.kind === "pin" ? "warning" : "info"}>
-        {productKindLabels[draft.kind]}
-      </Badge>
+      <Badge variant={productKindVariants[draft.kind]}>{productKindLabels[draft.kind]}</Badge>
     ) : (
       <OptionSelect
         label="类型"
-        className="w-24"
+        className="w-28"
         value={draft.kind}
-        options={kindOptions}
-        onChange={(kind) => (kind === "pin" || kind === "banner") && patch({ kind })}
+        options={productKindOptions}
+        onChange={(kind) => {
+          const next = productKindOptions.find((option) => option.value === kind);
+          if (next) patch({ kind: next.value });
+        }}
       />
     ),
     nameZh: (

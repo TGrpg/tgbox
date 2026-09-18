@@ -1,4 +1,4 @@
-import type { BannerContent, ProductKind } from "./settings.ts";
+import { type BannerContent, isEntryProduct, type ProductKind } from "./settings.ts";
 
 /**
  * Paid promotions are clicked through `/r/<promotion id>` so the owner (and the advertiser) can
@@ -9,13 +9,13 @@ import type { BannerContent, ProductKind } from "./settings.ts";
 /** Click-counting link for a paid promo card. Relative, so it works on both locales. */
 export const promoClickUrl = (promoId: string) => `/r/${promoId}`;
 
-/** What a promotion sends the visitor to: the banner's own link, or the pinned entry on Telegram. */
+/** What a promotion sends the visitor to: the ad's own link, or the promoted entry on Telegram. */
 export function promoTarget(promotion: {
   kind: ProductKind;
   entryUsername: string | null;
   banner: BannerContent | null;
 }) {
-  if (promotion.kind === "pin") {
+  if (isEntryProduct(promotion.kind)) {
     return promotion.entryUsername ? `https://t.me/${promotion.entryUsername}` : null;
   }
   const href = promotion.banner?.href;

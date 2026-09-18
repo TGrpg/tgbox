@@ -1,6 +1,7 @@
 import {
   BannerContent,
   CreateOrderResult,
+  isEntryProduct,
   type Locale,
   OrderStatusResult,
   PayResult,
@@ -216,12 +217,12 @@ export function PromoteScreen({ locale }: { locale: Locale }) {
 
   async function createOrder(product: ProductView) {
     setError(null);
-    const content =
-      product.kind === "banner"
-        ? BannerContent.safeParse({ ...banner, imageUrl: null })
-        : { success: true as const, data: undefined };
+    const forEntry = isEntryProduct(product.kind);
+    const content = forEntry
+      ? { success: true as const, data: undefined }
+      : BannerContent.safeParse({ ...banner, imageUrl: null });
     if (!content.success) return setError(strings.promote.errors.invalid_banner);
-    if (product.kind === "pin" && target.trim() === "") {
+    if (forEntry && target.trim() === "") {
       return setError(strings.promote.errors.invalid_target);
     }
 
@@ -229,7 +230,7 @@ export function PromoteScreen({ locale }: { locale: Locale }) {
     const created = await apiCall("/orders", CreateOrderResult, {
       json: {
         productId: product.id,
-        ...(product.kind === "pin" ? { targetUsername: target.trim().replace(/^@/, "") } : {}),
+        ...(forEntry ? { targetUsername: target.trim().replace(/^@/, "") } : {}),
         ...(content.data ? { banner: content.data } : {}),
       },
     });
@@ -249,7 +250,8 @@ export function PromoteScreen({ locale }: { locale: Locale }) {
     }
 
     const orderId = created.data.orderId;
-    if (image) {
+    // Only the home banner carries an image; the announcement bar is text.
+    if (image && product.kind === "banner") {
       const form = new FormData();
       form.append("image", image.file);
       form.append("orderId", String(orderId));
@@ -351,7 +353,7 @@ export function PromoteScreen({ locale }: { locale: Locale }) {
           </p>
         </header>
 
-        {product.kind === "pin" ? (
+        {isEntryProduct(product.kind) ? (
           <div className="flex flex-col gap-2">
             <label className="font-medium text-sm" htmlFor="promote-target">
               {strings.promote.targetLabel}
@@ -392,30 +394,45 @@ export function PromoteScreen({ locale }: { locale: Locale }) {
             ))}
             <p className="text-muted-foreground text-xs">{strings.promote.bannerHrefHint}</p>
 
-            <div className="flex flex-col gap-2">
-              <span className="font-medium text-sm">{strings.promote.bannerImage}</span>
-              <label className="inline-flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-border border-dashed text-sm">
-                <ImageIcon className="size-4" aria-hidden />
-                {strings.promote.pickImage}
-                <input
-                  type="file"
-                  accept={IMAGE_TYPES.join(",")}
-                  className="sr-only"
-                  onChange={(event) => pickImage(event.target.files?.[0])}
-                />
-              </label>
-              <p className="text-muted-foreground text-xs">{strings.promote.imageHint}</p>
-            </div>
+            {product.kind === "banner" && (
+              <div className="flex flex-col gap-2">
+                <span className="font-medium text-sm">{strings.promote.bannerImage}</span>
+                <label className="inline-flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-border border-dashed text-sm">
+                  <ImageIcon className="size-4" aria-hidden />
+                  {strings.promote.pickImage}
+                  <input
+                    type="file"
+                    accept={IMAGE_TYPES.join(",")}
+                    className="sr-only"
+                    onChange={(event) => pickImage(event.target.files?.[0])}
+                  />
+                </label>
+                <p className="text-muted-foreground text-xs">{strings.promote.imageHint}</p>
+              </div>
+            )}
 
             <div className="flex flex-col gap-2">
               <span className="font-medium text-sm">{strings.promote.previewLabel}</span>
-              <BannerPreview
-                title={banner.title || strings.promote.bannerTitle}
-                subtitle={banner.subtitle || strings.promote.bannerSubtitle}
-                imageUrl={image?.url ?? null}
-                seed={String(product.id)}
-                adLabel={locale === "zh" ? "广告" : "Ad"}
-              />
+              {product.kind === "banner" ? (
+                <BannerPreview
+                  title={banner.title || strings.promote.bannerTitle}
+                  subtitle={banner.subtitle || strings.promote.bannerSubtitle}
+                  imageUrl={image?.url ?? null}
+                  seed={String(product.id)}
+                  adLabel={locale === "zh" ? "广告" : "Ad"}
+                />
+              ) : (
+                <p
+                  className="rounded-2xl border border-border bg-card px-4 py-3 text-sm"
+                  dir="auto"
+                >
+                  <span className="mr-2 rounded-full bg-primary-soft px-2 py-0.5 font-semibold text-primary-soft-foreground text-xs">
+                    {locale === "zh" ? "推广" : "Promoted"}
+                  </span>
+                  {banner.title || strings.promote.bannerTitle} ·{" "}
+                  {banner.subtitle || strings.promote.bannerSubtitle}
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -441,30 +458,59 @@ export function PromoteScreen({ locale }: { locale: Locale }) {
       {products.length === 0 ? (
         <p className="py-12 text-center text-muted-foreground text-sm">{strings.promote.soldOut}</p>
       ) : (
-        <ul className="flex flex-col gap-2">
-          {products.map((product) => (
-            <li
-              key={product.id}
-              className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold text-sm">
-                  {locale === "zh" ? product.nameZh : product.nameEn}
-                </p>
-                <p className="text-muted-foreground text-xs">
-                  {strings.promote.productKind[product.kind]}
-                </p>
-                <p className="mt-0.5 font-medium text-primary-accent text-xs">
-                  {priceLine(product)}
-                </p>
+        [
+          {
+            title: strings.promote.entryFamily,
+            hint: strings.promote.entryFamilyHint,
+            items: products.filter((product) => isEntryProduct(product.kind)),
+          },
+          {
+            title: strings.promote.adFamily,
+            hint: strings.promote.adFamilyHint,
+            items: products.filter((product) => !isEntryProduct(product.kind)),
+          },
+        ]
+          .filter((family) => family.items.length > 0)
+          .map((family) => (
+            <section key={family.title} className="flex flex-col gap-2">
+              <div>
+                <h2 className="font-semibold text-sm">{family.title}</h2>
+                <p className="text-muted-foreground text-xs">{family.hint}</p>
               </div>
-              <Button size="sm" onClick={() => setStage({ name: "details", product })}>
-                {strings.promote.choose}
-              </Button>
-            </li>
-          ))}
-        </ul>
+              <ul className="flex flex-col gap-2">
+                {family.items.map((product) => (
+                  <li
+                    key={product.id}
+                    className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-semibold text-sm">
+                        {locale === "zh" ? product.nameZh : product.nameEn}
+                      </p>
+                      <p className="text-muted-foreground text-xs">
+                        {strings.promote.effect[product.kind]}
+                      </p>
+                      <p className="mt-0.5 font-medium text-primary-accent text-xs">
+                        {priceLine(product)}
+                      </p>
+                    </div>
+                    <Button size="sm" onClick={() => setStage({ name: "details", product })}>
+                      {strings.promote.choose}
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))
       )}
+      <a
+        href={localizePath("/advertise/", locale)}
+        target="_blank"
+        rel="noopener"
+        className="text-center text-primary-accent text-sm underline-offset-4 hover:underline"
+      >
+        {strings.promote.compare}
+      </a>
     </div>
   );
 }

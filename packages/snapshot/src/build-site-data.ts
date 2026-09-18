@@ -4,9 +4,12 @@ import { DatabaseSync } from "node:sqlite";
 import {
   BannerContent,
   EntryKind,
+  type EntryProductKind,
+  isEntryProduct,
   MemberPoint,
   PaymentSettings,
   PostView,
+  ProductKind,
   SiteData,
   SiteSettings,
   settingsDefaults,
@@ -105,16 +108,24 @@ export async function buildSiteData(options: BuildSiteDataOptions): Promise<Site
       )
       .all();
 
-    const pinned = new Set(
-      hasPromotions
-        ? db
-            .prepare(
-              "SELECT DISTINCT entry_username FROM promotions WHERE kind = 'pin' AND ends_at > ? AND entry_username IS NOT NULL",
-            )
-            .all(nowMs)
-            .map((row) => text(row.entry_username))
-        : [],
-    );
+    // Highest live entry promotion per username; the admin's manual flag counts as a site pin.
+    const tierRank = { highlight: 1, category_pin: 2, pin: 3 } as const;
+    const promoByUsername = new Map<string, EntryProductKind>();
+    if (hasPromotions) {
+      for (const row of db
+        .prepare(
+          "SELECT entry_username, kind FROM promotions WHERE ends_at > ? AND entry_username IS NOT NULL",
+        )
+        .all(nowMs)) {
+        const kind = ProductKind.safeParse(row.kind);
+        if (!kind.success || !isEntryProduct(kind.data)) continue;
+        const username = text(row.entry_username);
+        const current = promoByUsername.get(username);
+        if (!current || tierRank[kind.data] > tierRank[current]) {
+          promoByUsername.set(username, kind.data);
+        }
+      }
+    }
 
     const tagsByEntry = new Map<number, string[]>();
     for (const row of db
@@ -176,7 +187,7 @@ export async function buildSiteData(options: BuildSiteDataOptions): Promise<Site
         tgCreatedAt: isoOrNull(row.tg_created_at),
         listedAt: new Date(int(row.listed_at)).toISOString(),
         updatedAt: new Date(int(row.updated_at)).toISOString(),
-        isPromoted: int(row.is_promoted) === 1 || pinned.has(username),
+        promo: int(row.is_promoted) === 1 ? "pin" : (promoByUsername.get(username) ?? null),
       };
     });
 
@@ -198,27 +209,52 @@ export async function buildSiteData(options: BuildSiteDataOptions): Promise<Site
       )
       .all();
 
-    const promos = hasPromotions
-      ? db
-          .prepare(
-            "SELECT id, banner FROM promotions WHERE kind = 'banner' AND ends_at > ? ORDER BY starts_at, id",
-          )
-          .all(nowMs)
-          .flatMap((row) => {
-            const banner = BannerContent.safeParse(jsonOrNull(row.banner));
-            return banner.success
-              ? [
-                  {
-                    id: String(int(row.id)),
-                    ...banner.data,
-                    // Banners sold before image upload existed have no imageUrl at all.
-                    imageUrl: banner.data.imageUrl ?? null,
-                    sponsored: true,
-                  },
-                ]
-              : [];
-          })
-      : [];
+    // Brand ads live at build time, oldest first: banners for the sponsor cards, and the paid
+    // announcement bar (one slot; the oldest wins should the admin have created two by hand).
+    const liveAds = (kind: "banner" | "announcement") =>
+      hasPromotions
+        ? db
+            .prepare(
+              "SELECT id, banner FROM promotions WHERE kind = ? AND ends_at > ? ORDER BY starts_at, id",
+            )
+            .all(kind, nowMs)
+            .flatMap((row) => {
+              const banner = BannerContent.safeParse(jsonOrNull(row.banner));
+              return banner.success
+                ? [
+                    {
+                      id: String(int(row.id)),
+                      ...banner.data,
+                      // Banners sold before image upload existed have no imageUrl at all.
+                      imageUrl: banner.data.imageUrl ?? null,
+                      sponsored: true,
+                    },
+                  ]
+                : [];
+            })
+        : [];
+    const promos = liveAds("banner");
+    const sponsoredAnnouncement = liveAds("announcement")[0] ?? null;
+
+    // Capacity per kind as the bot counts it (live promotions + paid orders not live yet), for the
+    // advertising page. Category pins are per category, so only their size is published.
+    const inventory =
+      hasPromotions && hasTable("products")
+        ? db
+            .prepare(
+              `SELECT p.kind, MAX(p.slots) AS slots,
+               (SELECT COUNT(*) FROM promotions pr WHERE pr.kind = p.kind AND pr.ends_at > ?)
+               + (SELECT COUNT(*) FROM orders o WHERE o.kind = p.kind AND o.status = 'paid') AS used
+             FROM products p WHERE p.active = 1 GROUP BY p.kind`,
+            )
+            .all(nowMs)
+            .flatMap((row) => {
+              const kind = ProductKind.safeParse(row.kind);
+              if (!kind.success) return [];
+              const used = kind.data === "category_pin" ? null : int(row.used);
+              return [{ kind: kind.data, slots: int(row.slots), used }];
+            })
+        : [];
 
     // The Mini App's purchase screen reads the price list as a static file, so it never
     // costs a Worker request; the build is dispatched whenever the admin edits a product.
@@ -294,6 +330,8 @@ export async function buildSiteData(options: BuildSiteDataOptions): Promise<Site
       },
       announcement,
       promos,
+      sponsoredAnnouncement,
+      inventory,
       showAdSlots: site.showAdSlots,
       payments: paymentMethods(),
       products: productRows.map((row) => ({

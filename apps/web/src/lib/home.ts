@@ -15,9 +15,9 @@ export function hotCategories(categories: CategoryView[], limit: number): Catego
     .slice(0, limit);
 }
 
-/** Promoted, then biggest entries of a kind (the column's first rows are this order too). */
+/** Site-wide pins, then biggest entries of a kind (the column's first rows are this order too). */
 export function hotEntries(entries: EntryView[], kind: EntryKind): EntryView[] {
-  return promotedFirst(byMembers(entries.filter((entry) => entry.kind === kind)));
+  return promotedFirst(byMembers(entries.filter((entry) => entry.kind === kind)), "site");
 }
 
 /** `hotEntries` with short keys to keep the static JSON small. */
@@ -30,7 +30,7 @@ export function hotPool(entries: EntryView[], kind: EntryKind, size = HOT_POOL_S
       v: entry.verified,
       a: entry.avatarUrl,
       m: entry.members,
-      p: entry.isPromoted,
+      p: entry.promo !== null,
     }));
 }
 

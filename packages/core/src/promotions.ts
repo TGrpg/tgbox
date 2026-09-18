@@ -23,6 +23,7 @@ import {
 } from "@tgbox/db";
 import {
   BannerContent,
+  isEntryProduct,
   type PaymentCurrency,
   type PaymentProvider,
   type ProductKind,
@@ -43,45 +44,73 @@ const REMIND_BEFORE_MS = DAY_MS;
 const orderTarget = (id: number) => `order:${id}`;
 const promotionTarget = (id: number) => `promotion:${id}`;
 
-/** Why promotion content was refused: pins need an approved entry, banners valid BannerContent. */
+/** Why promotion content was refused: entry promotions need an approved entry, ads valid content. */
 export type PromotionContentError = "invalid_target" | "target_not_listed" | "invalid_banner";
 
-/** Validates what a promotion shows: an approved entry for pins, banner content for banners. */
+/**
+ * Validates what a promotion shows: an approved entry for entry promotions, ad content for brand
+ * ads. The announcement bar is text only, so an image sent along with it is dropped.
+ */
 async function promotionContent(
   ctx: CoreContext,
   kind: ProductKind,
   input: { targetUsername?: string | null; banner?: unknown },
 ): Promise<
-  | { ok: true; targetUsername: string | null; banner: BannerContent | null }
+  | { ok: true; targetUsername: string | null; categoryId?: number; banner: BannerContent | null }
   | { ok: false; error: PromotionContentError }
 > {
-  if (kind === "banner") {
+  if (!isEntryProduct(kind)) {
     const banner = BannerContent.safeParse(input.banner);
-    return banner.success
-      ? { ok: true, targetUsername: null, banner: banner.data }
-      : { ok: false, error: "invalid_banner" };
+    if (!banner.success) return { ok: false, error: "invalid_banner" };
+    const { imageUrl, ...text } = banner.data;
+    return {
+      ok: true,
+      targetUsername: null,
+      banner: kind === "announcement" ? text : { ...text, imageUrl },
+    };
   }
   const username = input.targetUsername ? parseTelegramRef(input.targetUsername) : null;
   if (!username) return { ok: false, error: "invalid_target" };
   const entry = await getEntryByUsername(ctx.db, username);
   if (entry?.status !== "approved") return { ok: false, error: "target_not_listed" };
-  return { ok: true, targetUsername: entry.username, banner: null };
+  return {
+    ok: true,
+    targetUsername: entry.username,
+    categoryId: entry.categoryId,
+    banner: null,
+  };
 }
 
 /**
- * Free slots of a kind: the largest `slots` among its products, minus live promotions and paid
- * orders still waiting for review. `nextFreeAt` is the earliest end of a live promotion.
+ * Free slots: the largest `slots` among the kind's products, minus live promotions and paid orders
+ * not live yet. Category pins count within `categoryId` (their slots are per category); without it
+ * the answer is for a category with nothing pinned. `nextFreeAt` is the earliest end of a live one.
  */
-export async function checkSlots(ctx: CoreContext, kind: ProductKind) {
+export async function checkSlots(ctx: CoreContext, kind: ProductKind, categoryId?: number) {
   const now = ctx.now();
+  const scope = { kind, categoryId: kind === "category_pin" ? categoryId : undefined };
   const [products, active, paid, nextFreeAt] = await Promise.all([
     listProducts(ctx.db),
-    countActivePromotions(ctx.db, kind, now),
-    countPaidOrders(ctx.db, kind),
-    earliestPromotionEnd(ctx.db, kind, now),
+    countActivePromotions(ctx.db, scope, now),
+    countPaidOrders(ctx.db, scope),
+    earliestPromotionEnd(ctx.db, scope, now),
   ]);
   const slots = Math.max(0, ...products.filter((p) => p.kind === kind).map((p) => p.slots));
+  if (kind === "category_pin" && categoryId === undefined)
+    return { available: slots, nextFreeAt: null };
   return { available: Math.max(0, slots - active - paid), nextFreeAt };
+}
+
+/** Free slots for an existing order: a category pin counts within its entry's category. */
+export async function checkOrderSlots(
+  ctx: CoreContext,
+  order: Pick<Order, "kind" | "targetUsername">,
+) {
+  const entry =
+    order.kind === "category_pin" && order.targetUsername
+      ? await getEntryByUsername(ctx.db, order.targetUsername)
+      : undefined;
+  return checkSlots(ctx, order.kind, entry?.categoryId);
 }
 
 /** A buyer starts a purchase in the bot. Payment is attached later by `markOrderPaid`. */
@@ -90,9 +119,9 @@ export async function createOrder(
   input: {
     tgUserId: number;
     productId: number;
-    /** pin: @username or t.me link of an approved entry */
+    /** entry promotions: @username or t.me link of an approved entry */
     targetUsername?: string | null;
-    /** banner: validated as BannerContent */
+    /** brand ads: validated as BannerContent */
     banner?: unknown;
   },
 ): Promise<
@@ -104,7 +133,7 @@ export async function createOrder(
   if (!product?.active) return { ok: false, error: "product_unavailable" };
   const content = await promotionContent(ctx, product.kind, input);
   if (!content.ok) return content;
-  const slots = await checkSlots(ctx, product.kind);
+  const slots = await checkSlots(ctx, product.kind, content.categoryId);
   if (slots.available === 0) return { ok: false, error: "no_slots", nextFreeAt: slots.nextFreeAt };
 
   const order = await createPendingOrder(ctx.db, {
@@ -152,8 +181,8 @@ async function activateOrder(ctx: CoreContext, order: Order, actor: Actor) {
 }
 
 /**
- * Records a payment (idempotent: retried callbacks return `changed: false`). Pins go live
- * immediately; banners stay `paid` until reviewed. Returns null for an unknown order.
+ * Records a payment (idempotent: retried callbacks return `changed: false`). Entry promotions go
+ * live immediately; brand ads stay `paid` until reviewed. Returns null for an unknown order.
  */
 export async function markOrderPaid(
   ctx: CoreContext,
@@ -184,18 +213,15 @@ export async function markOrderPaid(
       amount: input.amount,
       currency: input.currency,
     });
-    if (order.kind === "pin") await activateOrder(ctx, order, actor);
+    if (isEntryProduct(order.kind)) await activateOrder(ctx, order, actor);
   }
   return { order: (await getOrder(ctx.db, order.id)) ?? order, changed };
 }
 
-/** Admin approves a paid banner. Returns the updated order, or null if it was not awaiting review. */
-export async function approveBannerOrder(
-  ctx: CoreContext,
-  input: { orderId: number; actor: Actor },
-) {
+/** Admin approves a paid brand ad. Returns the updated order, or null if it was not awaiting review. */
+export async function approveAdOrder(ctx: CoreContext, input: { orderId: number; actor: Actor }) {
   const order = await getOrder(ctx.db, input.orderId);
-  if (order?.kind !== "banner" || order.status !== "paid") return null;
+  if (!order || isEntryProduct(order.kind) || order.status !== "paid") return null;
   if (!(await activateOrder(ctx, order, input.actor))) return null;
   return (await getOrder(ctx.db, order.id)) ?? null;
 }

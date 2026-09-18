@@ -143,8 +143,21 @@ export function reviewRecipients(
 
 /* -------------------------------------------------------------- promotions */
 
-export const ProductKind = z.enum(["pin", "banner"]);
+/**
+ * What can be bought, cheapest first. Two families:
+ * - entry promotions (`highlight` → `category_pin` → `pin`): a listed entry, live once paid; each
+ *   tier includes the look of the one below and adds a position;
+ * - brand ads (`banner`, `announcement`): advertiser content, live once an admin approves it.
+ * `pin` is the site-wide pin; the name predates the other tiers and is kept for existing orders.
+ */
+export const ProductKind = z.enum(["highlight", "category_pin", "pin", "banner", "announcement"]);
 export type ProductKind = z.infer<typeof ProductKind>;
+
+export const entryProductKinds = ["highlight", "category_pin", "pin"] as const;
+export type EntryProductKind = (typeof entryProductKinds)[number];
+
+export const isEntryProduct = (kind: ProductKind): kind is EntryProductKind =>
+  (entryProductKinds as readonly string[]).includes(kind);
 
 /**
  * pending → paid → active → expired. Banners are reviewed: paid → active, or paid → rejected →
@@ -175,7 +188,10 @@ const isHttpsUrl = (value: string) => {
   }
 };
 
-/** Home banner card. Users write one language; both locales show the same content. */
+/**
+ * Brand-ad content: a home banner card, or the announcement bar (title + subtitle, no image). Users
+ * write one language; both locales show the same content.
+ */
 export const BannerContent = z.object({
   title: z.string().trim().min(1).max(20),
   subtitle: z.string().trim().min(1).max(40),
