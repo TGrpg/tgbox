@@ -8,6 +8,7 @@ import KindSortTabs from "@/components/kind/KindSortTabs.astro";
 import LangFilter from "@/components/kind/LangFilter.astro";
 import JsonLd from "@/components/layout/JsonLd.astro";
 import Pagination from "@/components/Pagination.astro";
+import SubmitButton from "@/components/SubmitButton.astro";
 import { localizePath } from "@/i18n/locale.ts";
 import { kindTitles, ui } from "@/i18n/ui.ts";
 import { kindUi } from "@/i18n/ui-kind.ts";
@@ -97,6 +98,7 @@ const jsonLd = [
           { label: name },
         ]}
     >
+      <SubmitButton slot="action" locale={locale} />
       <CategoryIcon
         slug={category.slug}
         icon={category.icon}

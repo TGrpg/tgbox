@@ -4,6 +4,7 @@ import { entryKinds, type Locale, type RankItem, t } from "@tgbox/shared";
 import EntryListRow from "@/components/EntryListRow.astro";
 import KindPageHeader from "@/components/kind/KindPageHeader.astro";
 import JsonLd from "@/components/layout/JsonLd.astro";
+import SubmitButton from "@/components/SubmitButton.astro";
 import { localizePath } from "@/i18n/locale.ts";
 import { kindTitles, ui } from "@/i18n/ui.ts";
 import { rankUi } from "@/i18n/ui-rank.ts";
@@ -70,6 +71,7 @@ const jsonLd = [
       description={seo.description}
       breadcrumbs={[{ label: t(locale, "site.home"), href: localizePath("/", locale) }, { label: strings.title }]}
     >
+      <SubmitButton slot="action" locale={locale} />
       <Trophy slot="icon" class="size-7 sm:size-8" aria-hidden="true" />
       <p class="mt-2 text-xs text-muted-foreground">
         {fill(strings.updated, { date: formatDate(rankings.generatedAt, locale) })}

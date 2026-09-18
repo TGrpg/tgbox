@@ -4,6 +4,7 @@ import KindListingShell from "@/components/kind/KindListingShell.astro";
 import KindPageHeader from "@/components/kind/KindPageHeader.astro";
 import KindSection from "@/components/kind/KindSection.astro";
 import LangFilter from "@/components/kind/LangFilter.astro";
+import SubmitButton from "@/components/SubmitButton.astro";
 import { localizePath } from "@/i18n/locale.ts";
 import { kindTitles, ui } from "@/i18n/ui.ts";
 import { kindUi } from "@/i18n/ui-kind.ts";
@@ -41,6 +42,7 @@ const langs = listingLangs(sections.flatMap((section) => section.entries));
       description={description}
       breadcrumbs={[{ label: t(locale, "site.home"), href: localizePath("/", locale) }, { label: title }]}
     >
+      <SubmitButton slot="action" locale={locale} />
       {langs.length > 1 && (
           <div class="mt-5 border-t border-border pt-4">
             <LangFilter locale={locale} langs={langs} />

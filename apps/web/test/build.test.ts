@@ -627,6 +627,30 @@ describe("site build from snapshot data", () => {
     }
   });
 
+  test("every directory page offers a way into the bot's submit flow", () => {
+    // The deep link existed in the bot all along; nothing on the site ever produced it, so the
+    // pages with the most traffic had no way in at all.
+    const deepLink = 'href="https://t.me/tgboxccbot?start=submit"';
+    for (const route of [
+      "channel",
+      "group",
+      "bot",
+      "channel/tech",
+      "tag/programming",
+      "tags",
+      "rank",
+      "detail/techdaily",
+    ]) {
+      for (const prefix of ["", "en/"]) {
+        const page = html(`${prefix}${route}`);
+        expect(page.split(deepLink).length - 1, `${prefix}${route}`).toBe(1);
+      }
+    }
+    // The slot is opt-in: an article index is not a directory page.
+    expect(html("guides")).not.toContain(deepLink);
+    expect(html("en/guides")).not.toContain(deepLink);
+  });
+
   test("rankings page exists in both locales with tabs, kind filter and ranked rows", () => {
     for (const prefix of ["", "en/"]) {
       const page = html(`${prefix}rank`);

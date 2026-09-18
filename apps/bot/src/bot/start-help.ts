@@ -11,11 +11,34 @@ export function startHelp(app: App) {
   const root = new Composer<Context>();
   const composer = root.chatType("private");
 
+  /**
+   * The menu button is a single per-bot slot, overridable per chat: the app for everyone, the admin
+   * panel for admins. Pushed on `/start` rather than per update, since each call is an API request —
+   * and on every `/start`, deep links included, because a visitor arriving from the website's
+   * `?start=submit` link is exactly the person who has never had the button set.
+   */
+  async function pushMenuButton(ctx: Context, locale: Locale) {
+    const appUrl = miniAppUrl(app.env.SITE_URL, locale);
+    if (!appUrl || !ctx.chat) return;
+    const chatId = ctx.chat.id;
+    const adminUrl = app.env.ADMIN_URL;
+    const admin = Boolean(adminUrl) && (await app.isAdmin(ctx));
+    await app.background(() =>
+      setChatMenuButton(app.api, {
+        chatId,
+        url: admin && adminUrl ? adminUrl : appUrl,
+        locale,
+        admin,
+      }),
+    );
+  }
+
   composer.command("start", async (ctx, next) => {
+    const locale = await app.locale(ctx);
+    await pushMenuButton(ctx, locale);
     // Deep links: ?start=submit asks for a link here, ?start=promote is handled by `promote`.
     if (ctx.match === "promote") return next();
     if (ctx.match === "submit") return askForLink(ctx);
-    const locale = await app.locale(ctx);
     const m = messages(locale);
     const custom = (await app.settings()).bot.welcome[locale];
     const appUrl = miniAppUrl(app.env.SITE_URL, locale);
@@ -26,20 +49,6 @@ export function startHelp(app: App) {
     if (appUrl) keyboard.webApp(m.openApp, appUrl).row();
     keyboard.text(m.langButton, "lang");
     await ctx.reply(custom || m.welcome, { reply_markup: keyboard });
-    // The menu button is a single per-bot slot, overridable per chat: the app for everyone, the
-    // admin panel for admins. Pushed here rather than per update, since each call is an API request.
-    if (appUrl) {
-      const adminUrl = app.env.ADMIN_URL;
-      const admin = Boolean(adminUrl) && (await app.isAdmin(ctx));
-      await app.background(() =>
-        setChatMenuButton(app.api, {
-          chatId: ctx.chat.id,
-          url: admin && adminUrl ? adminUrl : appUrl,
-          locale,
-          admin,
-        }),
-      );
-    }
   });
 
   composer.command("help", async (ctx) => ctx.reply((await app.m(ctx)).help));

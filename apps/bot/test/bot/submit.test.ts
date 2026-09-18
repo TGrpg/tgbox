@@ -373,4 +373,14 @@ describe("submission flow", () => {
       web_app: { url: "https://admin.tgbox.test" },
     });
   });
+
+  test("the website's ?start=submit deep link asks for a link and still sets the menu button", async () => {
+    // The deep-link branch used to return before the menu button was pushed, so the one person
+    // most likely to be new — a visitor arriving from a directory page — never got it.
+    await h.message(owner, "/start submit");
+    expect(h.lastText()).toContain("链接");
+    expect(h.calls("setChatMenuButton").at(-1)?.payload.menu_button).toMatchObject({
+      web_app: { url: "https://tgbox.test/app/" },
+    });
+  });
 });

@@ -18,6 +18,7 @@ import DetailTrend from "@/components/DetailTrend.astro";
 import EntryCardCompact from "@/components/EntryCardCompact.astro";
 import JsonLd from "@/components/layout/JsonLd.astro";
 import ShareButton from "@/components/ShareButton.astro";
+import SubmitButton from "@/components/SubmitButton.astro";
 import { htmlLang, localizePath } from "@/i18n/locale.ts";
 import { kindTitles, ui } from "@/i18n/ui.ts";
 import { detailUi } from "@/i18n/ui-detail.ts";
@@ -150,16 +151,19 @@ const statCell =
     ></div>
 
     <div class="mx-auto max-w-[800px] space-y-10 px-4 pt-5 pb-16 sm:pt-8">
-      <a
-        href={categoryHref ?? kindHref}
-        class="group inline-flex items-center gap-1.5 rounded-full py-1 pr-2 text-sm font-semibold text-primary-accent outline-none focus-visible:ring-3 focus-visible:ring-outline/40"
-      >
-        <ArrowLeft
-          class="size-4 transition-transform group-hover:-translate-x-0.5"
-          aria-hidden="true"
-        />
-        {fill(text.back, { kind: kindTitle })}
-      </a>
+      <div class="flex items-center justify-between gap-3">
+        <a
+          href={categoryHref ?? kindHref}
+          class="group inline-flex items-center gap-1.5 rounded-full py-1 pr-2 text-sm font-semibold text-primary-accent outline-none focus-visible:ring-3 focus-visible:ring-outline/40"
+        >
+          <ArrowLeft
+            class="size-4 transition-transform group-hover:-translate-x-0.5"
+            aria-hidden="true"
+          />
+          {fill(text.back, { kind: kindTitle })}
+        </a>
+        <SubmitButton locale={locale} />
+      </div>
 
       <article
         data-pagefind-body

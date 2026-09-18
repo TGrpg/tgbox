@@ -17,6 +17,7 @@ interface Props {
 const { locale, title, description, breadcrumbs, count, class: className } = Astro.props;
 const [countBefore = "", countAfter = ""] = count?.template.split("{n}") ?? [];
 const hasIcon = Astro.slots.has("icon");
+const hasAction = Astro.slots.has("action");
 ---
 
 <header class={cn("relative", className)}>
@@ -42,6 +43,11 @@ const hasIcon = Astro.slots.has("icon");
           </p>
         )}
     </div>
+    {hasAction && (
+        <div class="ml-auto shrink-0">
+          <slot name="action" />
+        </div>
+      )}
   </div>
   <p class="mt-3 max-w-3xl text-[0.95rem] leading-relaxed text-pretty text-muted-foreground">
     {description}

@@ -1,0 +1,39 @@
+---
+import Plus from "@tabler/icons/outline/plus.svg";
+import { type Locale, t } from "@tgbox/shared";
+import { localizePath } from "@/i18n/locale.ts";
+import { ui } from "@/i18n/ui.ts";
+import { cn } from "@/lib/cn.ts";
+import { botSubmitUrl } from "@/lib/site.ts";
+
+/**
+ * Directory pages had no way in: the bot's `?start=submit` deep link existed but nothing on the
+ * site ever produced it. Soft variant on purpose — an entry card's own CTA should still win the eye.
+ */
+interface Props {
+  locale: Locale;
+  class?: string | undefined;
+}
+
+const { locale, class: className } = Astro.props;
+const label = t(locale, "site.submit");
+---
+
+<div class={cn("flex shrink-0 items-center gap-2.5", className)} data-pagefind-ignore>
+  <a
+    href={botSubmitUrl}
+    rel="noopener"
+    target="_blank"
+    data-press
+    class="inline-flex h-9 items-center gap-1.5 rounded-full bg-primary-soft px-3 text-sm font-medium whitespace-nowrap text-primary-soft-foreground transition-colors outline-none hover:bg-primary hover:text-primary-foreground focus-visible:ring-3 focus-visible:ring-outline/40 sm:px-4"
+  >
+    <Plus class="size-4 shrink-0" aria-hidden="true" />
+    {label}
+  </a>
+  <a
+    href={localizePath("/enroll/", locale)}
+    class="hidden text-sm whitespace-nowrap text-muted-foreground underline-offset-4 transition-colors outline-none hover:text-primary-accent hover:underline focus-visible:ring-3 focus-visible:ring-outline/40 lg:inline"
+  >
+    {ui(locale).footer.enroll}
+  </a>
+</div>

@@ -5,6 +5,7 @@ import KindGrid from "@/components/kind/KindGrid.astro";
 import KindPageHeader from "@/components/kind/KindPageHeader.astro";
 import JsonLd from "@/components/layout/JsonLd.astro";
 import Pagination from "@/components/Pagination.astro";
+import SubmitButton from "@/components/SubmitButton.astro";
 import { localizePath } from "@/i18n/locale.ts";
 import { ui } from "@/i18n/ui.ts";
 import { kindUi } from "@/i18n/ui-kind.ts";
@@ -80,6 +81,7 @@ const jsonLd = [
           { label: `#${name}` },
         ]}
     >
+      <SubmitButton slot="action" locale={locale} />
       <Hash slot="icon" class="size-7 sm:size-8" aria-hidden="true" />
       {related.length > 0 && (
           <nav aria-label={kindStrings.relatedTags} class="mt-5 border-t border-border pt-4">
