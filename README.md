@@ -8,7 +8,7 @@
 
 **An open-source Telegram channel, group & bot directory — with a submission bot, admin panel and zero-cost hosting on Cloudflare's free plan.**
 
-[**Live demo → tgbox.cc**](https://tgbox.cc) · [Submission bot @tgboxccbot](https://t.me/tgboxccbot) · English · [简体中文](README.zh-CN.md)
+[**Live demo → tgbox.cc**](https://tgbox.cc) · [Submission bot @tgboxccbot](https://t.me/tgboxccbot) · [Awesome list: awesome-telegram](https://github.com/TGrpg/awesome-telegram) · English · [简体中文](README.zh-CN.md)
 
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 [![CI](https://github.com/TGrpg/tgbox/actions/workflows/ci.yml/badge.svg)](https://github.com/TGrpg/tgbox/actions/workflows/ci.yml)
@@ -38,13 +38,16 @@ Most Telegram directories are either a static list that goes stale, or a server-
 - **Rich detail pages**: exact subscriber/member count, creation date, listing date, activity level, language, recent posts, member trend chart, related channels and groups
 - Instant client-side search (Pagefind, CJK-aware) with a `Ctrl K` command palette
 - Random discovery ("drift bottle"), a fastest-mirror `/go` redirect page, share links and QR codes
-- Fully bilingual (Chinese / English) with `hreflang`, per-kind sitemaps, Open Graph tags and structured URLs for SEO
+- Fully bilingual (Chinese / English) with `hreflang`, per-kind sitemaps, Open Graph tags and structured URLs for SEO; visitors whose browser prefers the other language get a one-tap switch that is remembered
+- Open data: the whole directory at `/data/entries.json`, mirrored daily to the [awesome-telegram](https://github.com/TGrpg/awesome-telegram) list
+- Friend links in the footer and on `/links/`, applied for through the bot and approved by admins
 - Light and dark themes, mobile tab bar, PWA manifest, subtle Motion animations that respect `prefers-reduced-motion`
 
 ### Submission bot (`apps/bot`)
 - Link → category → tags → confirm flow with inline keyboards
 - Admin review group with approve / reject buttons, blacklist and moderation commands
 - Inline search across listed entries
+- Link-exchange applications (`?start=links`) with an automatic backlink check
 - Scheduled refresh with liveness detection (`not_found`, `banned`, `type_changed`) and safety guards against false positives
 
 ### Admin panel (`apps/admin`)

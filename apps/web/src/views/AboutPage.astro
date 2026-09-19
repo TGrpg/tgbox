@@ -7,7 +7,7 @@ import { seoUi } from "@/i18n/ui-seo.ts";
 import PageLayout from "@/layouts/PageLayout.astro";
 import { faqJsonLd } from "@/lib/json-ld.ts";
 import { aboutSeo } from "@/lib/seo.ts";
-import { botUrl, botUsername, licence, repoUrl } from "@/lib/site.ts";
+import { awesomeUrl, botUrl, botUsername, licence, repoUrl } from "@/lib/site.ts";
 
 interface Props {
   locale: Locale;
@@ -55,6 +55,7 @@ const jsonLd = [faqJsonLd(faq)];
 
         <h2>关于本项目</h2>
         <p>TGbox 是一个开源项目：站点、收录机器人和后台的全部代码都在 GitHub 上公开，以 <a href={licence.url} rel="noopener" target="_blank">{licence.name}</a> 许可证发布。欢迎在 <a href={repoUrl} rel="noopener" target="_blank">{repoUrl}</a> 提 issue、发 PR，或者按许可证自建一份属于你自己的导航站。</p>
+        <p>整个目录还以 Awesome 列表的形式同步到 GitHub：<a href={awesomeUrl} rel="noopener" target="_blank">awesome-telegram</a>，每天自动更新，也提供 JSON 数据，方便收藏和引用。</p>
 
         <h2>联系我们</h2>
         <p>发现失效条目、错误分类、违规内容，或者希望删除自己的条目，请私聊 <a href={botUrl} rel="noopener" target="_blank">{bot}</a> 并发送 <code>/help</code> 获取联系方式。</p>
@@ -87,6 +88,7 @@ const jsonLd = [faqJsonLd(faq)];
 
         <h2>About this project</h2>
         <p>TGbox is open source: the site, the submission bot and the admin all live in one public repository, released under the <a href={licence.url} rel="noopener" target="_blank">{licence.name}</a> licence. File an issue or a pull request at <a href={repoUrl} rel="noopener" target="_blank">{repoUrl}</a>, or run your own directory from the same code under the terms of that licence.</p>
+        <p>The whole directory is also mirrored to GitHub as an awesome list, <a href={awesomeUrl} rel="noopener" target="_blank">awesome-telegram</a>, regenerated daily with a JSON copy of the data for anyone who wants to star, fork or cite it.</p>
 
         <h2>Contact</h2>
         <p>To report a dead entry, a wrong category or abusive content, or to have your own entry removed, message <a href={botUrl} rel="noopener" target="_blank">{bot}</a> and send <code>/help</code> for contact details.</p>

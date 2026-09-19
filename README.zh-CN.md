@@ -8,7 +8,7 @@
 
 **开源的 Telegram 频道 / 群组 / 机器人导航站：自带收录机器人和管理后台，完全跑在 Cloudflare 免费版上。**
 
-[**在线演示 → tgbox.cc**](https://tgbox.cc) · [收录机器人 @tgboxccbot](https://t.me/tgboxccbot) · [English](README.md) · 简体中文
+[**在线演示 → tgbox.cc**](https://tgbox.cc) · [收录机器人 @tgboxccbot](https://t.me/tgboxccbot) · [资源合集 awesome-telegram](https://github.com/TGrpg/awesome-telegram) · [English](README.md) · 简体中文
 
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 [![CI](https://github.com/TGrpg/tgbox/actions/workflows/ci.yml/badge.svg)](https://github.com/TGrpg/tgbox/actions/workflows/ci.yml)
@@ -37,13 +37,16 @@
 - **内容充实的详情页**：精确订阅/成员数、创建时间、收录时间、活跃度、语言、最近消息、成员趋势图、相关频道和相关群组
 - Pagefind 站内搜索（支持中文），`Ctrl K` 快捷搜索
 - 随机漂流瓶、`/go` 跳转页（自动选择最快的 t.me 镜像）、分享和二维码
-- 中英双语，带 `hreflang`、分类型站点地图、Open Graph，对 SEO 友好
+- 中英双语，带 `hreflang`、分类型站点地图、Open Graph，对 SEO 友好；浏览器偏好另一种语言的访客会看到一键切换提示，选择会被记住
+- 开放数据：整个目录输出为 `/data/entries.json`，每天同步到 [awesome-telegram](https://github.com/TGrpg/awesome-telegram) 资源合集
+- 页脚和 `/links/` 页的友情链接，通过机器人申请、管理员审核
 - 亮色 / 暗色主题、手机底部 Tab 栏、PWA、Motion 动效（遵守 `prefers-reduced-motion`）
 
 ### 收录机器人（`apps/bot`）
 - 发送链接 → 选择分类 → 选择标签 → 确认提交
 - 审核群内通过 / 拒绝按钮，黑名单和管理命令
 - inline 内联搜索
+- 友链申请（`?start=links`），自动检测对方首页是否有回链
 - 定时刷新 + 失效检测（不存在、被封禁、类型变化），带防误判保护
 
 ### 管理后台（`apps/admin`）

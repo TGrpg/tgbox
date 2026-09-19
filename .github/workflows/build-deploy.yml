@@ -26,6 +26,9 @@ env:
   # The Pagefind index ships with the site (a few dozen files). Past ~9,000 entries, move it to R2
   # instead (scripts/sync-pagefind.ts) so it stops counting against the 20,000 static-file limit.
   PAGEFIND_LOCAL: "1"
+  # Optional fine-grained token with Contents: write on TGrpg/awesome-telegram. Without it the
+  # awesome list still regenerates on its own daily schedule.
+  AWESOME_DISPATCH_TOKEN: ${{ secrets.AWESOME_DISPATCH_TOKEN }}
 
 jobs:
   deploy:
@@ -75,3 +78,12 @@ jobs:
         run: |
           pnpm exec wrangler d1 execute tgbox --remote \
             --command "DELETE FROM site_state WHERE key = 'dirty_since' AND CAST(value AS INTEGER) < $BUILD_STARTED_AT"
+
+      - name: Tell the awesome list to regenerate
+        if: steps.dirty.outputs.build == 'true' && env.AWESOME_DISPATCH_TOKEN != ''
+        continue-on-error: true
+        run: |
+          curl -fsS -X POST https://api.github.com/repos/TGrpg/awesome-telegram/dispatches \
+            -H "Authorization: Bearer $AWESOME_DISPATCH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -d '{"event_type":"tgbox-updated"}'

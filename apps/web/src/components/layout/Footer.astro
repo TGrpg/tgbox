@@ -6,7 +6,7 @@ import { type Locale, t } from "@tgbox/shared";
 import { localizePath } from "@/i18n/locale.ts";
 import { ui } from "@/i18n/ui.ts";
 import { fill } from "@/lib/format.ts";
-import { botLinksUrl, botUrl, botUsername, licence, repoUrl } from "@/lib/site.ts";
+import { awesomeUrl, botLinksUrl, botUrl, botUsername, licence, repoUrl } from "@/lib/site.ts";
 import { getSiteData } from "@/lib/site-data.ts";
 import LangSwitch from "./LangSwitch.astro";
 import Logo from "./Logo.astro";
@@ -166,6 +166,13 @@ const chip =
           <BrandGithub class="size-3.5" aria-hidden="true" />
           {strings.footer.openSource}
         </a>
+        <a
+          href={awesomeUrl}
+          rel="noopener"
+          target="_blank"
+          class="transition-colors hover:text-primary"
+          >{strings.footer.awesome}</a
+        >
         <a
           href={licence.url}
           rel="noopener"

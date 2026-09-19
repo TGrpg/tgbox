@@ -798,6 +798,24 @@ describe("site build from snapshot data", () => {
     expect(sitemap).toContain(`<loc>${siteUrl}/en/rank/</loc>`);
   });
 
+  test("the open data file lists every listed entry with public fields only, largest first", () => {
+    const data = JSON.parse(readFileSync(path.join(client, "data/entries.json"), "utf8"));
+    expect(data.version).toBe(1);
+    expect(data.site).toBe(siteUrl);
+    const usernames = data.entries.map((entry: { username: string }) => entry.username);
+    expect(new Set(usernames)).toEqual(
+      new Set([...approved, ...gameChannels].map((entry) => entry.username)),
+    );
+    const members = data.entries.map((entry: { members: number | null }) => entry.members ?? -1);
+    expect(members).toEqual([...members].sort((a, b) => b - a));
+    const first = data.entries[0];
+    for (const key of ["posts", "memberHistory", "promo", "avatarUrl", "related"]) {
+      expect(first).not.toHaveProperty(key);
+    }
+    expect(first).toHaveProperty("descriptionEn");
+    expect(data.categories[0]).toHaveProperty("nameEn");
+  });
+
   test("rankings JSON validates and ranks growth from member history", () => {
     const rankings = RankingsData.parse(
       JSON.parse(readFileSync(path.join(client, "data/rankings.json"), "utf8")),
