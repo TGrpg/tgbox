@@ -11,15 +11,15 @@ import {
 import {
   type EntryKind,
   entryKinds,
-  type Locale,
   MAX_TAGS,
   parseTelegramRef,
+  type SiteLocale,
   suggestTaxonomy,
   tagsForCategory,
 } from "@tgbox/shared";
 import { Composer, type Context, InlineKeyboard } from "grammy";
 import type { App } from "./app.ts";
-import { messages } from "./i18n/index.ts";
+import { localName, messages } from "./i18n/index.ts";
 import { miniAppUrl } from "./menu-button.ts";
 import { reviewKeyboard } from "./review.ts";
 import { relayEnabled } from "./support.ts";
@@ -94,8 +94,8 @@ const validMask = (mask: number, count: number) =>
   selectedTagIndexes(mask, count).length <= MAX_TAGS;
 
 type TagRow = { slug: string; nameZh: string; nameEn: string };
-const tagName = (locale: Locale, tag: TagRow | undefined) =>
-  tag ? (locale === "en" ? tag.nameEn : tag.nameZh) : "";
+const tagName = (locale: SiteLocale, tag: TagRow | undefined) =>
+  tag ? localName(tag, locale) : "";
 
 export function submit(app: App) {
   const root = new Composer<Context>();
@@ -120,7 +120,7 @@ export function submit(app: App) {
     return (await categoryRows).filter((category) => category.kind === kind);
   }
 
-  async function categoryView(locale: Locale, draft: Draft, v: string) {
+  async function categoryView(locale: SiteLocale, draft: Draft, v: string) {
     const keyboard = new InlineKeyboard();
     const rows = await categoriesFor(draft.kind);
     // The guess goes first with a ✨, everything else keeps its admin-defined order: the submitter
@@ -128,7 +128,7 @@ export function submit(app: App) {
     const suggested = rows.find((category) => category.id === draft.suggestedCategoryId);
     const ordered = suggested ? [suggested, ...rows.filter((row) => row !== suggested)] : rows;
     ordered.forEach((category, index) => {
-      const name = locale === "en" ? category.nameEn : category.nameZh;
+      const name = localName(category, locale);
       keyboard.text(category === suggested ? `✨ ${name}` : name, `sc:${v}:${category.id}`);
       if (index % 2 === 1) keyboard.row();
     });
@@ -143,7 +143,7 @@ export function submit(app: App) {
    * change what an existing draft means. The category's hinted tags are brought to the front as a
    * `displayOrder` of indexes *into* that list instead, and every bit still refers to `tags[index]`.
    */
-  async function tagView(locale: Locale, draft: Draft, mask: number, page: number, v: string) {
+  async function tagView(locale: SiteLocale, draft: Draft, mask: number, page: number, v: string) {
     const m = messages(locale);
     const tags = await allTags();
     const count = selectedTagIndexes(mask, tags.length).length;
@@ -178,7 +178,7 @@ export function submit(app: App) {
     return { text: m.chooseTags(count, MAX_TAGS), keyboard };
   }
 
-  async function confirmView(locale: Locale, draft: Draft, v: string) {
+  async function confirmView(locale: SiteLocale, draft: Draft, v: string) {
     const m = messages(locale);
     const category = (await categoriesFor(draft.kind)).find((row) => row.id === draft.categoryId);
     const tags = await allTags();
@@ -189,7 +189,7 @@ export function submit(app: App) {
       m.confirmTitle,
       "",
       profileText(locale, draft),
-      `${m.category}: ${category ? (locale === "en" ? category.nameEn : category.nameZh) : m.none}`,
+      `${m.category}: ${category ? localName(category, locale) : m.none}`,
       `${m.tags}: ${tagNames.length ? tagNames.join(", ") : m.none}`,
     ].join("\n");
     const keyboard = new InlineKeyboard()
@@ -218,7 +218,7 @@ export function submit(app: App) {
    * The submission rules, shared with the Mini App (`checkSubmission`), as bot copy: null means
    * go ahead, an empty string means say nothing at all (blacklisted username, like the guard).
    */
-  async function precheck(locale: Locale, userId: number, username: string) {
+  async function precheck(locale: SiteLocale, userId: number, username: string) {
     const m = messages(locale);
     const result = await checkSubmission(app.core, { tgUserId: userId, username });
     if (result.ok) return null;
@@ -455,7 +455,7 @@ export function submit(app: App) {
   return root;
 }
 
-function profileText(locale: Locale, draft: Draft) {
+function profileText(locale: SiteLocale, draft: Draft) {
   const m = messages(locale);
   const lines = [m.profile(m.kinds[draft.kind], draft.title, draft.username)];
   if (draft.members !== null) lines.push(`${m.members}: ${draft.members.toLocaleString("en")}`);

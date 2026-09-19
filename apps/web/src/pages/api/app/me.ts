@@ -1,6 +1,6 @@
 import { settingsFromRows } from "@tgbox/core";
 import { loadAppOverview } from "@tgbox/db";
-import type { AppMe, AppOrder, Locale } from "@tgbox/shared";
+import { type AppMe, type AppOrder, type Locale, textLocale } from "@tgbox/shared";
 import type { APIRoute } from "astro";
 import { appJson, authenticateApp } from "@/lib/app-auth.ts";
 
@@ -21,7 +21,8 @@ export const GET: APIRoute = async ({ request }) => {
   const now = Date.now();
   const overview = await loadAppOverview(db, { tgUserId: user.id, since: now - DAY_MS });
   const { bot } = settingsFromRows(overview.settingsRows);
-  const locale = overview.locale ?? localeOf(user.languageCode);
+  // The Mini App has no Traditional edition: a zh-hant bot preference reads the zh app.
+  const locale = overview.locale ? textLocale(overview.locale) : localeOf(user.languageCode);
 
   const orders: AppOrder[] = overview.orders.map((order) => {
     const product = overview.productNames.get(order.productId);

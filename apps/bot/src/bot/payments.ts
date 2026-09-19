@@ -9,9 +9,9 @@ import {
 import { getOrder, getProduct, type Order } from "@tgbox/db";
 import {
   isEntryProduct,
-  type Locale,
   type PaymentCurrency,
   type PaymentProvider,
+  type SiteLocale,
 } from "@tgbox/shared";
 import { Composer, type Context, InlineKeyboard } from "grammy";
 import type { App } from "./app.ts";
@@ -28,7 +28,7 @@ export function parseOrderPayload(payload: string | null | undefined) {
 }
 
 /** The buyer's language when known (in-bot payments), else both languages. */
-function localized(locale: Locale | null, text: (m: Messages) => string) {
+function localized(locale: SiteLocale | null, text: (m: Messages) => string) {
   return locale ? text(messages(locale)) : `${text(messages("zh"))}\n\n${text(messages("en"))}`;
 }
 
@@ -49,7 +49,7 @@ export async function recordPayment(
     amount: string;
     currency: PaymentCurrency;
     buyerId: number | null;
-    locale: Locale | null;
+    locale: SiteLocale | null;
   },
 ) {
   const { buyerId: _buyerId, locale: _locale, ...payment } = input;

@@ -11,6 +11,7 @@
       "!**/migrations",
       "!**/worker-configuration.d.ts",
       "!**/routeTree.gen.ts",
+      "!**/zh-hant.gen.ts",
       "!.scratch"
     ]
   },

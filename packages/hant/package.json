@@ -1,0 +1,25 @@
+{
+  "name": "@tgbox/hant",
+  "license": "AGPL-3.0-only",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc",
+    "test": "vitest run --passWithNoTests",
+    "gen:bot": "node scripts/gen-bot.ts"
+  },
+  "dependencies": {
+    "@tgbox/shared": "workspace:*",
+    "opencc-js": "catalog:"
+  },
+  "devDependencies": {
+    "@tgbox/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

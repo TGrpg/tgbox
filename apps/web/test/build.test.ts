@@ -522,6 +522,11 @@ describe("site build from snapshot data", () => {
     expect(hot).toContain("環球早報");
     expect(readFileSync(path.join(client, "data/hot-channel.json"), "utf8")).toContain("环球早报");
     expect(existsSync(path.join(client, "zh-hant/data/random-all.json"))).toBe(true);
+    // The open data too, for the awesome-telegram list's Traditional README.
+    const open = JSON.parse(readFileSync(path.join(client, "zh-hant/data/entries.json"), "utf8"));
+    expect(open.entries.find((e: { username: string }) => e.username === "worldnews")?.title).toBe(
+      "環球早報",
+    );
     expect(html("zh-hant/random")).toContain("/zh-hant/data/random-");
     expect(html("zh-hant/go")).toContain('data-cards="/zh-hant/data/random-all.json"');
   });

@@ -1,5 +1,5 @@
 import { clearUserLocale, deleteBotDraft, setUserLocale } from "@tgbox/db";
-import { type Locale, locales } from "@tgbox/shared";
+import { type SiteLocale, siteLocales, textLocale } from "@tgbox/shared";
 import { Composer, type Context, InlineKeyboard } from "grammy";
 import type { App } from "./app.ts";
 import { setChatCommands } from "./commands.ts";
@@ -17,7 +17,7 @@ export function startHelp(app: App) {
    * and on every `/start`, deep links included, because a visitor arriving from the website's
    * `?start=submit` link is exactly the person who has never had the button set.
    */
-  async function pushMenuButton(ctx: Context, locale: Locale) {
+  async function pushMenuButton(ctx: Context, locale: SiteLocale) {
     const appUrl = miniAppUrl(app.env.SITE_URL, locale);
     if (!appUrl || !ctx.chat) return;
     const chatId = ctx.chat.id;
@@ -42,7 +42,7 @@ export function startHelp(app: App) {
     if (ctx.match === "submit") return askForLink(ctx);
     if (ctx.match === "support") return support(ctx);
     const m = messages(locale);
-    const custom = (await app.settings()).bot.welcome[locale];
+    const custom = (await app.settings()).bot.welcome[textLocale(locale)];
     const appUrl = miniAppUrl(app.env.SITE_URL, locale);
     const keyboard = new InlineKeyboard()
       .text(m.submitButton, "submit")
@@ -68,6 +68,7 @@ export function startHelp(app: App) {
   const langKeyboard = (m: ReturnType<typeof messages>) =>
     new InlineKeyboard()
       .text(m.lang.zh, "lang:zh")
+      .text(m.lang.zhHant, "lang:zh-hant")
       .text(m.lang.en, "lang:en")
       .row()
       .text(m.lang.auto, "lang:auto");
@@ -83,9 +84,9 @@ export function startHelp(app: App) {
     await askForLanguage(ctx);
   });
 
-  composer.callbackQuery(/^lang:(zh|en|auto)$/, async (ctx) => {
+  composer.callbackQuery(/^lang:(zh|zh-hant|en|auto)$/, async (ctx) => {
     const choice = ctx.match[1];
-    const picked: Locale | undefined = locales.find((locale) => locale === choice);
+    const picked: SiteLocale | undefined = siteLocales.find((locale) => locale === choice);
     if (picked) await setUserLocale(app.db, ctx.from.id, picked, app.now());
     else await clearUserLocale(app.db, ctx.from.id);
     await ctx.answerCallbackQuery();

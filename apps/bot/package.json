@@ -21,6 +21,7 @@
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "catalog:",
+    "@tgbox/hant": "workspace:*",
     "@tgbox/tsconfig": "workspace:*",
     "@types/node": "catalog:",
     "typescript": "catalog:",

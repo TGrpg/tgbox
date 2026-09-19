@@ -74,11 +74,13 @@ export async function applyForFriendLink(ctx: CoreContext, input: FriendLinkAppl
 const notices = {
   approved: {
     zh: (name: string) => `🎉 你的友链申请「${name}」已通过，网站几分钟后更新。`,
+    "zh-hant": (name: string) => `🎉 你的友鏈申請「${name}」已通過，網站幾分鐘後更新。`,
     en: (name: string) =>
       `🎉 Your link application "${name}" was approved. The site updates in a few minutes.`,
   },
   rejected: {
     zh: (name: string) => `抱歉，你的友链申请「${name}」未通过。`,
+    "zh-hant": (name: string) => `抱歉，你的友鏈申請「${name}」未通過。`,
     en: (name: string) => `Sorry, your link application "${name}" was not approved.`,
   },
 };

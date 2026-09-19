@@ -29,6 +29,8 @@ test("a language preference is written once and cleared back to auto", async () 
   expect(await setUserLocale(db, 42, "en", NOW + 1)).toEqual({ rowsWritten: 0 });
   expect((await setUserLocale(db, 42, "zh", NOW + 2)).rowsWritten).toBeGreaterThan(0);
   expect(await getUserLocale(db, 42)).toBe("zh");
+  await setUserLocale(db, 42, "zh-hant", NOW + 3);
+  expect(await getUserLocale(db, 42)).toBe("zh-hant");
   await clearUserLocale(db, 42);
   expect(await getUserLocale(db, 42)).toBeNull();
 });

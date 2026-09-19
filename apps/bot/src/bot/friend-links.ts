@@ -1,6 +1,6 @@
 import { applyForFriendLink, approveFriendLink, rejectFriendLink, tgActor } from "@tgbox/core";
 import { deleteBotDraft, getBotDraft, putBotDraft } from "@tgbox/db";
-import { FriendLink, type Locale } from "@tgbox/shared";
+import { FriendLink, type SiteLocale } from "@tgbox/shared";
 import { Composer, type Context, InlineKeyboard } from "grammy";
 import type { App } from "./app.ts";
 import { messages } from "./i18n/index.ts";
@@ -30,7 +30,7 @@ const reviewer = (ctx: Context) =>
 export function friendLinks(app: App) {
   const root = new Composer<Context>();
   const composer = root.chatType("private");
-  const cancelKeyboard = (locale: Locale) =>
+  const cancelKeyboard = (locale: SiteLocale) =>
     new InlineKeyboard().text(messages(locale).cancel, "lx");
 
   async function askForUrl(ctx: Context & { from: { id: number } }) {

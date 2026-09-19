@@ -148,6 +148,15 @@ describe("broadcasts", () => {
     expect(await countAudience(db, "all", NOW)).toBe(3);
     expect(await countAudience(db, "en", NOW)).toBe(2);
     expect(await countAudience(db, "zh", NOW)).toBe(1);
+    // Traditional readers are Chinese readers: they get the zh broadcast.
+    await seed(5, { languageCode: "en" });
+    await env.DB.prepare(
+      "INSERT INTO user_prefs (tg_user_id, locale, updated_at) VALUES (5, 'zh-hant', 1)",
+    ).run();
+    expect(await countAudience(db, "zh", NOW)).toBe(2);
+    expect(await countAudience(db, "en", NOW)).toBe(2);
+    await env.DB.prepare("DELETE FROM user_prefs WHERE tg_user_id = 5").run();
+    await env.DB.prepare("DELETE FROM bot_users WHERE tg_user_id = 5").run();
     expect(await countAudience(db, "paying", NOW)).toBe(0);
     expect(await countAudience(db, "submitters", NOW)).toBe(0);
     // Users seen within the last 30 days; seed() dates everyone NOW.

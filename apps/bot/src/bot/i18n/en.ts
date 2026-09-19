@@ -66,7 +66,8 @@ export const en: typeof zh = {
   },
   lang: {
     choose: "Choose the bot language:",
-    zh: "中文",
+    zh: "简体中文",
+    zhHant: "繁體中文",
     en: "English",
     auto: "自动 / Auto",
     saved: "✅ Language set to English.",

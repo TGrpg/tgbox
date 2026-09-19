@@ -1,20 +1,20 @@
-import { type Locale, locales } from "@tgbox/shared";
+import { type SiteLocale, siteLocales } from "@tgbox/shared";
 import { eq, sql } from "drizzle-orm";
 import type { Db } from "./access.ts";
 import { userPrefs } from "./schema.ts";
 
 /** The user's chosen bot language, or null to follow their Telegram client language. */
-export async function getUserLocale(db: Db, tgUserId: number): Promise<Locale | null> {
+export async function getUserLocale(db: Db, tgUserId: number): Promise<SiteLocale | null> {
   const [row] = await db
     .select({ locale: userPrefs.locale })
     .from(userPrefs)
     .where(eq(userPrefs.tgUserId, tgUserId));
   // The column is plain text; a value written by an older/other version must not break the update.
-  return locales.find((locale) => locale === row?.locale) ?? null;
+  return siteLocales.find((locale) => locale === row?.locale) ?? null;
 }
 
 /** Conditional upsert: 0 rows written when the stored locale is unchanged. */
-export async function setUserLocale(db: Db, tgUserId: number, locale: Locale, now: number) {
+export async function setUserLocale(db: Db, tgUserId: number, locale: SiteLocale, now: number) {
   const result = await db
     .insert(userPrefs)
     .values({ tgUserId, locale, updatedAt: now })

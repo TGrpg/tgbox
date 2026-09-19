@@ -6,7 +6,7 @@ import {
   setFriendLinks,
   updateSettings,
 } from "@tgbox/core";
-import { getSiteState } from "@tgbox/db";
+import { getSiteState, setUserLocale } from "@tgbox/db";
 import { MAX_FRIEND_LINKS, settingsDefaults } from "@tgbox/shared";
 import { describe, expect, test } from "vitest";
 import { actor, auditRows, db, NOW, setup } from "./fake.ts";
@@ -93,6 +93,17 @@ describe("friend links", () => {
       action: "friendLink.approve",
       target: `friend-link:${applied.request.id}`,
     });
+  });
+
+  test("an applicant who chose Traditional in the bot is told in Traditional only", async () => {
+    const { ctx, telegram } = await setup({ SITE_URL: "https://tgbox.cc", BOT_TOKEN: "123:abc" });
+    await setUserLocale(db, application.tgUserId, "zh-hant", NOW);
+    const applied = await applyForFriendLink(ctx, application);
+    if (!applied.ok) throw new Error(applied.error);
+    await rejectFriendLink(ctx, { id: applied.request.id, actor });
+    expect(telegram.map((call) => call.body)).toEqual([
+      { chat_id: 77, text: "抱歉，你的友鏈申請「Friend」未通過。" },
+    ]);
   });
 
   test("a full list leaves the application pending", async () => {

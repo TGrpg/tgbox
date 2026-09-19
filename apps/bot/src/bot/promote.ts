@@ -21,14 +21,14 @@ import {
 import {
   BannerContent,
   isEntryProduct,
-  type Locale,
   ProductKind,
   parseTelegramRef,
+  type SiteLocale,
 } from "@tgbox/shared";
 import { Composer, type Context, InlineKeyboard } from "grammy";
 import type { Message, PhotoSize } from "grammy/types";
 import type { App } from "./app.ts";
-import { messages } from "./i18n/index.ts";
+import { localName, messages } from "./i18n/index.ts";
 
 const promoteSteps = [
   "promote_target",
@@ -81,8 +81,7 @@ function bannerImageOf(message: Message): { fileId: string; contentType: string 
   return { fileId: document.file_id, contentType };
 }
 
-export const productName = (locale: Locale, product: Product) =>
-  locale === "en" ? product.nameEn : product.nameZh;
+export const productName = (locale: SiteLocale, product: Product) => localName(product, locale);
 
 export const orderTarget = (order: Pick<Order, "kind" | "targetUsername" | "banner">) => ({
   kind: order.kind,
@@ -112,7 +111,7 @@ async function paymentMethods(app: App) {
 export function promote(app: App) {
   const root = new Composer<Context>();
   const composer = root.chatType("private");
-  const cancelKeyboard = (locale: Locale) =>
+  const cancelKeyboard = (locale: SiteLocale) =>
     new InlineKeyboard().text(messages(locale).cancel, "px");
 
   /** Step one: the placements on sale. Prices come with the second step, one placement at a time. */
@@ -373,7 +372,7 @@ export function promote(app: App) {
   });
 
   /** The order summary plus the payment buttons the settings allow. */
-  async function offerPayment(ctx: Context, locale: Locale, order: Order) {
+  async function offerPayment(ctx: Context, locale: SiteLocale, order: Order) {
     const m = messages(locale).promote;
     const product = await getProduct(app.db, order.productId);
     if (!product) return;

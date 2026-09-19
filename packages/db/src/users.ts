@@ -280,9 +280,11 @@ export async function setBotUserAvatar(
 function audienceWhere(audience: BroadcastAudience, now: number): SQL {
   const reachable = sql`${botUsers.blockedAt} IS NULL AND NOT ${isBlacklisted}`;
   switch (audience) {
+    // Traditional is a script of Chinese: those readers get the zh broadcast.
     case "zh":
+      return sql`${reachable} AND ${userLocale} IN ('zh', 'zh-hant')`;
     case "en":
-      return sql`${reachable} AND ${userLocale} = ${audience}`;
+      return sql`${reachable} AND ${userLocale} = 'en'`;
     case "paying":
       return sql`${reachable} AND ${hasPaid}`;
     case "submitters":

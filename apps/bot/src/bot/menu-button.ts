@@ -1,4 +1,4 @@
-import type { Locale } from "@tgbox/shared";
+import type { SiteLocale } from "@tgbox/shared";
 import type { Api } from "grammy";
 import { messages } from "./i18n/index.ts";
 
@@ -12,7 +12,7 @@ import { messages } from "./i18n/index.ts";
  */
 export async function setChatMenuButton(
   api: Api,
-  input: { chatId: number; url: string; locale: Locale; admin: boolean },
+  input: { chatId: number; url: string; locale: SiteLocale; admin: boolean },
 ) {
   const m = messages(input.locale);
   await api.setChatMenuButton({
@@ -25,8 +25,11 @@ export async function setChatMenuButton(
   });
 }
 
-/** `https://tgbox.cc/app/` — the Mini App is a page of the site, not a separate deployment. */
-export function miniAppUrl(siteUrl: string | undefined, locale: Locale) {
+/**
+ * `https://tgbox.cc/app/` — the Mini App is a page of the site, not a separate deployment. It has no
+ * Traditional edition, so zh-hant users get the zh one.
+ */
+export function miniAppUrl(siteUrl: string | undefined, locale: SiteLocale) {
   if (!siteUrl) return null;
   const base = siteUrl.replace(/\/+$/, "");
   return locale === "en" ? `${base}/en/app/` : `${base}/app/`;

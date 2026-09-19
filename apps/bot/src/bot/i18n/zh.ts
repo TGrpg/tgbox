@@ -125,7 +125,9 @@ export const zh = {
   },
   lang: {
     choose: "请选择机器人语言：",
-    zh: "中文",
+    // Each language named in its own script, like the website's switcher.
+    zh: "简体中文",
+    zhHant: "繁體中文",
     en: "English",
     auto: "自动 / Auto",
     saved: "✅ 已切换到中文。",

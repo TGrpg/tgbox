@@ -1,6 +1,6 @@
 import { background, type CoreContext, getSettings } from "@tgbox/core";
 import { createDb, type Db, getUserLocale } from "@tgbox/db";
-import { type Locale, type ReviewMode, reviewRecipients, type Settings } from "@tgbox/shared";
+import { type ReviewMode, reviewRecipients, type Settings, type SiteLocale } from "@tgbox/shared";
 import { type EntrySnapshot, fetchEntrySnapshot, type SnapshotOptions } from "@tgbox/telegram";
 import { Api, type Context } from "grammy";
 import type { Message } from "grammy/types";
@@ -34,7 +34,7 @@ export type App = {
   /** Admin settings, read at most once per update. */
   settings: () => Promise<Settings>;
   /** Stored `/lang` preference, else the client language heuristic. Read at most once per update. */
-  locale: (ctx: Context) => Promise<Locale>;
+  locale: (ctx: Context) => Promise<SiteLocale>;
   /** Bot copy in the user's language. */
   m: (ctx: Context) => Promise<Messages>;
   /**
@@ -87,7 +87,7 @@ export function createApp(env: BotEnv, deps: BotDeps): App {
   };
 
   // One update is always one user, so the preference is read once per request.
-  let storedLocale: Promise<Locale | null> | undefined;
+  let storedLocale: Promise<SiteLocale | null> | undefined;
   const locale = async (ctx: Context) => {
     const userId = ctx.from?.id;
     if (userId === undefined) return localeOf(ctx);

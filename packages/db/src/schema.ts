@@ -9,12 +9,12 @@ import type {
   EntryKind,
   EntryStatus,
   Liveness,
-  Locale,
   OrderStatus,
   PaymentCurrency,
   PaymentProvider,
   ProductKind,
   SettingsKey,
+  SiteLocale,
   SubmissionStatus,
 } from "@tgbox/shared";
 import { sql } from "drizzle-orm";
@@ -275,7 +275,7 @@ export const usdtPayments = sqliteTable("usdt_payments", {
 /** Bot language chosen with /lang; absent = follow the Telegram client language. */
 export const userPrefs = sqliteTable("user_prefs", {
   tgUserId: integer("tg_user_id").primaryKey(),
-  locale: text().$type<Locale>().notNull(),
+  locale: text().$type<SiteLocale>().notNull(),
   updatedAt: integer("updated_at").notNull(),
 });
 

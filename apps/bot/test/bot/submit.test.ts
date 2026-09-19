@@ -122,6 +122,18 @@ describe("submission flow", () => {
     expect(h.lastButtons().filter((b) => b.text.startsWith("✨"))).toHaveLength(1);
   });
 
+  test("a Traditional user sees the seed categories and tags in Traditional", async () => {
+    const reader = { ...owner, id: 43, username: "reader", language_code: "zh-hant" };
+    await h.message(reader, "https://t.me/sample_channel");
+    const labels = h.lastButtons().map((b) => b.text);
+    expect(labels).toContain("✨ 資訊新聞");
+    expect(labels).toContain("影音資源");
+    await press(reader, "sc:", 0);
+    await press(reader, "st:", 0);
+    await press(reader, "sd:");
+    expect(h.lastText()).toContain("資訊新聞");
+  });
+
   test("a category nobody can guess leaves the keyboard untouched", async () => {
     // The model answers like the translation fake does — no `response` field — which is exactly
     // the "unusable answer" case: no suggestion, rather than a wrong one.
