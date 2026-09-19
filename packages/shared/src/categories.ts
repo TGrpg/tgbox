@@ -74,6 +74,9 @@ export const categories: Category[] = [
     ["jobs", "招聘求职", "Jobs & Careers", "briefcase"],
     ["local", "同城地区", "Local & Regional", "map-pin"],
     ["video", "影音资源", "Video & Music", "movie"],
+    // Appended 2026-09: AI groups (model users, API relays, Claude Code / Codex) had no home but
+    // 技术开发, where they drowned out the programming-language groups.
+    ["ai", "AI交流", "AI", "sparkles"],
   ]),
   ...defineKind("bot", [
     ["tools", "实用工具", "Utilities", "tool"],
@@ -95,6 +98,9 @@ export const categories: Category[] = [
     ["rss", "订阅推送", "RSS & Feeds", "article"],
     ["channel-tools", "频道运营", "Channel Tools", "message-circle"],
     ["translate", "翻译", "Translation", "world"],
+    // Appended 2026-09: on-chain trading bots (sniping, copy trading) are a job of their own, not a
+    // wallet, and they are what people search a crypto bot directory for.
+    ["trading", "交易机器人", "Trading Bots", "chart-candle"],
   ]),
 ];
 

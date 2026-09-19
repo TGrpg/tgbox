@@ -40,6 +40,7 @@ const bySlug: Record<string, CategoryIcon> = {
   local: "map-pin",
   files: "folder",
   analytics: "chart-line",
+  trading: "chart-candle",
   productivity: "briefcase",
   rss: "article",
   "channel-tools": "message-circle",

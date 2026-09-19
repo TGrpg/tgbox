@@ -127,6 +127,13 @@
       "when": 1789743831167,
       "tag": "0018_drop_single_button",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1789806195502,
+      "tag": "0019_taxonomy_crypto_ai",
+      "breakpoints": true
     }
   ]
 }

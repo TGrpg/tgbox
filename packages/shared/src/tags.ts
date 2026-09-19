@@ -58,6 +58,13 @@ export const tags: Tag[] = [
   // Run by Telegram itself. An attribute, not a topic: it says who operates the entry. Appended
   // last so the bot's tag bitmask, which indexes tags in id order, keeps every old draft's meaning.
   { slug: "official", nameZh: "官方", nameEn: "Official" },
+  // Appended 2026-09 with the crypto / AI import: what people search for inside those categories.
+  { slug: "api-relay", nameZh: "API中转", nameEn: "API Relay" },
+  { slug: "quant", nameZh: "量化交易", nameEn: "Quant Trading" },
+  { slug: "exchange", nameZh: "交易所", nameEn: "Exchanges" },
+  { slug: "on-chain", nameZh: "链上数据", nameEn: "On-chain Data" },
+  { slug: "ton", nameZh: "TON生态", nameEn: "TON" },
+  { slug: "solana", nameZh: "Solana", nameEn: "Solana" },
 ];
 
 export function findTag(slug: string): Tag | undefined {
@@ -132,6 +139,7 @@ export const categoryTagHints: Record<`${EntryKind}:${string}`, readonly string[
     "ai-agent",
     "prompt",
     "free-api",
+    "api-relay",
     "open-source",
     "free",
   ],
@@ -140,7 +148,16 @@ export const categoryTagHints: Record<`${EntryKind}:${string}`, readonly string[
   "channel:stickers": ["memes", "anime", "design", "ai-art"],
   "channel:nav": ["cloud-drive", "torrent", "movies", "ebooks", "free"],
   "channel:giveaway": ["freebies", "airdrop", "gadgets", "free"],
-  "channel:crypto": ["airdrop", "finance", "security"],
+  "channel:crypto": [
+    "exchange",
+    "on-chain",
+    "quant",
+    "airdrop",
+    "ton",
+    "solana",
+    "finance",
+    "security",
+  ],
   "channel:vpn": ["free", "open-source", "android", "ios", "windows"],
   "channel:cloud-drive": [
     "movies",
@@ -162,13 +179,33 @@ export const categoryTagHints: Record<`${EntryKind}:${string}`, readonly string[
   "group:games": ["android", "ios", "windows", "free", "memes"],
   "group:ios": ["ios", "free", "torrent", "cloud-drive", "design"],
   // "group:other" is deliberately absent: the bucket for everything else hints at nothing.
-  "group:crypto": ["airdrop", "finance", "security"],
+  "group:crypto": [
+    "exchange",
+    "on-chain",
+    "quant",
+    "airdrop",
+    "ton",
+    "solana",
+    "finance",
+    "security",
+  ],
   "group:vpn": ["free", "open-source", "android", "ios", "windows"],
   "group:learning": ["ebooks", "programming", "science", "design", "prompt"],
   "group:trade": ["finance", "freebies", "gadgets", "airdrop"],
   "group:jobs": ["programming", "design", "finance"],
   "group:local": ["finance", "sports", "photography"],
   "group:video": ["movies", "tv-series", "short-drama", "anime", "music", "torrent", "cloud-drive"],
+  "group:ai": [
+    "llm",
+    "chatgpt",
+    "api-relay",
+    "ai-coding",
+    "ai-agent",
+    "ai-art",
+    "prompt",
+    "free-api",
+    "open-source",
+  ],
 
   "bot:tools": [
     "free",
@@ -216,13 +253,14 @@ export const categoryTagHints: Record<`${EntryKind}:${string}`, readonly string[
   "bot:giveaway": ["freebies", "airdrop", "free"],
   "bot:files": ["cloud-drive", "torrent", "ebooks", "free"],
   "bot:stickers": ["memes", "anime", "ai-art", "design"],
-  "bot:crypto": ["airdrop", "finance", "security", "free"],
+  "bot:crypto": ["ton", "solana", "on-chain", "exchange", "airdrop", "finance", "security", "free"],
   "bot:productivity": ["free", "open-source", "finance", "programming"],
   "bot:rss": ["free", "open-source", "daily-news", "programming"],
   "bot:channel-tools": ["free", "finance", "open-source"],
   "bot:translate": ["free", "llm", "open-source"],
   "bot:games": ["memes", "anime", "free"],
   "bot:analytics": ["finance", "free", "open-source"],
+  "bot:trading": ["quant", "solana", "ton", "on-chain", "exchange", "airdrop"],
 };
 
 /**

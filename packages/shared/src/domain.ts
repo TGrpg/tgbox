@@ -63,6 +63,7 @@ export const categoryIcons = [
   "chart-line",
   "coffee",
   "category",
+  "chart-candle",
 ] as const;
 export type CategoryIcon = (typeof categoryIcons)[number];
 

@@ -58,6 +58,8 @@ describe("the keyword pass", () => {
     ["group", "同城交流", "本地华人留学生交流群", "local"],
     ["bot", "群管助手", "反垃圾、验证、封禁，一站式群组管理", "group-admin"],
     ["bot", "视频下载机器人", "解析并下载 YouTube、TikTok 视频", "media"],
+    ["group", "Claude 交流群", "大模型、AI 编程与 API 使用交流", "ai"],
+    ["bot", "Solana Sniper Bot", "The fastest crypto trading bot: sniper, copy trading", "trading"],
     // The four bot categories added with the bot import, each routed by its own narrow rule.
     ["bot", "翻译助手", "中英互译，支持群聊自动翻译", "translate"],
     ["bot", "RSS 机器人", "把 RSS 订阅推送到 Telegram", "rss"],
@@ -221,6 +223,12 @@ describe("the taxonomy v2 tags", () => {
     ["AI智能体", "MCP、Coze、Dify 工作流分享", "ai-agent"],
     ["提示词大全", "prompt 咒语分享", "prompt"],
     ["免费API", "api key 与中转api 分享", "free-api"],
+    ["API中转站", "Claude、Codex 中转 API，稳定低价", "api-relay"],
+    ["量化交易", "quant 策略与回测", "quant"],
+    ["币安公告", "Binance 交易所上新", "exchange"],
+    ["巨鲸追踪", "链上大额转账提醒 whale alert", "on-chain"],
+    ["Toncoin 社区", "The Open Network 生态", "ton"],
+    ["Solana 新币", "Solana 生态 meme", "solana"],
   ])("%j → %s", async (title, description, slug) => {
     const result = await suggestTaxonomy({ kind: "channel", title, description }, taxonomy);
     expect(result.tagIds).toContain(tagId(slug));
