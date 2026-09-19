@@ -84,15 +84,33 @@ export function telegramInitData(): string | null {
 
 export const isTelegram = () => telegramInitData() !== null;
 
-/** `language_code` of the launching user, read from the raw launch string (not from the SDK). */
-export function launchLanguage(): string | null {
+type LaunchUser = {
+  id?: number;
+  first_name?: string;
+  last_name?: string;
+  username?: string;
+  language_code?: string;
+  /** Only present when the user's privacy settings let bots see their photo. */
+  photo_url?: string;
+};
+
+/**
+ * The launching user as the raw launch string describes them (not from the SDK, so it is there
+ * before the SDK loads). For display only: the server checks the signature, not this.
+ */
+export function launchUser(): LaunchUser | null {
   const raw = telegramInitData();
   if (!raw) return null;
-  const user: unknown = JSON.parse(new URLSearchParams(raw).get("user") ?? "null");
-  return typeof user === "object" && user !== null && "language_code" in user
-    ? String(user.language_code)
-    : null;
+  try {
+    const user: unknown = JSON.parse(new URLSearchParams(raw).get("user") ?? "null");
+    return typeof user === "object" && user !== null ? user : null;
+  } catch {
+    return null;
+  }
 }
+
+/** `language_code` of the launching user. */
+export const launchLanguage = (): string | null => launchUser()?.language_code ?? null;
 
 let loading: Promise<TelegramWebApp | null> | null = null;
 

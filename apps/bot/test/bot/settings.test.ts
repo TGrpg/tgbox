@@ -144,9 +144,12 @@ describe("settings-driven bot", () => {
     expect(post?.payload.text).toContain("https://tgbox.test/detail/publish_me/");
   });
 
-  test("deep links /start promote and /start submit open those flows", async () => {
+  test("deep links /start promote, /start submit and /start support open those flows", async () => {
     await h.message(owner, "/start submit");
     expect(h.lastText()).toContain("请发送要提交的频道");
+
+    await h.message(owner, "/start support");
+    expect(h.lastText()).toContain("暂未设置客服");
 
     await h.message(owner, "/start promote");
     const products = h.lastButtons().filter((b) => b.callback_data?.startsWith("pk:"));

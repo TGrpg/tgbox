@@ -36,9 +36,11 @@ export function startHelp(app: App) {
   composer.command("start", async (ctx, next) => {
     const locale = await app.locale(ctx);
     await pushMenuButton(ctx, locale);
-    // Deep links: ?start=submit asks for a link here, ?start=promote is handled by `promote`.
+    // Deep links: ?start=submit asks for a link here, ?start=promote is handled by `promote`,
+    // ?start=support is the Mini App's contact button.
     if (ctx.match === "promote") return next();
     if (ctx.match === "submit") return askForLink(ctx);
+    if (ctx.match === "support") return support(ctx);
     const m = messages(locale);
     const custom = (await app.settings()).bot.welcome[locale];
     const appUrl = miniAppUrl(app.env.SITE_URL, locale);
@@ -53,11 +55,13 @@ export function startHelp(app: App) {
 
   composer.command("help", async (ctx) => ctx.reply((await app.m(ctx)).help));
 
-  composer.command("support", async (ctx) => {
+  async function support(ctx: Context) {
     const m = await app.m(ctx);
     const bot = (await app.settings()).bot;
     await ctx.reply(relayEnabled(bot) ? m.supportChat.ask : m.support(bot.supportUsername));
-  });
+  }
+
+  composer.command("support", support);
 
   /* ------------------------------------------------------------------ /lang */
 

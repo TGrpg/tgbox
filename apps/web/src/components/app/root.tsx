@@ -42,7 +42,7 @@ export default function AppRoot({ locale, screen, pagefindUrl, siteUrl, botUrl }
   } else if (screen === "submit") {
     content = <SubmitScreen locale={locale} />;
   } else if (screen === "me") {
-    content = <MeScreen locale={locale} botUrl={botUrl} />;
+    content = <MeScreen locale={locale} siteUrl={siteUrl} botUrl={botUrl} />;
   } else {
     content = <PromoteScreen locale={locale} />;
   }
