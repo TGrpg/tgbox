@@ -1,5 +1,5 @@
 import { type CollectionEntry, getCollection } from "astro:content";
-import type { Locale } from "@tgbox/shared";
+import { type SiteLocale, textLocale } from "@tgbox/shared";
 import type { MarkdownHeading } from "astro";
 
 export type Guide = CollectionEntry<"guides">;
@@ -12,13 +12,13 @@ export function guidePath(slug: string) {
 export const GUIDES_PATH = "/guides/";
 
 /** Newest first — an index that leads with stale copy is the thing search engines discount. */
-export async function listGuides(locale: Locale): Promise<Guide[]> {
-  const guides = await getCollection("guides", (guide) => guide.data.locale === locale);
+export async function listGuides(locale: SiteLocale): Promise<Guide[]> {
+  const guides = await getCollection("guides", (guide) => guide.data.locale === textLocale(locale));
   return guides.sort((a, b) => b.data.publishedAt.getTime() - a.data.publishedAt.getTime());
 }
 
 /** getStaticPaths builder shared by `/guides/[slug]` and `/en/guides/[slug]`. */
-export async function guidePaths(locale: Locale) {
+export async function guidePaths(locale: SiteLocale) {
   const guides = await listGuides(locale);
   return guides.map((guide) => ({ params: { slug: guide.data.slug }, props: { guide } }));
 }

@@ -1,12 +1,12 @@
 ---
 import BrandTelegram from "@tabler/icons/outline/brand-telegram.svg";
-import type { Locale } from "@tgbox/shared";
+import type { SiteLocale } from "@tgbox/shared";
 import { localizePath } from "@/i18n/locale.ts";
 import { homeUi } from "@/i18n/ui-home.ts";
 import { botUrl } from "@/lib/site.ts";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
 }
 const { locale } = Astro.props;
 const strings = homeUi(locale);

@@ -1,11 +1,11 @@
 ---
 import Language from "@tabler/icons/outline/language.svg";
-import type { Locale } from "@tgbox/shared";
+import type { SiteLocale } from "@tgbox/shared";
 import { htmlLang } from "@/i18n/locale.ts";
 import { kindUi } from "@/i18n/ui-kind.ts";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
   /**
    * Detected language codes present among the entries this page renders, most common first.
    * Callers only render the filter when there is more than one language to choose between.

@@ -1,4 +1,4 @@
-import type { Locale } from "@tgbox/shared";
+import type { SiteLocale } from "@tgbox/shared";
 
 /** Strings for the kind index, category and tag listing pages. */
 const zh = {
@@ -39,8 +39,8 @@ const en: typeof zh = {
   tagCount: "{n}",
 };
 
-const dictionaries: Record<Locale, typeof zh> = { zh, en };
+const dictionaries: Record<SiteLocale, typeof zh> = { zh, "zh-hant": zh, en };
 
-export function kindUi(locale: Locale) {
+export function kindUi(locale: SiteLocale) {
   return dictionaries[locale];
 }

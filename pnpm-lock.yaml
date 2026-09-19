@@ -102,6 +102,9 @@ catalogs:
     motion:
       specifier: 13.3.0
       version: 13.3.0
+    opencc-js:
+      specifier: 1.4.2
+      version: 1.4.2
     pagefind:
       specifier: 1.5.2
       version: 1.5.2
@@ -398,6 +401,9 @@ importers:
       '@types/react-dom':
         specifier: 'catalog:'
         version: 19.3.0(@types/react@19.3.0)
+      opencc-js:
+        specifier: 'catalog:'
+        version: 1.4.2
       pagefind:
         specifier: 'catalog:'
         version: 1.5.2
@@ -3557,6 +3563,9 @@ packages:
 
   oniguruma-to-es@4.3.6:
     resolution: {integrity: sha512-csuQ9x3Yr0cEIs/Zgx/OEt9iBw9vqIunAPQkx19R/fiMq2oGVTgcMqO/V3Ybqefr1TBvosI6jU539ksaBULJyA==}
+
+  opencc-js@1.4.2:
+    resolution: {integrity: sha512-EdcspgdROiCCZDM+jZR6Pa670xW+EW2QhctPBQ8gRjg6lrx4IHEl+2s+kt5izk/TkxVRgdWuFgaGkaEdIUfdaw==}
 
   p-limit@2.3.0:
     resolution: {integrity: sha512-//88mFWSJx8lxCzwdAABTJL2MyWB12+eIY7MDL2SqLmAkeKU9qxRvWuSyTjm3FUmpBEMuFfckAIqEaVGUDxb6w==}
@@ -7068,6 +7077,8 @@ snapshots:
       oniguruma-parser: 0.12.2
       regex: 6.1.0
       regex-recursion: 6.0.2
+
+  opencc-js@1.4.2: {}
 
   p-limit@2.3.0:
     dependencies:

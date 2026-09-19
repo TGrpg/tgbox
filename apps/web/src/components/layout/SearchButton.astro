@@ -1,11 +1,11 @@
 ---
 import SearchIcon from "@tabler/icons/outline/search.svg";
-import type { Locale } from "@tgbox/shared";
+import type { SiteLocale } from "@tgbox/shared";
 import { t } from "@tgbox/shared";
 import { ui } from "@/i18n/ui.ts";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
 }
 const { locale } = Astro.props;
 const strings = ui(locale).search;
@@ -18,7 +18,7 @@ const strings = ui(locale).search;
   data-search-trigger
   data-press
   aria-label={t(locale, "site.search")}
-  class="inline-flex size-9 items-center justify-center gap-2 rounded-full border border-border bg-card text-sm text-muted-foreground shadow-card transition-colors hover:border-primary/40 hover:text-foreground focus-visible:ring-3 focus-visible:ring-outline/40 outline-none lg:w-52 lg:justify-start lg:px-3 xl:w-60"
+  class="inline-flex size-9 items-center justify-center gap-2 rounded-full border border-border bg-card text-sm text-muted-foreground shadow-card transition-colors hover:border-primary/40 hover:text-foreground focus-visible:ring-3 focus-visible:ring-outline/40 outline-none lg:w-52 lg:justify-start lg:px-3 xl:w-40"
 >
   <SearchIcon class="size-[1.1rem] shrink-0" aria-hidden="true" />
   <span class="hidden truncate lg:inline">{strings.short}</span>

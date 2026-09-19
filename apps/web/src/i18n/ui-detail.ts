@@ -1,4 +1,4 @@
-import type { Locale } from "@tgbox/shared";
+import type { SiteLocale } from "@tgbox/shared";
 
 /** Strings for the entry detail page (merged with `ui(locale).detail`). */
 const zh = {
@@ -41,8 +41,8 @@ const en: typeof zh = {
   relatedGroups: "Related groups",
 };
 
-const dictionaries: Record<Locale, typeof zh> = { zh, en };
+const dictionaries: Record<SiteLocale, typeof zh> = { zh, "zh-hant": zh, en };
 
-export function detailUi(locale: Locale) {
+export function detailUi(locale: SiteLocale) {
   return dictionaries[locale];
 }

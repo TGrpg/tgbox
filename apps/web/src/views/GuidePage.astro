@@ -1,6 +1,6 @@
 ---
 import { render } from "astro:content";
-import { type Locale, t } from "@tgbox/shared";
+import { type SiteLocale, t } from "@tgbox/shared";
 import Breadcrumbs from "@/components/Breadcrumbs.astro";
 import JsonLd from "@/components/layout/JsonLd.astro";
 import { htmlLang, localizePath } from "@/i18n/locale.ts";
@@ -14,7 +14,7 @@ import { keywords } from "@/lib/seo.ts";
 import { absoluteUrl, siteUrl } from "@/lib/site.ts";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
   guide: Guide;
 }
 const { locale, guide } = Astro.props;

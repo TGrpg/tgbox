@@ -1,14 +1,14 @@
 ---
 import LayoutGrid from "@tabler/icons/outline/layout-grid.svg";
 import LayoutSidebarExpand from "@tabler/icons/outline/layout-sidebar-left-expand.svg";
-import type { EntryKind, Locale } from "@tgbox/shared";
+import type { EntryKind, SiteLocale } from "@tgbox/shared";
 import CategoryIcon from "@/components/CategoryIcon.astro";
-import { localizePath } from "@/i18n/locale.ts";
+import { htmlLang, localizePath } from "@/i18n/locale.ts";
 import { ui } from "@/i18n/ui.ts";
 import { getSiteData, localName } from "@/lib/site-data.ts";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
   kind: EntryKind;
   /** Active category slug; omit on the kind overview page ("All" is active). */
   current?: string | undefined;
@@ -37,7 +37,7 @@ const items = [
       count: category.count,
     })),
 ];
-const format = new Intl.NumberFormat(locale === "zh" ? "zh-CN" : "en", { notation: "compact" });
+const format = new Intl.NumberFormat(htmlLang[locale], { notation: "compact" });
 const toggleId = `sidebar-expand-${kind}`;
 ---
 

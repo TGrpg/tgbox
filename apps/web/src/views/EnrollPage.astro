@@ -1,15 +1,15 @@
 ---
-import { entryKinds, type Locale, t } from "@tgbox/shared";
+import { entryKinds, type SiteLocale, t } from "@tgbox/shared";
 import { ui } from "@/i18n/ui.ts";
 import PageLayout from "@/layouts/PageLayout.astro";
 import { botUrl, botUsername } from "@/lib/site.ts";
 import { getSiteData } from "@/lib/site-data.ts";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
 }
 const { locale } = Astro.props;
-const zh = locale === "zh";
+const zh = locale !== "en";
 const { categories } = getSiteData();
 const bot = `@${botUsername}`;
 const kindTitle = {

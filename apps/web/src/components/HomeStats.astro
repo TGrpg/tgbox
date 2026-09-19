@@ -3,14 +3,14 @@ import BotIcon from "@tabler/icons/outline/robot.svg";
 import ChannelIcon from "@tabler/icons/outline/speakerphone.svg";
 import Stack from "@tabler/icons/outline/stack-2.svg";
 import GroupIcon from "@tabler/icons/outline/users.svg";
-import type { Locale } from "@tgbox/shared";
+import type { SiteLocale } from "@tgbox/shared";
 import { kindTitles } from "@/i18n/ui.ts";
 import { homeUi } from "@/i18n/ui-home.ts";
 import { formatNumber } from "@/lib/format.ts";
 import { getSiteData } from "@/lib/site-data.ts";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
 }
 const { locale } = Astro.props;
 const strings = homeUi(locale);

@@ -1,7 +1,7 @@
 ---
 import BrandTelegram from "@tabler/icons/outline/brand-telegram.svg";
 import Check from "@tabler/icons/outline/check.svg";
-import { type EntryProductKind, isEntryProduct, type Locale } from "@tgbox/shared";
+import { type EntryProductKind, isEntryProduct, type SiteLocale } from "@tgbox/shared";
 import EntryListRow from "@/components/EntryListRow.astro";
 import Announcement from "@/components/layout/Announcement.astro";
 import { ui } from "@/i18n/ui.ts";
@@ -13,7 +13,7 @@ import { botUsername } from "@/lib/site.ts";
 import { byMembers, getSiteData } from "@/lib/site-data.ts";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
 }
 const { locale } = Astro.props;
 const strings = advertiseUi(locale);

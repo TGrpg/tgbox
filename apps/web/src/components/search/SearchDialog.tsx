@@ -1,4 +1,4 @@
-import type { Locale } from "@tgbox/shared";
+import type { SiteLocale } from "@tgbox/shared";
 import { CornerDownLeftIcon, SearchXIcon, TriangleAlertIcon } from "lucide-react";
 import { AnimatePresence, MotionConfig, motion, type Transition } from "motion/react";
 import { useEffect, useState } from "react";
@@ -21,7 +21,7 @@ import { loadPagefind, resetPagefind } from "@/lib/pagefind.ts";
 import { externalSearchUrls, safeExcerpt } from "@/lib/search.ts";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
   /** Directory that holds `pagefind.js` (R2 public URL in production, `/pagefind` locally). */
   pagefindUrl: string;
   siteUrl: string;

@@ -23,7 +23,7 @@ env:
   SITE_URL: ${{ vars.SITE_URL }}
   R2_PUBLIC_URL: ${{ vars.R2_PUBLIC_URL }}
   PUBLIC_BOT_USERNAME: ${{ vars.PUBLIC_BOT_USERNAME }}
-  # The Pagefind index ships with the site (a few dozen files). Past ~9,000 entries, move it to R2
+  # The Pagefind index ships with the site (a few dozen files). Past ~6,000 entries, move it to R2
   # instead (scripts/sync-pagefind.ts) so it stops counting against the 20,000 static-file limit.
   PAGEFIND_LOCAL: "1"
   # Optional fine-grained token with Contents: write on TGrpg/awesome-telegram. Without it the

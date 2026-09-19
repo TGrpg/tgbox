@@ -1,0 +1,11 @@
+---
+import type { InferGetStaticPropsType } from "astro";
+import { guidePaths } from "@/lib/guides.ts";
+import GuidePage from "@/views/GuidePage.astro";
+
+export const getStaticPaths = () => guidePaths("zh-hant");
+type Props = InferGetStaticPropsType<typeof getStaticPaths>;
+const { guide }: Props = Astro.props;
+---
+
+<GuidePage locale="zh-hant" guide={guide} />

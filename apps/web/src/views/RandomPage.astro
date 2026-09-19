@@ -1,14 +1,14 @@
 ---
 import ArrowRight from "@tabler/icons/outline/arrow-right.svg";
 import Refresh from "@tabler/icons/outline/refresh.svg";
-import { entryKinds, type Locale, t } from "@tgbox/shared";
+import { entryKinds, type SiteLocale, t } from "@tgbox/shared";
 import Breadcrumbs from "@/components/Breadcrumbs.astro";
-import { htmlLang, localizePath } from "@/i18n/locale.ts";
+import { dataPath, htmlLang, localizePath } from "@/i18n/locale.ts";
 import { kindTitles, ui } from "@/i18n/ui.ts";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
 }
 const { locale } = Astro.props;
 const strings = ui(locale);
@@ -20,6 +20,7 @@ const tabs = [
 ];
 const config = {
   detailPrefix: localizePath("/detail/", locale),
+  dataPrefix: dataPath("random-", locale),
   lang: htmlLang[locale],
   kinds: strings.entry.kind,
   members: strings.entry.members,
@@ -356,6 +357,7 @@ interface Card {
 
 interface Config {
   detailPrefix: string;
+  dataPrefix: string;
   lang: string;
   kinds: Record<string, string | undefined>;
   members: Record<string, string | undefined>;
@@ -413,7 +415,7 @@ if (root) {
   const load = (key: string) => {
     let shard = shards.get(key);
     if (!shard) {
-      shard = fetch(`/data/random-${key}.json`).then((response) => {
+      shard = fetch(`${config.dataPrefix}${key}.json`).then((response) => {
         if (!response.ok) throw new Error(String(response.status));
         return response.json();
       });

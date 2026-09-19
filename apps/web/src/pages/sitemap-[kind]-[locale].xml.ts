@@ -1,10 +1,10 @@
-import { entryKinds, locales } from "@tgbox/shared";
+import { entryKinds, siteLocales } from "@tgbox/shared";
 import type { APIRoute, InferGetStaticPropsType } from "astro";
 import { kindSitemap } from "@/lib/sitemap.ts";
 
 export function getStaticPaths() {
   return entryKinds.flatMap((kind) =>
-    locales.map((locale) => ({ params: { kind, locale }, props: { kind, locale } })),
+    siteLocales.map((locale) => ({ params: { kind, locale }, props: { kind, locale } })),
   );
 }
 

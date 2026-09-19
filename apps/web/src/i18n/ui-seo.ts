@@ -1,4 +1,4 @@
-import type { EntryKind, Locale } from "@tgbox/shared";
+import type { EntryKind, SiteLocale } from "@tgbox/shared";
 
 /**
  * Search-facing copy: titles, meta descriptions, keyword sets, the auto-written entry summary
@@ -60,7 +60,7 @@ const zh = {
   about: {
     title: "关于 TGbox · 开源的 Telegram 导航站",
     description:
-      "TGbox 是开源（AGPL-3.0）的中英双语 Telegram 频道、群组和机器人导航站，并解答怎么找电报频道、怎么提交收录、数据多久更新一次。",
+      "TGbox 是开源（AGPL-3.0）的简繁英三语 Telegram 频道、群组和机器人导航站，并解答怎么找电报频道、怎么提交收录、数据多久更新一次。",
   },
   detail: {
     title: "{title}（@{username}）· Telegram {kind}",
@@ -171,7 +171,7 @@ const en: typeof zh = {
   about: {
     title: "About TGbox — Open-source Telegram Directory",
     description:
-      "An open-source (AGPL-3.0) bilingual directory of Telegram channels, groups and bots: how TGbox picks entries, how to get listed, and how often the data is refreshed.",
+      "An open-source (AGPL-3.0) trilingual directory of Telegram channels, groups and bots: how TGbox picks entries, how to get listed, and how often the data is refreshed.",
   },
   detail: {
     title: "{title} (@{username}) — Telegram {kind}",
@@ -247,8 +247,8 @@ const en: typeof zh = {
   ],
 };
 
-const dictionaries: Record<Locale, typeof zh> = { zh, en };
+const dictionaries: Record<SiteLocale, typeof zh> = { zh, "zh-hant": zh, en };
 
-export function seoUi(locale: Locale) {
+export function seoUi(locale: SiteLocale) {
   return dictionaries[locale];
 }

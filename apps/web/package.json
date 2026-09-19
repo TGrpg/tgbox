@@ -45,6 +45,7 @@
     "@types/qrcode": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "opencc-js": "catalog:",
     "pagefind": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:",

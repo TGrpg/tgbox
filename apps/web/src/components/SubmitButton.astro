@@ -1,6 +1,6 @@
 ---
 import Plus from "@tabler/icons/outline/plus.svg";
-import { type Locale, t } from "@tgbox/shared";
+import { type SiteLocale, t } from "@tgbox/shared";
 import { localizePath } from "@/i18n/locale.ts";
 import { ui } from "@/i18n/ui.ts";
 import { cn } from "@/lib/cn.ts";
@@ -11,7 +11,7 @@ import { botSubmitUrl } from "@/lib/site.ts";
  * site ever produced it. Soft variant on purpose — an entry card's own CTA should still win the eye.
  */
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
   class?: string | undefined;
 }
 

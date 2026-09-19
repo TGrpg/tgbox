@@ -9,7 +9,7 @@ import Send from "@tabler/icons/outline/send.svg";
 import Speakerphone from "@tabler/icons/outline/speakerphone.svg";
 import UsersGroup from "@tabler/icons/outline/users-group.svg";
 import World from "@tabler/icons/outline/world.svg";
-import { type EntryView, type Locale, t } from "@tgbox/shared";
+import { type EntryView, type SiteLocale, t } from "@tgbox/shared";
 import Avatar from "@/components/Avatar.astro";
 import DetailPosts from "@/components/DetailPosts.astro";
 import DetailPromos from "@/components/DetailPromos.astro";
@@ -38,7 +38,7 @@ import {
 } from "@/lib/site-data.ts";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
   entry: EntryView;
 }
 const { locale, entry } = Astro.props;
@@ -83,13 +83,13 @@ const { text: description, translated } = localizedDescription(entry, locale);
 const languageLabel = entry.lang === null ? null : languageName(entry.lang);
 // "Telegram 科技频道" / "Telegram Tech Channel" — the phrase the H1 and the summary share.
 const kindPhrase =
-  locale === "zh"
-    ? `Telegram ${categoryName}${kindLabel}`
-    : `Telegram ${categoryName} ${kindLabel}`;
+  locale === "en"
+    ? `Telegram ${categoryName} ${kindLabel}`
+    : `Telegram ${categoryName}${kindLabel}`;
 const facts = {
   title: entry.title,
   username: entry.username,
-  kindWord: locale === "zh" ? kindLabel : kindLabel.toLowerCase(),
+  kindWord: locale === "en" ? kindLabel.toLowerCase() : kindLabel,
   categoryName,
   members:
     entry.members === null

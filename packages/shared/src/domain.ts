@@ -77,6 +77,16 @@ export type EntrySort = (typeof entrySorts)[number];
 export const locales = ["zh", "en"] as const;
 export type Locale = (typeof locales)[number];
 
+/**
+ * The website's locales. `zh-hant` pages render the zh text and the web build converts them to
+ * Traditional Chinese afterwards, so everything outside the website (bot, Mini App, D1) stays zh/en.
+ */
+export const siteLocales = ["zh", "zh-hant", "en"] as const;
+export type SiteLocale = (typeof siteLocales)[number];
+
+/** The text a site locale is written in: `zh-hant` shares zh until the build converts it. */
+export const textLocale = (locale: SiteLocale): Locale => (locale === "en" ? "en" : "zh");
+
 /** Who an admin broadcast goes to; language follows /lang, else the Telegram client language. */
 export const BroadcastAudience = z.enum(["all", "zh", "en", "paying", "submitters", "active30"]);
 export type BroadcastAudience = z.infer<typeof BroadcastAudience>;

@@ -1,11 +1,11 @@
 ---
-import type { EntryView, Locale } from "@tgbox/shared";
+import type { EntryView, SiteLocale } from "@tgbox/shared";
 import EntryCardCompact from "@/components/EntryCardCompact.astro";
 import { ui } from "@/i18n/ui.ts";
 import { cn } from "@/lib/cn.ts";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
   entries: EntryView[];
   /** Avatars of the first N cards load eagerly (above the fold). */
   eager?: number | undefined;

@@ -1,6 +1,6 @@
 ---
 import "@/styles/starwind.css";
-import type { Locale } from "@tgbox/shared";
+import { type SiteLocale, siteLocales } from "@tgbox/shared";
 import Announcement from "@/components/layout/Announcement.astro";
 import BackToTop from "@/components/layout/BackToTop.astro";
 import Footer from "@/components/layout/Footer.astro";
@@ -17,7 +17,7 @@ import { siteUrl } from "@/lib/site.ts";
 import { byMembers, getSiteData } from "@/lib/site-data.ts";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
   title?: string | undefined;
   description?: string | undefined;
   keywords?: string | undefined;
@@ -58,25 +58,31 @@ const hotKeywords = byMembers(data.entries)
   .map((entry) => entry.title);
 // Only the admin's own notice stays dismissed across pages; a paid bar comes back on the next load.
 const dismissKey = announcement && !sponsored ? announcementKey(announcement) : "";
-// The other locale's copy of this page; a 404 has none, so it neither redirects nor suggests.
-const otherLocalePath = isNotFoundPath(path)
-  ? null
-  : alternatePaths(path)[locale === "zh" ? "en" : "zh"];
+// This page in the other locales; a 404 has none, so it neither redirects nor suggests.
+const otherLocales = isNotFoundPath(path)
+  ? []
+  : siteLocales
+      .filter((other) => other !== locale)
+      .map((other) => ({ locale: other, href: alternatePaths(path)[other] }));
+const otherPaths = Object.fromEntries(otherLocales.map((other) => [other.locale, other.href]));
 // A remembered language wins before first paint; otherwise the browser's may earn a suggestion.
 const langScript =
-  otherLocalePath &&
+  otherLocales.length > 0 &&
   `(() => {
   const root = document.documentElement;
   let stored = null;
   try { stored = localStorage.getItem("locale"); } catch {}
   const choice = (${langChoice.toString()})(stored, navigator.languages || [navigator.language], ${JSON.stringify(locale)});
+  const paths = ${JSON.stringify(otherPaths)};
   if (choice && "redirect" in choice) {
-    location.replace(${JSON.stringify(otherLocalePath)} + location.search + location.hash);
+    location.replace(paths[choice.redirect] + location.search + location.hash);
   } else if (choice) {
-    root.dataset.langSuggest = "";
+    root.dataset.langSuggest = choice.suggest;
   }
 })();`;
-const pagefindUrl = (import.meta.env.PUBLIC_PAGEFIND_URL ?? "/pagefind").replace(/\/$/, "");
+const pagefindBase = (import.meta.env.PUBLIC_PAGEFIND_URL ?? "/pagefind").replace(/\/$/, "");
+// Traditional pages search their own index (see scripts/pagefind.ts).
+const pagefindUrl = locale === "zh-hant" ? `${pagefindBase}/zh-hant` : pagefindBase;
 ---
 
 <!doctype html>
@@ -125,7 +131,9 @@ const pagefindUrl = (import.meta.env.PUBLIC_PAGEFIND_URL ?? "/pagefind").replace
     >
       {ui(locale).nav.skipToContent}
     </a>
-    {otherLocalePath && <LangSuggest locale={locale} href={otherLocalePath} />}
+    {otherLocales.map((other) => (
+        <LangSuggest target={other.locale} href={other.href} locale={locale} />
+      ))}
     <SiteHeader locale={locale} path={path} />
     {paidBars.map((bar, index) => (
         <Announcement locale={locale} announcement={bar} sponsored rotation={index > 0 ? "hidden" : "shown"} />

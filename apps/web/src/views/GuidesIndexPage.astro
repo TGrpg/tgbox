@@ -1,6 +1,6 @@
 ---
 import Book from "@tabler/icons/outline/book.svg";
-import { type Locale, t } from "@tgbox/shared";
+import { type SiteLocale, t } from "@tgbox/shared";
 import KindPageHeader from "@/components/kind/KindPageHeader.astro";
 import JsonLd from "@/components/layout/JsonLd.astro";
 import { localizePath } from "@/i18n/locale.ts";
@@ -13,7 +13,7 @@ import { guidesSeo } from "@/lib/seo.ts";
 import { absoluteUrl } from "@/lib/site.ts";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
 }
 const { locale } = Astro.props;
 const strings = ui(locale);

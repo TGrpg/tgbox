@@ -1,5 +1,5 @@
 ---
-import type { Locale } from "@tgbox/shared";
+import type { SiteLocale } from "@tgbox/shared";
 import { t } from "@tgbox/shared";
 import Breadcrumbs from "@/components/Breadcrumbs.astro";
 import { localizePath } from "@/i18n/locale.ts";
@@ -8,7 +8,7 @@ import { formatDate } from "@/lib/format.ts";
 import BaseLayout from "./BaseLayout.astro";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
   title: string;
   description: string;
   keywords?: string | undefined;

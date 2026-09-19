@@ -1,32 +1,53 @@
 ---
 import Language from "@tabler/icons/outline/language.svg";
-import type { Locale } from "@tgbox/shared";
-import { alternatePaths, isNotFoundPath } from "@/i18n/locale.ts";
+import { type SiteLocale, siteLocales } from "@tgbox/shared";
+import {
+  alternatePaths,
+  htmlLang,
+  isNotFoundPath,
+  localeNames,
+  localeShortNames,
+} from "@/i18n/locale.ts";
 import { ui } from "@/i18n/ui.ts";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
   path: string;
   class?: string | undefined;
+  /** Without the language icon, for the crowded header. */
+  compact?: boolean | undefined;
 }
-const { locale, path, class: className } = Astro.props;
-const target = locale === "zh" ? "en" : "zh";
-const strings = ui(locale).lang;
-// The 404 page has no counterpart URL (`/en/404/` is not a page): switch to the other home page.
-const href = alternatePaths(isNotFoundPath(path) ? "/" : path)[target];
+const { locale, path, class: className, compact = false } = Astro.props;
+// A 404 page has no counterpart URL (`/en/404/` is not a page): switch to the other home pages.
+const hrefs = alternatePaths(isNotFoundPath(path) ? "/" : path);
 ---
 
-<a
-  href={href}
-  hreflang={target === "zh" ? "zh-CN" : "en"}
-  lang={target === "zh" ? "zh-CN" : "en"}
-  aria-label={strings.switchLabel}
-  data-lang-switch={target}
-  class:list={[
-    "inline-flex h-9 items-center gap-1.5 rounded-full px-2.5 text-sm text-muted-foreground transition-colors hover:bg-card hover:text-foreground focus-visible:ring-3 focus-visible:ring-outline/40 outline-none",
-    className,
-  ]}
+<nav
+  aria-label={ui(locale).lang.label}
+  class:list={["inline-flex h-9 items-center gap-1 text-sm text-muted-foreground", className]}
 >
-  <Language class="size-4" aria-hidden="true" />
-  <span>{strings.switchTo}</span>
-</a>
+  {!compact && <Language class="mx-1 size-4 shrink-0" aria-hidden="true" />}
+  {siteLocales.map((target) =>
+    target === locale ? (
+      <span
+        aria-current="true"
+        title={localeNames[target]}
+        class="inline-flex h-7 min-w-8 items-center justify-center rounded-full bg-card px-2 font-medium text-foreground shadow-card"
+      >
+        {localeShortNames[target]}
+      </span>
+    ) : (
+      <a
+        href={hrefs[target]}
+        hreflang={htmlLang[target]}
+        lang={htmlLang[target]}
+        title={localeNames[target]}
+        aria-label={localeNames[target]}
+        data-lang-switch={target}
+        class="inline-flex h-7 min-w-8 items-center justify-center rounded-full px-2 transition-colors hover:bg-card hover:text-foreground focus-visible:ring-3 focus-visible:ring-outline/40 outline-none"
+      >
+        {localeShortNames[target]}
+      </a>
+    ),
+  )}
+</nav>

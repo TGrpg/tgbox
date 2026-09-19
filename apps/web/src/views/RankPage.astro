@@ -1,6 +1,6 @@
 ---
 import Trophy from "@tabler/icons/outline/trophy.svg";
-import { entryKinds, type Locale, type RankItem, t } from "@tgbox/shared";
+import { entryKinds, type RankItem, type SiteLocale, t } from "@tgbox/shared";
 import EntryListRow from "@/components/EntryListRow.astro";
 import KindPageHeader from "@/components/kind/KindPageHeader.astro";
 import JsonLd from "@/components/layout/JsonLd.astro";
@@ -17,7 +17,7 @@ import { absoluteUrl } from "@/lib/site.ts";
 import { findEntries, getSiteData } from "@/lib/site-data.ts";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
 }
 const { locale } = Astro.props;
 const strings = rankUi(locale);

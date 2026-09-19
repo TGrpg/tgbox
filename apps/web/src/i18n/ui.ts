@@ -1,4 +1,4 @@
-import { type EntryKind, type Locale, t } from "@tgbox/shared";
+import { type EntryKind, type SiteLocale, t } from "@tgbox/shared";
 
 /** Web-only UI strings. Shared strings (site.*) come from `t()` in @tgbox/shared. */
 const zh = {
@@ -60,11 +60,7 @@ const zh = {
     toggle: "切换亮色/暗色主题",
   },
   lang: {
-    switchTo: "English",
-    switchLabel: "Switch to English",
-    // Shown to visitors of the Chinese page, so written in English.
-    suggest: "This page is available in English.",
-    stay: "Keep reading in Chinese",
+    label: "语言",
   },
   announcement: {
     cta: "查看",
@@ -248,11 +244,7 @@ const en: typeof zh = {
     toggle: "Toggle light/dark theme",
   },
   lang: {
-    switchTo: "中文",
-    switchLabel: "切换到中文",
-    // Shown to visitors of the English page, so written in Chinese.
-    suggest: "本页有中文版。",
-    stay: "继续浏览英文版",
+    label: "Language",
   },
   announcement: {
     cta: "View",
@@ -373,14 +365,14 @@ const en: typeof zh = {
   },
 };
 
-const dictionaries: Record<Locale, typeof zh> = { zh, en };
+const dictionaries: Record<SiteLocale, typeof zh> = { zh, "zh-hant": zh, en };
 
-export function ui(locale: Locale) {
+export function ui(locale: SiteLocale) {
   return dictionaries[locale];
 }
 
 /** Plural section titles per kind ("频道" / "Channels"). */
-export function kindTitles(locale: Locale): Record<EntryKind, string> {
+export function kindTitles(locale: SiteLocale): Record<EntryKind, string> {
   return {
     channel: t(locale, "site.channels"),
     group: t(locale, "site.groups"),

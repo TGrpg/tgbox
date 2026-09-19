@@ -1,11 +1,11 @@
 ---
-import type { Locale } from "@tgbox/shared";
+import type { SiteLocale } from "@tgbox/shared";
 import Breadcrumbs from "@/components/Breadcrumbs.astro";
 import { cn } from "@/lib/cn.ts";
 import { formatNumber } from "@/lib/format.ts";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
   title: string;
   description: string;
   breadcrumbs: { label: string; href?: string | undefined }[];

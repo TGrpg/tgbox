@@ -329,6 +329,9 @@ describe("site build from snapshot data", () => {
       expect(page).toContain(
         `<link rel="alternate" hreflang="en" href="${siteUrl}/en/detail/devnotes/">`,
       );
+      expect(page).toContain(
+        `<link rel="alternate" hreflang="zh-Hant" href="${siteUrl}/zh-hant/detail/devnotes/">`,
+      );
     }
     expect(types(zh)).toEqual(["WebPage", "BreadcrumbList"]);
     expect(JSON.stringify(jsonLd(zh))).toContain('"userInteractionCount":3000');
@@ -443,22 +446,84 @@ describe("site build from snapshot data", () => {
     }
   });
 
-  test("every page but the 404 offers its other-locale copy and remembers the reader's choice", () => {
-    for (const [route, other] of [
-      ["", "/en/"],
-      ["en/detail/techdaily", "/detail/techdaily/"],
+  test("every page but the 404 offers its other-locale copies and remembers the reader's choice", () => {
+    for (const [route, others] of [
+      ["", { "zh-hant": "/zh-hant/", en: "/en/" }],
+      [
+        "en/detail/techdaily",
+        { zh: "/detail/techdaily/", "zh-hant": "/zh-hant/detail/techdaily/" },
+      ],
+      ["zh-hant/rank", { zh: "/rank/", en: "/en/rank/" }],
     ] as const) {
       const page = html(route);
-      expect(page, route).toContain(`location.replace(${JSON.stringify(other)}`);
-      const bar = page.split("data-lang-suggest-bar")[1]?.split("</div>\n</div>")[0] ?? "";
-      expect(bar, route).toMatch(new RegExp(`href="${other}"[^>]*data-lang-switch`));
-      expect(bar, route).toContain("data-lang-stay");
+      // The head script redirects to whichever of these the reader chose before.
+      expect(page, route).toContain(`const paths = ${JSON.stringify(others)};`);
+      for (const [target, href] of Object.entries(others)) {
+        const bar =
+          page.split(`data-lang-suggest-bar="${target}"`)[1]?.split("</div>\n</div>")[0] ?? "";
+        expect(bar, `${route} → ${target}`).toMatch(
+          new RegExp(`href="${href}"[^>]*data-lang-switch="${target}"`),
+        );
+        expect(bar, `${route} → ${target}`).toContain("data-lang-stay");
+      }
     }
-    for (const notFound of ["404.html", "en/404.html"]) {
+    // Each offer is written in the language it offers, whatever page it sits on.
+    expect(html("")).toContain("本頁有繁體中文版。");
+    expect(html("en/")).toContain("本頁有繁體中文版。");
+    for (const notFound of ["404.html", "en/404.html", "zh-hant/404.html"]) {
       const page = readFileSync(path.join(client, notFound), "utf8");
       expect(page).not.toContain("data-lang-suggest-bar");
       expect(page).not.toContain("location.replace(");
     }
+  });
+
+  test("the language switcher links every locale's copy of the page and marks the current one", () => {
+    const nav = html("zh-hant/detail/techdaily").split("<footer")[1] ?? "";
+    expect(nav).toMatch(/href="\/detail\/techdaily\/"[^>]*data-lang-switch="zh"/);
+    expect(nav).toMatch(/href="\/en\/detail\/techdaily\/"[^>]*data-lang-switch="en"/);
+    expect(nav).toMatch(/<span aria-current="true"[^>]*>\s*繁\s*<\/span>/);
+  });
+
+  test("Traditional pages are the zh pages converted, with their own URLs", () => {
+    const page = html("zh-hant/detail/techdaily");
+    expect(page).toContain('<html lang="zh-Hant">');
+    expect(page).toContain(`<link rel="canonical" href="${siteUrl}/zh-hant/detail/techdaily/">`);
+    expect(page).toContain(
+      `<link rel="alternate" hreflang="zh-Hant" href="${siteUrl}/zh-hant/detail/techdaily/">`,
+    );
+    expect(page).toContain('<meta property="og:locale" content="zh_TW">');
+    // Entry text and interface text are both converted.
+    expect(page).toContain("每日科技");
+    expect(page).toContain("每天分享開發與科技新聞");
+    expect(page).not.toContain("每天分享开发与科技新闻");
+    expect(page).toContain("頻道");
+    // Site links stay inside the Traditional pages; the search index is the Traditional one.
+    expect(page).toContain('href="/zh-hant/channel/tech/"');
+    expect(page).not.toMatch(/href="\/channel\//);
+    expect(page).toContain("/pagefind/zh-hant");
+    // External links keep their exact bytes.
+    expect(page).toContain(`href="${repoUrl}"`);
+    // Every zh page has a Traditional copy; guides read the zh articles.
+    for (const route of ["zh-hant", "zh-hant/channel", "zh-hant/tags", "zh-hant/links"]) {
+      expect(existsSync(path.join(client, route, "index.html")), route).toBe(true);
+    }
+    expect(html("zh-hant/guides/find-telegram-channels")).toMatch(
+      /<h1[^>]*>\s*怎麼找到優質的 Telegram 頻道/,
+    );
+    expect(readFileSync(path.join(client, "zh-hant/404.html"), "utf8")).toContain(
+      '<html lang="zh-Hant">',
+    );
+    // The Mini App follows the Telegram client's language instead.
+    expect(existsSync(path.join(client, "zh-hant/app"))).toBe(false);
+  });
+
+  test("Traditional pages fetch Traditional copies of the browser-loaded data", () => {
+    const hot = readFileSync(path.join(client, "zh-hant/data/hot-channel.json"), "utf8");
+    expect(hot).toContain("環球早報");
+    expect(readFileSync(path.join(client, "data/hot-channel.json"), "utf8")).toContain("环球早报");
+    expect(existsSync(path.join(client, "zh-hant/data/random-all.json"))).toBe(true);
+    expect(html("zh-hant/random")).toContain("/zh-hant/data/random-");
+    expect(html("zh-hant/go")).toContain('data-cards="/zh-hant/data/random-all.json"');
   });
 
   test("the footer shows the first friend sites, a link to all of them and the bot application", () => {
@@ -944,7 +1009,7 @@ describe("site build from snapshot data", () => {
 
   test("sitemap index lists sharded sitemaps with hreflang alternates", () => {
     const index = readFileSync(path.join(client, "sitemap-index.xml"), "utf8");
-    for (const shard of ["pages", "channel-zh", "channel-en", "group-zh", "bot-en"]) {
+    for (const shard of ["pages", "channel-zh", "channel-zh-hant", "channel-en", "bot-en"]) {
       expect(index).toContain(`${siteUrl}/sitemap-${shard}.xml`);
     }
     const channelsZh = readFileSync(path.join(client, "sitemap-channel-zh.xml"), "utf8");
@@ -953,8 +1018,13 @@ describe("site build from snapshot data", () => {
       `<xhtml:link rel="alternate" hreflang="en" href="${siteUrl}/en/detail/techdaily/"/>`,
     );
     expect(channelsZh).not.toContain("/detail/devchat/");
+    expect(channelsZh).toContain(
+      `<xhtml:link rel="alternate" hreflang="zh-Hant" href="${siteUrl}/zh-hant/detail/techdaily/"/>`,
+    );
     const channelsEn = readFileSync(path.join(client, "sitemap-channel-en.xml"), "utf8");
     expect(channelsEn).toContain(`<loc>${siteUrl}/en/detail/techdaily/</loc>`);
+    const channelsHant = readFileSync(path.join(client, "sitemap-channel-zh-hant.xml"), "utf8");
+    expect(channelsHant).toContain(`<loc>${siteUrl}/zh-hant/detail/techdaily/</loc>`);
   });
 
   test("guide articles render in both locales with dates, a table of contents and internal links", () => {

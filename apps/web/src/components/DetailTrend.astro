@@ -1,13 +1,13 @@
 ---
 import ChartArea from "@tabler/icons/outline/chart-area-line.svg";
-import type { EntryView, Locale } from "@tgbox/shared";
+import type { EntryView, SiteLocale } from "@tgbox/shared";
 import { ui } from "@/i18n/ui.ts";
 import { detailUi } from "@/i18n/ui-detail.ts";
 import { areaChart, memberDelta } from "@/lib/detail-trend.ts";
 import { fill, formatDate, formatNumber } from "@/lib/format.ts";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
   history: EntryView["memberHistory"];
 }
 const { locale, history } = Astro.props;

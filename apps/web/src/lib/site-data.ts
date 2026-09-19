@@ -5,8 +5,8 @@ import {
   type EntryKind,
   type EntryView,
   entryKinds,
-  type Locale,
   SiteData,
+  type SiteLocale,
   type TagView,
 } from "@tgbox/shared";
 import { devSiteData } from "./dev-site-data.ts";
@@ -88,8 +88,8 @@ export function byMembers(entries: EntryView[]): EntryView[] {
   );
 }
 
-export function localName(item: { nameZh: string; nameEn: string }, locale: Locale) {
-  return locale === "zh" ? item.nameZh : item.nameEn;
+export function localName(item: { nameZh: string; nameEn: string }, locale: SiteLocale) {
+  return locale === "en" ? item.nameEn : item.nameZh;
 }
 
 export function findCategory(kind: EntryKind, slug: string): CategoryView | undefined {

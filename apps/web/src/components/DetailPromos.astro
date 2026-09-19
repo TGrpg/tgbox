@@ -1,7 +1,7 @@
 ---
 import Ad from "@tabler/icons/outline/ad-2.svg";
 import Speakerphone from "@tabler/icons/outline/speakerphone.svg";
-import { type Locale, promoClickUrl } from "@tgbox/shared";
+import { promoClickUrl, type SiteLocale } from "@tgbox/shared";
 import { localizePath } from "@/i18n/locale.ts";
 import { ui } from "@/i18n/ui.ts";
 import { detailUi } from "@/i18n/ui-detail.ts";
@@ -9,7 +9,7 @@ import { adSlotLine, bannerSlots, promoSlots } from "@/lib/promos.ts";
 import { getSiteData } from "@/lib/site-data.ts";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
 }
 const { locale } = Astro.props;
 const { entry, adSlot } = ui(locale);

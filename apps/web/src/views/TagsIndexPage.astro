@@ -1,6 +1,6 @@
 ---
 import Hash from "@tabler/icons/outline/hash.svg";
-import { type Locale, t, tagFacet } from "@tgbox/shared";
+import { type SiteLocale, t, tagFacet } from "@tgbox/shared";
 import KindPageHeader from "@/components/kind/KindPageHeader.astro";
 import JsonLd from "@/components/layout/JsonLd.astro";
 import SubmitButton from "@/components/SubmitButton.astro";
@@ -14,7 +14,7 @@ import { absoluteUrl } from "@/lib/site.ts";
 import { getSiteData, localName } from "@/lib/site-data.ts";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
 }
 const { locale } = Astro.props;
 const strings = ui(locale);

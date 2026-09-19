@@ -3,13 +3,13 @@ import CopyIcon from "@tabler/icons/outline/copy.svg";
 import QrcodeIcon from "@tabler/icons/outline/qrcode.svg";
 import ShareIcon from "@tabler/icons/outline/share.svg";
 import XIcon from "@tabler/icons/outline/x.svg";
-import type { Locale } from "@tgbox/shared";
+import type { SiteLocale } from "@tgbox/shared";
 import QRCode from "qrcode";
 import { ButtonVariants } from "@/components/starwind/button";
 import { ui } from "@/i18n/ui.ts";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
   url: string;
   title: string;
   /** Classes for the trigger button (defaults to a full-width ghost button). */

@@ -37,7 +37,7 @@
 - **内容充实的详情页**：精确订阅/成员数、创建时间、收录时间、活跃度、语言、最近消息、成员趋势图、相关频道和相关群组
 - Pagefind 站内搜索（支持中文），`Ctrl K` 快捷搜索
 - 随机漂流瓶、`/go` 跳转页（自动选择最快的 t.me 镜像）、分享和二维码
-- 中英双语，带 `hreflang`、分类型站点地图、Open Graph，对 SEO 友好；浏览器偏好另一种语言的访客会看到一键切换提示，选择会被记住
+- 简体中文、繁体中文、英文三语（繁体版在构建时由简体自动转换），带 `hreflang`、分类型站点地图、Open Graph，对 SEO 友好；浏览器偏好另一种语言的访客会看到一键切换提示，选择会被记住
 - 开放数据：整个目录输出为 `/data/entries.json`，每天同步到 [awesome-telegram](https://github.com/TGrpg/awesome-telegram) 资源合集
 - 页脚和 `/links/` 页的友情链接，通过机器人申请、管理员审核
 - 亮色 / 暗色主题、手机底部 Tab 栏、PWA、Motion 动效（遵守 `prefers-reduced-motion`）
@@ -144,7 +144,7 @@ pnpm --filter @tgbox/admin dev         # 后台 → http://localhost:8789（本�
    - **GitHub token**（机器人用来触发构建）：classic token 勾 `public_repo`，或 fine-grained token 只授权本仓库并把 **Contents 设为 Read and write**。用 `wrangler secret put` 存为 Worker 密钥 `GITHUB_DISPATCH_TOKEN`，并在 `apps/bot/wrangler.jsonc`、`apps/admin/wrangler.jsonc` 里填好 `GITHUB_REPO`。
    - 仓库 Secret `CLOUDFLARE_ACCOUNT_ID`，Variables `SITE_URL`、`R2_PUBLIC_URL`、`PUBLIC_BOT_USERNAME`。
    - 手动运行一次 **Build & deploy**。之后审核通过、支付成功、推广到期都会触发构建（约 3–5 分钟上线），另有每天 00:30 UTC 的定时构建（刷新排行榜）和每 6 小时一次的变更检查。
-   - Pagefind 索引随网站一起发布；条目超过约 9,000 个时改用 `scripts/sync-pagefind.ts` 放到 R2（那条路径需要 `R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY` 和 `PUBLIC_PAGEFIND_URL`），避免占用静态文件配额。
+   - Pagefind 索引随网站一起发布；条目超过约 6,000 个时改用 `scripts/sync-pagefind.ts` 放到 R2（那条路径需要 `R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY` 和 `PUBLIC_PAGEFIND_URL`），避免占用静态文件配额。
 
 ### 免费额度
 
@@ -153,11 +153,11 @@ pnpm --filter @tgbox/admin dev         # 后台 → http://localhost:8789（本�
 | Worker 请求 | 每天 10 万 | 公开页面是静态资源，不经过 Worker |
 | Worker CPU | 每次 10ms | 正则解析 `t.me`（约 2ms），小批量刷新 |
 | D1 写入 | 每天 10 万行 | 条件 upsert（没变化就写 0 行）、冷热分表、尽量少的索引 |
-| 静态文件 | 每版本 2 万个 | 中英双语约可容纳 9,800 个条目 |
+| 静态文件 | 每版本 2 万个 | 简繁英三语约可容纳 6,500 个条目 |
 
 ## 路线图
 
-- [x] 静态双语导航、详情页、搜索、漂流瓶
+- [x] 静态多语言导航、详情页、搜索、漂流瓶
 - [x] 收录机器人、审核流程、定时刷新和失效检测
 - [x] 管理后台（Cloudflare Access + Telegram Mini App 登录）
 - [x] 后台设置（机器人 / 网站 / 支付）、机器人内自助购买推广位（Telegram Stars 或 USDT），到期自动下架

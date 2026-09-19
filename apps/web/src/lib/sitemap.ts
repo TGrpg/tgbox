@@ -1,5 +1,5 @@
-import { type EntryKind, entryKinds, type Locale, locales } from "@tgbox/shared";
-import { alternatePaths } from "../i18n/locale.ts";
+import { type EntryKind, entryKinds, type SiteLocale, siteLocales } from "@tgbox/shared";
+import { alternatePaths, htmlLang } from "../i18n/locale.ts";
 import { GUIDES_PATH, guidePath, listGuides } from "./guides.ts";
 import { MIN_INDEXED_LISTING_ENTRIES } from "./seo.ts";
 import { absoluteUrl } from "./site.ts";
@@ -28,8 +28,8 @@ function pagedPaths(base: string, count: number) {
   return Array.from({ length: total }, (_, index) => pageHref(base, index + 1));
 }
 
-/** One `<url>` per path in `locale`, each with zh-CN / en / x-default alternates. */
-function urls(items: SitemapUrl[], locale: Locale) {
+/** One `<url>` per path in `locale`, each with an alternate per locale and x-default. */
+function urls(items: SitemapUrl[], locale: SiteLocale) {
   const link = (hreflang: string, href: string) =>
     `<xhtml:link rel="alternate" hreflang="${hreflang}" href="${escapeXml(absoluteUrl(href))}"/>`;
   return items.map(({ path, lastmod }) => {
@@ -38,8 +38,7 @@ function urls(items: SitemapUrl[], locale: Locale) {
       "<url>",
       `<loc>${escapeXml(absoluteUrl(alternates[locale]))}</loc>`,
       `<lastmod>${escapeXml(lastmod)}</lastmod>`,
-      link("zh-CN", alternates.zh),
-      link("en", alternates.en),
+      ...siteLocales.map((other) => link(htmlLang[other], alternates[other])),
       link("x-default", alternates.zh),
       "</url>",
     ].join("");
@@ -69,7 +68,7 @@ function shardNames() {
   return [
     "pages",
     "guides",
-    ...entryKinds.flatMap((kind) => locales.map((locale) => `${kind}-${locale}`)),
+    ...entryKinds.flatMap((kind) => siteLocales.map((locale) => `${kind}-${locale}`)),
   ];
 }
 
@@ -82,7 +81,7 @@ export function sitemapIndex() {
   );
 }
 
-/** Home, content pages and tag listings in both locales. */
+/** Home, content pages and tag listings in every locale. */
 export function pagesSitemap() {
   const data = getSiteData();
   // Tags below the threshold are noindexed (see MIN_INDEXED_LISTING_ENTRIES), so don't advertise them.
@@ -94,13 +93,13 @@ export function pagesSitemap() {
     path,
     lastmod: data.generatedAt,
   }));
-  return urlset(locales.flatMap((locale) => urls(items, locale)));
+  return urlset(siteLocales.flatMap((locale) => urls(items, locale)));
 }
 
 /** The guides index and every article, each dated by its own `updatedAt`. */
 export async function guidesSitemap() {
   const shards = await Promise.all(
-    locales.map(async (locale) => {
+    siteLocales.map(async (locale) => {
       const guides = await listGuides(locale);
       const updated = guides.map((guide) => guide.data.updatedAt.toISOString()).sort();
       const newest = updated.at(-1) ?? getSiteData().generatedAt;
@@ -120,7 +119,7 @@ export async function guidesSitemap() {
 }
 
 /** Kind index, its category listings and detail pages, for one locale. */
-export function kindSitemap(kind: EntryKind, locale: Locale) {
+export function kindSitemap(kind: EntryKind, locale: SiteLocale) {
   const data = getSiteData();
   // Categories holding one or two entries are noindexed for the same reason thin tags are.
   const listings = [

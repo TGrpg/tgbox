@@ -1,26 +1,31 @@
 ---
 import Language from "@tabler/icons/outline/language.svg";
 import X from "@tabler/icons/outline/x.svg";
-import type { Locale } from "@tgbox/shared";
-import { htmlLang } from "@/i18n/locale.ts";
-import { ui } from "@/i18n/ui.ts";
+import type { SiteLocale } from "@tgbox/shared";
+import { htmlLang, localeOffers } from "@/i18n/locale.ts";
 
 interface Props {
-  locale: Locale;
-  /** This page in the other locale. */
+  /** The locale being offered. */
+  target: SiteLocale;
+  /** This page in that locale. */
   href: string;
+  /** The page's own locale, remembered when the reader dismisses the bar. */
+  locale: SiteLocale;
 }
-const { locale, href } = Astro.props;
-const target = locale === "zh" ? "en" : "zh";
-// Like the switcher's label, these strings are written in the language being offered.
-const strings = ui(locale).lang;
+const { target, href, locale } = Astro.props;
+// Written in the language being offered: that's the one the reader's browser asked for.
+const strings = localeOffers[target];
 ---
 
 {/*
-  Shown only when the head script in BaseLayout sets html[data-lang-suggest]; both buttons are
-  handled by the layout's click listener, which remembers the choice.
+  Shown only when the head script in BaseLayout sets html[data-lang-suggest] to this bar's locale;
+  both buttons are handled by the layout's click listener, which remembers the choice.
 */}
-<div data-lang-suggest-bar lang={htmlLang[target]} class="border-b border-border bg-primary-soft">
+<div
+  data-lang-suggest-bar={target}
+  lang={htmlLang[target]}
+  class="border-b border-border bg-primary-soft"
+>
   <div
     class="mx-auto flex max-w-7xl items-center gap-3 px-4 py-2 text-sm text-primary-soft-foreground sm:px-6"
   >
@@ -37,8 +42,8 @@ const strings = ui(locale).lang;
     <button
       type="button"
       data-lang-stay={locale}
-      aria-label={strings.stay}
-      title={strings.stay}
+      aria-label={strings.dismiss}
+      title={strings.dismiss}
       class="inline-grid size-8 shrink-0 place-items-center rounded-full transition-colors hover:bg-background/60 focus-visible:ring-3 focus-visible:ring-outline/40 outline-none"
     >
       <X class="size-4" aria-hidden="true" />

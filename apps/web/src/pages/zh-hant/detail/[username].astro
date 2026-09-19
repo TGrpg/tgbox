@@ -1,0 +1,11 @@
+---
+import type { InferGetStaticPropsType } from "astro";
+import { detailPaths } from "@/lib/site-data.ts";
+import DetailPage from "@/views/DetailPage.astro";
+
+export const getStaticPaths = detailPaths;
+type Props = InferGetStaticPropsType<typeof getStaticPaths>;
+const { entry }: Props = Astro.props;
+---
+
+<DetailPage locale="zh-hant" entry={entry} />

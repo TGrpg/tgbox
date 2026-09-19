@@ -449,9 +449,9 @@ export async function buildSiteData(options: BuildSiteDataOptions): Promise<Site
 }
 
 const PAGE_SIZE = 60;
-const LOCALES = 2;
+const LOCALES = 3;
 
-/** Static files the web build will emit for this data (detail pages + paginated list pages, both locales). */
+/** Static files the web build will emit for this data (detail pages + paginated list pages, every locale). */
 export function projectedStaticFileCount(data: SiteData): number {
   const pages = (count: number) => Math.max(1, Math.ceil(count / PAGE_SIZE));
   const listPages =

@@ -1,6 +1,6 @@
 ---
 import Hash from "@tabler/icons/outline/hash.svg";
-import { type Locale, type TagView, t } from "@tgbox/shared";
+import { type SiteLocale, type TagView, t } from "@tgbox/shared";
 import KindGrid from "@/components/kind/KindGrid.astro";
 import KindPageHeader from "@/components/kind/KindPageHeader.astro";
 import JsonLd from "@/components/layout/JsonLd.astro";
@@ -25,7 +25,7 @@ import {
 } from "@/lib/site-data.ts";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
   tag: TagView;
   page: number;
 }

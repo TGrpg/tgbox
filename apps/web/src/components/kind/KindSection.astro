@@ -1,6 +1,6 @@
 ---
 import ArrowRight from "@tabler/icons/outline/arrow-right.svg";
-import type { CategoryView, EntryView, Locale } from "@tgbox/shared";
+import type { CategoryView, EntryView, SiteLocale } from "@tgbox/shared";
 import CategoryIcon from "@/components/CategoryIcon.astro";
 import KindGrid from "@/components/kind/KindGrid.astro";
 import { localizePath } from "@/i18n/locale.ts";
@@ -9,7 +9,7 @@ import { fill } from "@/lib/format.ts";
 import { localName } from "@/lib/site-data.ts";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
   category: CategoryView;
   entries: EntryView[];
   eager?: number | undefined;

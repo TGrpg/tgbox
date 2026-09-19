@@ -1,17 +1,17 @@
 ---
 import ArrowUpRight from "@tabler/icons/outline/arrow-up-right.svg";
 import Plus from "@tabler/icons/outline/plus.svg";
-import type { Locale } from "@tgbox/shared";
+import type { SiteLocale } from "@tgbox/shared";
 import { ui } from "@/i18n/ui.ts";
 import PageLayout from "@/layouts/PageLayout.astro";
 import { botLinksUrl } from "@/lib/site.ts";
 import { getSiteData } from "@/lib/site-data.ts";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
 }
 const { locale } = Astro.props;
-const zh = locale === "zh";
+const zh = locale !== "en";
 const friends = getSiteData().friendLinks.map((friend) => ({
   ...friend,
   host: new URL(friend.url).hostname.replace(/^www\./, ""),

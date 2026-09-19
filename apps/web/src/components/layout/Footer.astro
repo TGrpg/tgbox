@@ -2,7 +2,7 @@
 import ArrowRight from "@tabler/icons/outline/arrow-right.svg";
 import BrandGithub from "@tabler/icons/outline/brand-github.svg";
 import Plus from "@tabler/icons/outline/plus.svg";
-import { type Locale, t } from "@tgbox/shared";
+import { type SiteLocale, t } from "@tgbox/shared";
 import { localizePath } from "@/i18n/locale.ts";
 import { ui } from "@/i18n/ui.ts";
 import { fill } from "@/lib/format.ts";
@@ -12,7 +12,7 @@ import LangSwitch from "./LangSwitch.astro";
 import Logo from "./Logo.astro";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
   path: string;
 }
 const { locale, path } = Astro.props;
@@ -103,7 +103,7 @@ const chip =
                 href={friend.url}
                 rel="noopener"
                 target="_blank"
-                title={(locale === "zh" ? friend.descZh : friend.descEn) || undefined}
+                title={(locale === "en" ? friend.descEn : friend.descZh) || undefined}
                 class:list={[
                   chip,
                   "border-border bg-background pr-3 pl-1 text-muted-foreground hover:border-primary/40 hover:text-primary",

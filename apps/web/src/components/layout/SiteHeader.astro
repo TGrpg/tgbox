@@ -1,7 +1,7 @@
 ---
 import Shuffle from "@tabler/icons/outline/arrows-shuffle.svg";
 import BrandGithub from "@tabler/icons/outline/brand-github.svg";
-import { type Locale, t } from "@tgbox/shared";
+import { type SiteLocale, t } from "@tgbox/shared";
 import { localizePath } from "@/i18n/locale.ts";
 import { ui } from "@/i18n/ui.ts";
 import { repoUrl } from "@/lib/site.ts";
@@ -12,7 +12,7 @@ import SearchButton from "./SearchButton.astro";
 import ThemeToggle from "./ThemeToggle.astro";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
   path: string;
 }
 const { locale, path } = Astro.props;
@@ -44,11 +44,11 @@ const sourceLabel = t(locale, "site.source");
           class="pointer-events-none absolute top-1 left-0 hidden h-[calc(100%-0.5rem)] rounded-full bg-primary-soft"
         ></span>
         {items.map((item) => (
-            <li class:list={["relative", item.secondary && "hidden lg:block"]}>
+            <li class:list={["relative", item.secondary && "hidden xl:block"]}>
               <a
                 href={item.href}
                 aria-current={item.active ? "page" : undefined}
-                class="nav-link flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-muted-foreground transition-colors duration-200 outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-outline/40 aria-[current=page]:bg-primary-soft aria-[current=page]:font-semibold aria-[current=page]:text-primary-soft-foreground"
+                class="nav-link flex items-center gap-1.5 rounded-full px-3.5 py-1.5 whitespace-nowrap text-muted-foreground transition-colors duration-200 outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-outline/40 aria-[current=page]:bg-primary-soft aria-[current=page]:font-semibold aria-[current=page]:text-primary-soft-foreground"
               >
                 <item.icon class="size-[1.05rem]" aria-hidden="true" />
                 {item.label}
@@ -81,7 +81,7 @@ const sourceLabel = t(locale, "site.source");
         <span role="tooltip" class="tip">{sourceLabel}</span>
       </a>
       <ThemeToggle locale={locale} />
-      <div class="hidden lg:block"><LangSwitch locale={locale} path={path} /></div>
+      <div class="hidden xl:block"><LangSwitch locale={locale} path={path} compact /></div>
     </div>
   </div>
 </header>

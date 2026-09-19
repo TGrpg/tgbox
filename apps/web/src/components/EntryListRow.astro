@@ -1,6 +1,6 @@
 ---
 import RosetteCheck from "@tabler/icons/filled/rosette-discount-check.svg";
-import type { EntryView, Locale } from "@tgbox/shared";
+import type { EntryView, SiteLocale } from "@tgbox/shared";
 import Avatar from "@/components/Avatar.astro";
 import { localizePath } from "@/i18n/locale.ts";
 import { ui } from "@/i18n/ui.ts";
@@ -11,7 +11,7 @@ interface Props {
     EntryView,
     "username" | "kind" | "title" | "verified" | "avatarUrl" | "members" | "promo"
   >;
-  locale: Locale;
+  locale: SiteLocale;
 }
 
 const { entry, locale } = Astro.props;

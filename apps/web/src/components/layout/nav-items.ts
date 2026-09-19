@@ -5,7 +5,7 @@ import BotIcon from "@tabler/icons/outline/robot.svg";
 import ChannelIcon from "@tabler/icons/outline/speakerphone.svg";
 import TrophyIcon from "@tabler/icons/outline/trophy.svg";
 import GroupIcon from "@tabler/icons/outline/users.svg";
-import { type Locale, t } from "@tgbox/shared";
+import { type SiteLocale, t } from "@tgbox/shared";
 import { localizePath } from "@/i18n/locale.ts";
 import { ui } from "@/i18n/ui.ts";
 
@@ -13,7 +13,7 @@ import { ui } from "@/i18n/ui.ts";
  * Primary sections, shared by the desktop pill nav and the mobile tab bar. `secondary` items are
  * left out of the 5-slot mobile tab bar (the footer links them) and of the narrow desktop header.
  */
-export function navItems(locale: Locale, path: string) {
+export function navItems(locale: SiteLocale, path: string) {
   const neutralPath = localizePath(path, "zh");
   return [
     { href: "/", label: t(locale, "site.home"), icon: HomeIcon, secondary: false },

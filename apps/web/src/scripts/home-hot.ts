@@ -6,7 +6,10 @@ import { durations, easeOut, springs, springTransition } from "@/lib/motion-pres
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const gentle = springTransition(springs.gentle);
 const STAGGER = 0.025;
-const detailPrefix = document.documentElement.lang.startsWith("zh") ? "" : "/en";
+// Page URLs live under the locale's prefix; only zh-hant has its own (converted) data files.
+const { lang } = document.documentElement;
+const detailPrefix = lang === "zh-Hant" ? "/zh-hant" : lang.startsWith("zh") ? "" : "/en";
+const dataPrefix = lang === "zh-Hant" ? "/zh-hant" : "";
 const compact = new Intl.NumberFormat(document.documentElement.lang, {
   notation: "compact",
   maximumFractionDigits: 1,
@@ -64,7 +67,7 @@ function setup(column: HTMLElement) {
     const icon = button.querySelector("[data-hot-shuffle-icon]");
     if (icon && !reduced) animate(icon, { rotate: [0, 360] }, { duration: 0.6, ease: easeOut });
     try {
-      pool ??= fetch(`/data/hot-${column.dataset.homeHot}.json`)
+      pool ??= fetch(`${dataPrefix}/data/hot-${column.dataset.homeHot}.json`)
         .then((response) => (response.ok ? response.json() : []))
         .then(parseHotPool);
       const items = await pool;

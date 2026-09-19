@@ -1,14 +1,14 @@
 ---
-import type { Locale } from "@tgbox/shared";
+import type { SiteLocale } from "@tgbox/shared";
 import { ui } from "@/i18n/ui.ts";
 import PageLayout from "@/layouts/PageLayout.astro";
 import { botUrl, botUsername } from "@/lib/site.ts";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
 }
 const { locale } = Astro.props;
-const zh = locale === "zh";
+const zh = locale !== "en";
 const bot = `@${botUsername}`;
 ---
 

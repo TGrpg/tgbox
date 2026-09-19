@@ -1,11 +1,11 @@
 ---
-import { type Locale, t } from "@tgbox/shared";
-import { alternatePaths } from "@/i18n/locale.ts";
+import { type SiteLocale, siteLocales, t } from "@tgbox/shared";
+import { alternatePaths, htmlLang } from "@/i18n/locale.ts";
 import { ui } from "@/i18n/ui.ts";
 import { absoluteUrl } from "@/lib/site.ts";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
   /** Page title without the site suffix; omit on the home page. */
   title?: string | undefined;
   description?: string | undefined;
@@ -33,7 +33,7 @@ const fullTitle = title ? `${title} | ${siteName}` : `${siteName} — ${t(locale
 const metaDescription = description ?? ui(locale).meta.description;
 const alternates = alternatePaths(path);
 const canonical = absoluteUrl(alternates[locale]);
-const ogLocale: Record<Locale, string> = { zh: "zh_CN", en: "en_US" };
+const ogLocale: Record<SiteLocale, string> = { zh: "zh_CN", "zh-hant": "zh_TW", en: "en_US" };
 // The default card is a 1200×630 PNG (SVG is not rendered by social crawlers), so it gets the
 // wide Twitter card. A per-page `image` is an entry avatar — square, and wrong in a wide card.
 const wideCard = image === undefined;
@@ -46,8 +46,9 @@ const ogImage = absoluteUrl(image ?? "/og-default.png");
 {noindex ? <meta name="robots" content="noindex, follow"> : <link rel="canonical" href={canonical}>}
 {!noindex && (
     <>
-      <link rel="alternate" hreflang="zh-CN" href={absoluteUrl(alternates.zh)}>
-      <link rel="alternate" hreflang="en" href={absoluteUrl(alternates.en)}>
+      {siteLocales.map((other) => (
+        <link rel="alternate" hreflang={htmlLang[other]} href={absoluteUrl(alternates[other])}>
+      ))}
       <link rel="alternate" hreflang="x-default" href={absoluteUrl(alternates.zh)}>
     </>
   )}
@@ -66,7 +67,9 @@ const ogImage = absoluteUrl(image ?? "/og-default.png");
     </>
   )}
 <meta property="og:locale" content={ogLocale[locale]}>
-<meta property="og:locale:alternate" content={ogLocale[locale === "zh" ? "en" : "zh"]}>
+{siteLocales
+  .filter((other) => other !== locale)
+  .map((other) => <meta property="og:locale:alternate" content={ogLocale[other]}>)}
 <meta name="twitter:card" content={wideCard ? "summary_large_image" : "summary"}>
 <meta name="twitter:title" content={fullTitle}>
 <meta name="twitter:description" content={metaDescription}>

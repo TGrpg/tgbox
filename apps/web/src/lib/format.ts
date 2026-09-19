@@ -1,7 +1,7 @@
-import type { Locale } from "@tgbox/shared";
+import type { SiteLocale } from "@tgbox/shared";
 import { htmlLang } from "../i18n/locale.ts";
 
-export function formatNumber(value: number, locale: Locale, options?: { compact?: boolean }) {
+export function formatNumber(value: number, locale: SiteLocale, options?: { compact?: boolean }) {
   return new Intl.NumberFormat(htmlLang[locale], {
     notation: options?.compact ? "compact" : "standard",
     maximumFractionDigits: 1,
@@ -9,7 +9,7 @@ export function formatNumber(value: number, locale: Locale, options?: { compact?
 }
 
 /** Dates are rendered at build time, so pin UTC to keep output stable across machines. */
-export function formatDate(iso: string, locale: Locale) {
+export function formatDate(iso: string, locale: SiteLocale) {
   return new Intl.DateTimeFormat(htmlLang[locale], {
     year: "numeric",
     month: locale === "en" ? "short" : "long",

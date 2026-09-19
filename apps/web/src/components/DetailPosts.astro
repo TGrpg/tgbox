@@ -3,7 +3,7 @@ import ChevronDown from "@tabler/icons/outline/chevron-down.svg";
 import ExternalLink from "@tabler/icons/outline/external-link.svg";
 import Eye from "@tabler/icons/outline/eye.svg";
 import Message from "@tabler/icons/outline/message-2.svg";
-import type { EntryView, Locale } from "@tgbox/shared";
+import type { EntryView, SiteLocale } from "@tgbox/shared";
 import { htmlLang } from "@/i18n/locale.ts";
 import { ui } from "@/i18n/ui.ts";
 import { detailUi } from "@/i18n/ui-detail.ts";
@@ -12,7 +12,7 @@ import { linkify } from "@/lib/linkify.ts";
 import { postReach } from "@/lib/post-reach.ts";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
   username: string;
   posts: EntryView["posts"];
   members: number | null;

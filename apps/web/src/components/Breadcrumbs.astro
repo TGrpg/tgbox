@@ -1,12 +1,12 @@
 ---
 import ChevronRight from "@tabler/icons/outline/chevron-right.svg";
-import type { Locale } from "@tgbox/shared";
+import type { SiteLocale } from "@tgbox/shared";
 import { ui } from "@/i18n/ui.ts";
 import { breadcrumbJsonLd } from "@/lib/json-ld.ts";
 import { absoluteUrl } from "@/lib/site.ts";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
   /** The last item is the current page and should have no href. */
   items: { label: string; href?: string | undefined }[];
 }

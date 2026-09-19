@@ -2,7 +2,7 @@
 import ArrowRight from "@tabler/icons/outline/arrow-right.svg";
 import ClockIcon from "@tabler/icons/outline/clock.svg";
 import Trophy from "@tabler/icons/outline/trophy.svg";
-import { entryKinds, type Locale, t } from "@tgbox/shared";
+import { entryKinds, type SiteLocale, t } from "@tgbox/shared";
 import EntryCardCompact from "@/components/EntryCardCompact.astro";
 import HomeCta from "@/components/HomeCta.astro";
 import HomeHero from "@/components/HomeHero.astro";
@@ -21,7 +21,7 @@ import { absoluteUrl, botUrl, repoUrl, siteUrl } from "@/lib/site.ts";
 import { getSiteData } from "@/lib/site-data.ts";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
 }
 const { locale } = Astro.props;
 const strings = homeUi(locale);

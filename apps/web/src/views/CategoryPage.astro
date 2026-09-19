@@ -1,5 +1,5 @@
 ---
-import { type CategoryView, type Locale, t } from "@tgbox/shared";
+import { type CategoryView, type SiteLocale, t } from "@tgbox/shared";
 import CategoryIcon from "@/components/CategoryIcon.astro";
 import KindGrid from "@/components/kind/KindGrid.astro";
 import KindListingShell from "@/components/kind/KindListingShell.astro";
@@ -28,7 +28,7 @@ import { absoluteUrl } from "@/lib/site.ts";
 import { getSiteData, localName, PAGE_SIZE, pageHref, pageSlice } from "@/lib/site-data.ts";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
   category: CategoryView;
   sort: ListingSort;
   page: number;

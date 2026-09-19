@@ -38,7 +38,7 @@ Most Telegram directories are either a static list that goes stale, or a server-
 - **Rich detail pages**: exact subscriber/member count, creation date, listing date, activity level, language, recent posts, member trend chart, related channels and groups
 - Instant client-side search (Pagefind, CJK-aware) with a `Ctrl K` command palette
 - Random discovery ("drift bottle"), a fastest-mirror `/go` redirect page, share links and QR codes
-- Fully bilingual (Chinese / English) with `hreflang`, per-kind sitemaps, Open Graph tags and structured URLs for SEO; visitors whose browser prefers the other language get a one-tap switch that is remembered
+- Simplified Chinese, Traditional Chinese (converted from Simplified at build time) and English, with `hreflang`, per-kind sitemaps, Open Graph tags and structured URLs for SEO; visitors whose browser prefers the other language get a one-tap switch that is remembered
 - Open data: the whole directory at `/data/entries.json`, mirrored daily to the [awesome-telegram](https://github.com/TGrpg/awesome-telegram) list
 - Friend links in the footer and on `/links/`, applied for through the bot and approved by admins
 - Light and dark themes, mobile tab bar, PWA manifest, subtle Motion animations that respect `prefers-reduced-motion`
@@ -157,7 +157,7 @@ Checks: `pnpm check` (Biome + typecheck), `pnpm test`, `pnpm --filter @tgbox/web
    - **GitHub token** so the bot can trigger builds — a classic token with the `public_repo` scope, or a fine-grained token limited to this repository with **Contents: Read and write**. Store it as the Worker secret `GITHUB_DISPATCH_TOKEN` (`wrangler secret put`), and set `GITHUB_REPO` in `apps/bot/wrangler.jsonc` and `apps/admin/wrangler.jsonc`.
    - Repository secret `CLOUDFLARE_ACCOUNT_ID`, and variables `SITE_URL`, `R2_PUBLIC_URL`, `PUBLIC_BOT_USERNAME`.
    - Run **Build & deploy** once by hand. After that: approvals, payments and expiries dispatch a build (live in ~3–5 minutes), plus a daily build at 00:30 UTC for the rankings and a dirty check every 6 hours.
-   - The Pagefind index ships with the site. Past roughly 9,000 entries, move it to R2 with `scripts/sync-pagefind.ts` (that path needs `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` and `PUBLIC_PAGEFIND_URL`) so it stops counting against the static-file limit.
+   - The Pagefind index ships with the site. Past roughly 6,000 entries, move it to R2 with `scripts/sync-pagefind.ts` (that path needs `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` and `PUBLIC_PAGEFIND_URL`) so it stops counting against the static-file limit.
 
 ### Free-plan budget
 
@@ -166,11 +166,11 @@ Checks: `pnpm check` (Biome + typecheck), `pnpm test`, `pnpm --filter @tgbox/web
 | Worker requests | 100k / day | Public pages are static assets and never invoke a Worker |
 | Worker CPU | 10 ms / invocation | Regex-based `t.me` parsing (~2 ms), small refresh batches |
 | D1 writes | 100k rows / day | Conditional upserts that write 0 rows when nothing changed, hot/cold table split, few indexes |
-| Static files | 20k / version | About 9,800 entries in both languages |
+| Static files | 20k / version | About 6,500 entries in all three languages |
 
 ## Roadmap
 
-- [x] Static bilingual directory, detail pages, search, random discovery
+- [x] Static multilingual directory, detail pages, search, random discovery
 - [x] Submission bot, review workflow, scheduled refresh and liveness detection
 - [x] Admin panel with Cloudflare Access and Telegram Mini App login
 - [x] Admin settings for bot, site and payments; self-serve promoted listings paid with Telegram Stars or USDT (Crypto Pay), with automatic expiry

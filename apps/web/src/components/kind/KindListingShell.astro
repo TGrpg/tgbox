@@ -1,9 +1,9 @@
 ---
-import type { EntryKind, Locale } from "@tgbox/shared";
+import type { EntryKind, SiteLocale } from "@tgbox/shared";
 import CategorySidebar from "@/components/CategorySidebar.astro";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
   kind: EntryKind;
   /** Active category slug; omit on the kind index. */
   current?: string | undefined;

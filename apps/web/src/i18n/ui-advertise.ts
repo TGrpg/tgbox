@@ -1,4 +1,4 @@
-import type { Locale, ProductKind } from "@tgbox/shared";
+import type { ProductKind, SiteLocale } from "@tgbox/shared";
 
 type Placement = { name: string; effect: string; includes: string | null };
 
@@ -155,8 +155,8 @@ const en: typeof zh = {
   ],
 };
 
-const dictionaries: Record<Locale, typeof zh> = { zh, en };
+const dictionaries: Record<SiteLocale, typeof zh> = { zh, "zh-hant": zh, en };
 
-export function advertiseUi(locale: Locale) {
+export function advertiseUi(locale: SiteLocale) {
   return dictionaries[locale];
 }

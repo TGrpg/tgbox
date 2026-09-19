@@ -1,12 +1,12 @@
 ---
 import ChevronLeft from "@tabler/icons/outline/chevron-left.svg";
 import ChevronRight from "@tabler/icons/outline/chevron-right.svg";
-import type { Locale } from "@tgbox/shared";
+import type { SiteLocale } from "@tgbox/shared";
 import { ui } from "@/i18n/ui.ts";
 import { pageWindow } from "@/lib/pagination.ts";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
   current: number;
   total: number;
   /** URL of a given page (1-based); the listing route decides the URL scheme. */

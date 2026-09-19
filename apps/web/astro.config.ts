@@ -6,6 +6,7 @@ import tailwindcss from "@tailwindcss/vite";
 import type { AstroIntegration } from "astro";
 import { defineConfig } from "astro/config";
 import { checkStaticFileCount, countFiles } from "./src/lib/build-guard.ts";
+import { convertTraditionalPages } from "./src/lib/hant.ts";
 
 /**
  * Workers assets `404-page` handling serves the nearest `404.html` up the path, so the English
@@ -15,10 +16,23 @@ const localized404: AstroIntegration = {
   name: "tgbox:localized-404",
   hooks: {
     "astro:build:done": async ({ dir }) => {
-      const enDir = new URL("en/", dir);
-      await mkdir(enDir, { recursive: true });
-      await rename(new URL("404/index.html", enDir), new URL("404.html", enDir));
-      await rmdir(new URL("404/", enDir));
+      for (const prefix of ["en/", "zh-hant/"]) {
+        const localeDir = new URL(prefix, dir);
+        await mkdir(localeDir, { recursive: true });
+        await rename(new URL("404/index.html", localeDir), new URL("404.html", localeDir));
+        await rmdir(new URL("404/", localeDir));
+      }
+    },
+  },
+};
+
+/** `/zh-hant/` pages render the zh text; this is the step that writes them in Traditional. */
+const traditionalPages: AstroIntegration = {
+  name: "tgbox:traditional-pages",
+  hooks: {
+    "astro:build:done": async ({ dir, logger }) => {
+      const count = await convertTraditionalPages(fileURLToPath(new URL("zh-hant/", dir)));
+      logger.info(`${count} pages converted to Traditional Chinese`);
     },
   },
 };
@@ -60,9 +74,9 @@ export default defineConfig({
   session: false,
   i18n: {
     defaultLocale: "zh",
-    locales: ["zh", "en"],
+    locales: ["zh", "zh-hant", "en"],
     routing: { prefixDefaultLocale: false },
   },
-  integrations: [react(), searchDirective, localized404, staticFileBudget],
+  integrations: [react(), searchDirective, localized404, traditionalPages, staticFileBudget],
   vite: { plugins: [tailwindcss()] },
 });

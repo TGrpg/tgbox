@@ -2,12 +2,12 @@
 import ArrowRight from "@tabler/icons/outline/arrow-right.svg";
 import Speakerphone from "@tabler/icons/outline/speakerphone.svg";
 import X from "@tabler/icons/outline/x.svg";
-import type { AnnouncementView, Locale } from "@tgbox/shared";
+import { type AnnouncementView, type SiteLocale, textLocale } from "@tgbox/shared";
 import { localizePath } from "@/i18n/locale.ts";
 import { ui } from "@/i18n/ui.ts";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
   announcement: AnnouncementView;
   /** A paid bar: labelled as an ad, its /r/ link kept as is and marked sponsored. */
   sponsored?: boolean | undefined;
@@ -18,7 +18,7 @@ interface Props {
 }
 const { locale, announcement, sponsored = false, preview = false, rotation } = Astro.props;
 const strings = ui(locale).announcement;
-const text = announcement[locale] || announcement.zh || announcement.en;
+const text = announcement[textLocale(locale)] || announcement.zh || announcement.en;
 const external = announcement.href !== null && /^https?:\/\//.test(announcement.href);
 // Site paths are localized; anything that is neither a site path nor http(s) is dropped.
 const href = sponsored

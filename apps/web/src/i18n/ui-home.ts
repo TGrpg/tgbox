@@ -1,4 +1,4 @@
-import type { EntryKind, Locale } from "@tgbox/shared";
+import type { EntryKind, SiteLocale } from "@tgbox/shared";
 
 const zh = {
   searchPlaceholder: "搜索频道、群组、机器人…",
@@ -43,8 +43,8 @@ const en: typeof zh = {
   rankings: "See the rankings",
 };
 
-const dictionaries: Record<Locale, typeof zh> = { zh, en };
+const dictionaries: Record<SiteLocale, typeof zh> = { zh, "zh-hant": zh, en };
 
-export function homeUi(locale: Locale) {
+export function homeUi(locale: SiteLocale) {
   return dictionaries[locale];
 }

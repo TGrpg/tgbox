@@ -1,6 +1,6 @@
 ---
 import SearchIcon from "@tabler/icons/outline/search.svg";
-import { type Locale, t } from "@tgbox/shared";
+import { type SiteLocale, t } from "@tgbox/shared";
 import CategoryIcon from "@/components/CategoryIcon.astro";
 import { localizePath } from "@/i18n/locale.ts";
 import { ui } from "@/i18n/ui.ts";
@@ -9,7 +9,7 @@ import { hotCategories } from "@/lib/home.ts";
 import { getSiteData, localName } from "@/lib/site-data.ts";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
 }
 const { locale } = Astro.props;
 const strings = homeUi(locale);

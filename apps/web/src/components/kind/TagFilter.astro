@@ -1,12 +1,12 @@
 ---
 import Hash from "@tabler/icons/outline/hash.svg";
-import type { Locale } from "@tgbox/shared";
+import type { SiteLocale } from "@tgbox/shared";
 import { kindUi } from "@/i18n/ui-kind.ts";
 import { formatNumber } from "@/lib/format.ts";
 import { findTag, localName } from "@/lib/site-data.ts";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
   /** From `listingTags` over the entries this page renders; callers skip the filter when empty. */
   tags: { slug: string; count: number }[];
 }

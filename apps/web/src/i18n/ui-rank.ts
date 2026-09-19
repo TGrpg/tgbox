@@ -1,4 +1,4 @@
-import type { Locale } from "@tgbox/shared";
+import type { SiteLocale } from "@tgbox/shared";
 
 /** Strings for the rankings page. */
 const zh = {
@@ -34,8 +34,8 @@ const en: typeof zh = {
   growthTitle: "Member change since the earlier sample",
 };
 
-const dictionaries: Record<Locale, typeof zh> = { zh, en };
+const dictionaries: Record<SiteLocale, typeof zh> = { zh, "zh-hant": zh, en };
 
-export function rankUi(locale: Locale) {
+export function rankUi(locale: SiteLocale) {
   return dictionaries[locale];
 }

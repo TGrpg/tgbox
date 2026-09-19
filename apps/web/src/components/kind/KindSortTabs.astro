@@ -2,13 +2,13 @@
 import ArrowsSort from "@tabler/icons/outline/arrows-sort.svg";
 import Clock from "@tabler/icons/outline/clock.svg";
 import Users from "@tabler/icons/outline/users.svg";
-import type { EntryKind, Locale } from "@tgbox/shared";
+import type { EntryKind, SiteLocale } from "@tgbox/shared";
 import { localizePath } from "@/i18n/locale.ts";
 import { kindUi } from "@/i18n/ui-kind.ts";
 import { categoryListingBase, type ListingSort, listingSorts } from "@/lib/kind-listing.ts";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
   kind: EntryKind;
   slug: string;
   sort: ListingSort;

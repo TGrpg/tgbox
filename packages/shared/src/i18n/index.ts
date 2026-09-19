@@ -1,4 +1,4 @@
-import type { Locale } from "../domain.ts";
+import { type Locale, type SiteLocale, textLocale } from "../domain.ts";
 import { en } from "./en.ts";
 import { zh } from "./zh.ts";
 
@@ -20,6 +20,6 @@ function flatten(dictionary: Dictionary): Map<string, string> {
 
 const messages: Record<Locale, Map<string, string>> = { zh: flatten(zh), en: flatten(en) };
 
-export function t(locale: Locale, key: MessageKey): string {
-  return messages[locale].get(key) ?? key;
+export function t(locale: SiteLocale, key: MessageKey): string {
+  return messages[textLocale(locale)].get(key) ?? key;
 }

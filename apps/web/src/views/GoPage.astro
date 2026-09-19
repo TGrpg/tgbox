@@ -2,12 +2,13 @@
 import BrandTelegram from "@tabler/icons/outline/brand-telegram.svg";
 import DeviceMobile from "@tabler/icons/outline/device-mobile.svg";
 import Send from "@tabler/icons/outline/send.svg";
-import type { Locale } from "@tgbox/shared";
+import type { SiteLocale } from "@tgbox/shared";
+import { dataPath } from "@/i18n/locale.ts";
 import { ui } from "@/i18n/ui.ts";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
 }
 const { locale } = Astro.props;
 const strings = ui(locale).go;
@@ -28,6 +29,7 @@ const ringLength = 2 * Math.PI * RING_RADIUS;
       data-failed={strings.failed}
       data-invalid={strings.invalid}
       data-cancelled={strings.cancelled}
+      data-cards={dataPath("random-all.json", locale)}
     >
       <div
         data-reveal
@@ -334,7 +336,7 @@ if (root) {
 async function showEntry(username: string) {
   const go = document.getElementById("go");
   try {
-    const response = await fetch("/data/random-all.json");
+    const response = await fetch(go?.dataset.cards ?? "/data/random-all.json");
     if (!response.ok) return;
     const cards: Card[] = await response.json();
     const entry = cards.find((card) => card.u.toLowerCase() === username.toLowerCase());

@@ -1,13 +1,13 @@
 ---
 import RosetteCheck from "@tabler/icons/filled/rosette-discount-check.svg";
 import Send from "@tabler/icons/outline/send.svg";
-import type { EntryView, Locale } from "@tgbox/shared";
+import type { EntryView, SiteLocale } from "@tgbox/shared";
 import Avatar from "@/components/Avatar.astro";
 import { ui } from "@/i18n/ui.ts";
 import { detailUi } from "@/i18n/ui-detail.ts";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
   entry: Pick<EntryView, "title" | "username" | "avatarUrl" | "verified">;
   goHref: string;
 }

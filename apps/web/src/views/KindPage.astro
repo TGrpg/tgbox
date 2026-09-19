@@ -1,5 +1,5 @@
 ---
-import { type EntryKind, type Locale, t } from "@tgbox/shared";
+import { type EntryKind, type SiteLocale, t } from "@tgbox/shared";
 import KindListingShell from "@/components/kind/KindListingShell.astro";
 import KindPageHeader from "@/components/kind/KindPageHeader.astro";
 import KindSection from "@/components/kind/KindSection.astro";
@@ -16,7 +16,7 @@ import { kindSeo } from "@/lib/seo.ts";
 import { byMembers, getSiteData } from "@/lib/site-data.ts";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
   kind: EntryKind;
 }
 const { locale, kind } = Astro.props;

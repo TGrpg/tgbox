@@ -1,4 +1,4 @@
-import type { EntryKind, Locale } from "@tgbox/shared";
+import type { EntryKind, SiteLocale } from "@tgbox/shared";
 import { seoUi } from "../i18n/ui-seo.ts";
 import { fill } from "./format.ts";
 
@@ -14,7 +14,7 @@ export type PageSeo = { title: string; description: string; keywords: string };
 export const MIN_INDEXED_LISTING_ENTRIES = 3;
 
 /** Roughly what Google renders before truncating; Chinese glyphs are about twice as wide. */
-export const descriptionBudget: Record<Locale, number> = { zh: 90, en: 170 };
+export const descriptionBudget: Record<SiteLocale, number> = { zh: 90, "zh-hant": 90, en: 170 };
 
 export function truncate(text: string, max: number): string {
   const clean = text.replace(/\s+/g, " ").trim();
@@ -26,7 +26,7 @@ export function keywords(...groups: string[][]): string {
   return [...new Set(groups.flat().filter((word) => word.trim() !== ""))].join(", ");
 }
 
-function suffix(locale: Locale, page: number): string {
+function suffix(locale: SiteLocale, page: number): string {
   return page > 1 ? fill(seoUi(locale).pageSuffix, { n: page }) : "";
 }
 
@@ -36,13 +36,13 @@ const EXAMPLE_LIMIT = 3;
  * "（如 A、B、C）" / " such as A, B, C" — real entry names keep two listing descriptions from
  * reading identically, which is what stops them being treated as duplicates.
  */
-export function formatExamples(locale: Locale, names: string[]): string {
+export function formatExamples(locale: SiteLocale, names: string[]): string {
   const { examples } = seoUi(locale);
   const picked = names.filter((name) => name.trim() !== "").slice(0, EXAMPLE_LIMIT);
   return picked.length === 0 ? "" : fill(examples.wrap, { list: picked.join(examples.separator) });
 }
 
-export function homeSeo(locale: Locale, stats: { total: number }): PageSeo {
+export function homeSeo(locale: SiteLocale, stats: { total: number }): PageSeo {
   const strings = seoUi(locale);
   return {
     title: strings.home.title,
@@ -57,7 +57,7 @@ export function homeSeo(locale: Locale, stats: { total: number }): PageSeo {
 }
 
 export function kindSeo(
-  locale: Locale,
+  locale: SiteLocale,
   kind: EntryKind,
   input: { count: number; examples: string[] },
 ): PageSeo {
@@ -73,7 +73,7 @@ export function kindSeo(
 }
 
 export function categorySeo(
-  locale: Locale,
+  locale: SiteLocale,
   input: {
     kind: EntryKind;
     kindWord: string;
@@ -102,7 +102,7 @@ export function categorySeo(
 }
 
 export function tagSeo(
-  locale: Locale,
+  locale: SiteLocale,
   input: { tag: string; count: number; page: number; examples: string[] },
 ): PageSeo {
   const strings = seoUi(locale);
@@ -119,7 +119,7 @@ export function tagSeo(
 }
 
 /** The tag index: how many tags lead somewhere, over how many entries. */
-export function tagsSeo(locale: Locale, input: { count: number; total: number }): PageSeo {
+export function tagsSeo(locale: SiteLocale, input: { count: number; total: number }): PageSeo {
   const strings = seoUi(locale);
   return {
     title: strings.tags.title,
@@ -128,7 +128,7 @@ export function tagsSeo(locale: Locale, input: { count: number; total: number })
   };
 }
 
-export function rankSeo(locale: Locale): PageSeo {
+export function rankSeo(locale: SiteLocale): PageSeo {
   const strings = seoUi(locale);
   return {
     title: strings.rank.title,
@@ -137,7 +137,7 @@ export function rankSeo(locale: Locale): PageSeo {
   };
 }
 
-export function guidesSeo(locale: Locale): PageSeo {
+export function guidesSeo(locale: SiteLocale): PageSeo {
   const strings = seoUi(locale);
   return {
     title: strings.guides.title,
@@ -146,7 +146,7 @@ export function guidesSeo(locale: Locale): PageSeo {
   };
 }
 
-export function aboutSeo(locale: Locale): PageSeo {
+export function aboutSeo(locale: SiteLocale): PageSeo {
   const strings = seoUi(locale);
   return {
     title: strings.about.title,
@@ -176,7 +176,7 @@ export type EntryFacts = {
  * One sentence about an entry, built from whatever facts exist. Shown above the stats table and
  * reused as the meta description, so the page leads with prose rather than a bare table.
  */
-export function entrySummary(locale: Locale, facts: EntryFacts): string {
+export function entrySummary(locale: SiteLocale, facts: EntryFacts): string {
   const { summary } = seoUi(locale);
   const clauses = [
     fill(summary.lead, {
@@ -194,7 +194,7 @@ export function entrySummary(locale: Locale, facts: EntryFacts): string {
 }
 
 export function detailSeo(
-  locale: Locale,
+  locale: SiteLocale,
   input: {
     facts: EntryFacts;
     kind: EntryKind;
@@ -235,9 +235,9 @@ export function detailSeo(
  */
 export function localizedDescription(
   entry: { description: string; descriptionZh?: string | null; descriptionEn?: string | null },
-  locale: Locale,
+  locale: SiteLocale,
 ): { text: string; translated: boolean } {
-  const candidate = (locale === "zh" ? entry.descriptionZh : entry.descriptionEn)?.trim();
+  const candidate = (locale === "en" ? entry.descriptionEn : entry.descriptionZh)?.trim();
   if (!candidate || candidate === entry.description.trim()) {
     return { text: entry.description, translated: false };
   }

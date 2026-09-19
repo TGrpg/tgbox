@@ -1,10 +1,10 @@
 import type {
   EntryView,
-  Locale,
   MemberPoint,
   RankItem,
   RankingsData,
   SiteData,
+  SiteLocale,
 } from "@tgbox/shared";
 import { formatNumber } from "./format.ts";
 
@@ -96,7 +96,7 @@ export function buildRankings(data: SiteData, now: Date): RankingsData {
 }
 
 /** "+1,234 (+5.2%)"; the percent is left out when unknown. */
-export function formatGrowth(growth: number, growthPct: number | null, locale: Locale) {
+export function formatGrowth(growth: number, growthPct: number | null, locale: SiteLocale) {
   const sign = (value: number) => (value > 0 ? "+" : "");
   const count = `${sign(growth)}${formatNumber(growth, locale)}`;
   return growthPct === null ? count : `${count} (${sign(growthPct)}${growthPct}%)`;

@@ -429,8 +429,13 @@
 html[data-announcement-dismissed] [data-announcement] {
   display: none;
 }
-html:not([data-lang-suggest]) [data-lang-suggest-bar] {
+[data-lang-suggest-bar] {
   display: none;
+}
+html[data-lang-suggest="zh"] [data-lang-suggest-bar="zh"],
+html[data-lang-suggest="zh-hant"] [data-lang-suggest-bar="zh-hant"],
+html[data-lang-suggest="en"] [data-lang-suggest-bar="en"] {
+  display: block;
 }
 
 /* Tooltip for icon buttons: `<span role="tooltip" class="tip">` inside a `.group` trigger. */

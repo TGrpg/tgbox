@@ -3,7 +3,7 @@ import Refresh from "@tabler/icons/outline/refresh.svg";
 import BotIcon from "@tabler/icons/outline/robot.svg";
 import ChannelIcon from "@tabler/icons/outline/speakerphone.svg";
 import GroupIcon from "@tabler/icons/outline/users.svg";
-import type { EntryKind, Locale } from "@tgbox/shared";
+import type { EntryKind, SiteLocale } from "@tgbox/shared";
 import EntryListRow from "@/components/EntryListRow.astro";
 import { localizePath } from "@/i18n/locale.ts";
 import { homeUi } from "@/i18n/ui-home.ts";
@@ -12,7 +12,7 @@ import { HOT_PAGE_SIZE } from "@/lib/home-hot.ts";
 import { getSiteData } from "@/lib/site-data.ts";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
   kind: EntryKind;
 }
 const { locale, kind } = Astro.props;

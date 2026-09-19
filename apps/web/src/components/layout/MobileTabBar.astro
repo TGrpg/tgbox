@@ -1,10 +1,10 @@
 ---
-import type { Locale } from "@tgbox/shared";
+import type { SiteLocale } from "@tgbox/shared";
 import { ui } from "@/i18n/ui.ts";
 import { navItems } from "./nav-items.ts";
 
 interface Props {
-  locale: Locale;
+  locale: SiteLocale;
   path: string;
 }
 const { locale, path } = Astro.props;
