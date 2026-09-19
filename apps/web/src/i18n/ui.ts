@@ -82,6 +82,9 @@ const zh = {
     rights: "保留所有权利。",
     openSource: "开源于 GitHub",
     licensed: "以 {licence} 许可证发布",
+    friends: "友情链接",
+    allFriends: "全部友链",
+    applyFriend: "申请友链",
   },
   page: {
     enroll: "提交收录",
@@ -266,6 +269,9 @@ const en: typeof zh = {
     rights: "All rights reserved.",
     openSource: "Open source on GitHub",
     licensed: "Released under {licence}",
+    friends: "Friend sites",
+    allFriends: "All friend sites",
+    applyFriend: "Exchange links",
   },
   page: {
     enroll: "Submit a listing",

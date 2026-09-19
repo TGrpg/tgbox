@@ -1,10 +1,13 @@
 ---
+import ArrowRight from "@tabler/icons/outline/arrow-right.svg";
 import BrandGithub from "@tabler/icons/outline/brand-github.svg";
+import Plus from "@tabler/icons/outline/plus.svg";
 import { type Locale, t } from "@tgbox/shared";
 import { localizePath } from "@/i18n/locale.ts";
 import { ui } from "@/i18n/ui.ts";
 import { fill } from "@/lib/format.ts";
-import { botUrl, botUsername, licence, repoUrl } from "@/lib/site.ts";
+import { botLinksUrl, botUrl, botUsername, licence, repoUrl } from "@/lib/site.ts";
+import { getSiteData } from "@/lib/site-data.ts";
 import LangSwitch from "./LangSwitch.astro";
 import Logo from "./Logo.astro";
 
@@ -47,6 +50,12 @@ const columns = [
   },
 ];
 const year = new Date().getUTCFullYear();
+/** The footer keeps to one or two rows of friends; /links/ has the rest. */
+const FOOTER_FRIENDS = 12;
+const friends = getSiteData().friendLinks;
+const shownFriends = friends.slice(0, FOOTER_FRIENDS);
+const chip =
+  "inline-flex h-8 items-center gap-2 rounded-full border text-sm transition-colors focus-visible:ring-3 focus-visible:ring-outline/40 outline-none";
 ---
 
 <footer class="mt-20 border-t border-border bg-card pb-24 md:pb-0">
@@ -79,6 +88,67 @@ const year = new Date().getUTCFullYear();
           </ul>
         </div>
       ))}
+  </div>
+  <div class="border-t border-border">
+    <div
+      class="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-5 sm:flex-row sm:items-start sm:gap-6 sm:px-6"
+    >
+      <h2 class="shrink-0 text-sm font-semibold text-foreground sm:w-24 sm:pt-1.5">
+        {strings.footer.friends}
+      </h2>
+      <ul class="flex flex-wrap gap-2" data-friend-links>
+        {shownFriends.map((friend) => (
+            <li>
+              <a
+                href={friend.url}
+                rel="noopener"
+                target="_blank"
+                title={(locale === "zh" ? friend.descZh : friend.descEn) || undefined}
+                class:list={[
+                  chip,
+                  "border-border bg-background pr-3 pl-1 text-muted-foreground hover:border-primary/40 hover:text-primary",
+                ]}
+              >
+                <span
+                  class="grid size-6 place-items-center rounded-full bg-primary-soft text-xs font-semibold text-primary-soft-foreground"
+                  aria-hidden="true"
+                >
+                  {[...friend.name][0]?.toUpperCase()}
+                </span>
+                {friend.name}
+              </a>
+            </li>
+          ))}
+        {friends.length > FOOTER_FRIENDS && (
+          <li>
+            <a
+              href={localizePath("/links/", locale)}
+              class:list={[
+                chip,
+                "border-transparent px-3 text-muted-foreground hover:text-primary",
+              ]}
+            >
+              {strings.footer.allFriends}
+              <ArrowRight class="size-3.5" aria-hidden="true" />
+            </a>
+          </li>
+        )}
+        <li>
+          <a
+            href={botLinksUrl}
+            rel="noopener"
+            target="_blank"
+            class:list={[
+              chip,
+              "border-dashed border-primary/40 px-3 text-primary hover:border-primary hover:bg-primary-soft",
+            ]}
+          >
+            <Plus class="size-3.5" aria-hidden="true" />
+            {strings.footer.applyFriend}
+          </a>
+        </li>
+      </ul>
+    </div>
   </div>
   <div class="border-t border-border">
     <div

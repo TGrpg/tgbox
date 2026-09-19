@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ActivityTier, EntryKind } from "./domain.ts";
-import { entryProductKinds, ProductKind } from "./settings.ts";
+import { entryProductKinds, FriendLink, ProductKind } from "./settings.ts";
 
 /**
  * Snapshot contract: produced by @tgbox/snapshot at build time, consumed by apps/web.
@@ -182,5 +182,7 @@ export const SiteData = z.object({
     .default({ stars: true, usdt: false }),
   /** Products currently on sale, ordered as the admin sorted them. */
   products: z.array(ProductView).default([]),
+  /** Admin setting, in display order. */
+  friendLinks: z.array(FriendLink).default([]),
 });
 export type SiteData = z.infer<typeof SiteData>;

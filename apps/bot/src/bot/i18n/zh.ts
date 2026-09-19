@@ -36,6 +36,16 @@ export type OrderSummary = PromotionTarget & {
   usdt: string | null;
 };
 
+export type FriendLinkSummary = {
+  id: number;
+  name: string;
+  url: string;
+  description: string;
+  backlink: boolean;
+  applicantId: number;
+  applicantUsername: string | null;
+};
+
 export type AdOrderSummary = {
   id: number;
   product: string;
@@ -126,6 +136,29 @@ export const zh = {
     ask: "有任何问题，直接在这里发消息就好，客服会尽快回复。",
     sent: "✅ 已转达客服，请稍候。",
     unavailable: "客服暂时无法接收消息，请稍后再试。",
+  },
+  friendLink: {
+    askUrl: (siteUrl: string) =>
+      [
+        "🤝 申请友情链接",
+        "",
+        "条件：网站可正常访问、内容合法并持续更新，且已在你的网站上添加本站链接：",
+        siteUrl,
+        "",
+        "第 1 步（共 3 步）：请发送你的网站地址（https:// 开头）。",
+      ].join("\n"),
+    invalidUrl: "网址无效，请发送以 https:// 开头的完整地址。",
+    askName: "第 2 步：网站名称（40 字以内）。",
+    invalidName: "名称需要 1–40 个字，请重新发送。",
+    askDescription: "第 3 步：一句话介绍你的网站（120 字以内）。",
+    invalidDescription: "简介需要 1–120 个字，请重新发送。",
+    submitted: (backlink: boolean): string =>
+      backlink
+        ? "✅ 申请已提交，审核结果会私信通知你。"
+        : "✅ 申请已提交，审核结果会私信通知你。\n\n⚠️ 暂未在你的网站首页找到本站链接，添加后通过率更高。",
+    listed: "这个网站已经在友情链接里了。",
+    pending: "你已有一个友链申请在审核中，请等待结果。",
+    cancelled: "已取消友链申请。",
   },
   sendLink: "请发送要提交的频道、群组或机器人链接（https://t.me/xxx、t.me/xxx 或 @xxx）。",
   invalidLink:
@@ -310,6 +343,17 @@ export const zh = {
         `支付：${o.amount} ${o.currency}`,
         `买家：${o.buyerId}`,
       ].join("\n"),
+    friendLinkReview: (f: FriendLinkSummary) =>
+      [
+        "🤝 友链申请待审核",
+        `#${f.id} ${f.name}`,
+        f.url,
+        `简介：${f.description}`,
+        `回链：${f.backlink ? "✅ 首页已有本站链接" : "❌ 首页未找到本站链接"}`,
+        `申请人：${f.applicantUsername ? `@${f.applicantUsername} ` : ""}${f.applicantId}`,
+      ].join("\n"),
+    friendLinkRejectedBy: (name: string) => `❌ 已拒绝（${name}）`,
+    friendLinksFull: "友链已满（30 个），请先在后台删除一些。",
     adRejected: (name: string, refunded: boolean, amount: string) =>
       `❌ 已拒绝（${name}）${refunded ? "，已自动退款" : `，需人工退款 ${amount}`}`,
     orphanPayment: (orderId: number, provider: string, chargeId: string, amount: string) =>

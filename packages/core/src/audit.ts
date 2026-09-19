@@ -40,6 +40,9 @@ export const auditActions = [
   "broadcast.pause",
   "broadcast.resume",
   "broadcast.cancel",
+  "friendLink.approve",
+  "friendLink.reject",
+  "friendLink.update",
   /** An incoming USDT transfer that matched no order: wrong amount, or paid twice. */
   "usdt.unmatched",
 ] as const;

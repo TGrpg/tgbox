@@ -59,10 +59,14 @@ export function settingsFromRows(rows: { key: string; value: string }[]): Settin
 
 export type SettingsUpdate =
   | { key: "bot"; value: BotSettings }
-  | { key: "site"; value: SiteSettings }
+  | { key: "site"; value: Omit<SiteSettings, "friendLinks"> }
   | { key: "payments"; value: PaymentSettings };
 
-/** Replaces one settings key. The site announcement is baked into the static build. */
+/**
+ * Replaces one settings key. The site announcement is baked into the static build. Friend links
+ * live in the `site` row but have their own operations (a bot approval can land while the settings
+ * page is open), so a site update keeps the stored list.
+ */
 export async function updateSettings(
   ctx: CoreContext,
   input: SettingsUpdate & { actor: Actor },
@@ -71,7 +75,10 @@ export async function updateSettings(
     input.key === "bot"
       ? BotSettings.safeParse(input.value)
       : input.key === "site"
-        ? SiteSettings.safeParse(input.value)
+        ? SiteSettings.safeParse({
+            ...input.value,
+            friendLinks: (await getSettings(ctx)).site.friendLinks,
+          })
         : PaymentSettings.safeParse(input.value);
   if (!parsed.success) return { ok: false, error: "invalid" };
 

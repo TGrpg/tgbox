@@ -8,6 +8,9 @@ export const botUrl = `https://t.me/${botUsername}`;
 /** Deep link that drops the visitor straight into the bot's submit flow. */
 export const botSubmitUrl = `${botUrl}?start=submit`;
 
+/** Deep link into the bot's link-exchange application. */
+export const botLinksUrl = `${botUrl}?start=links`;
+
 /** Public source repository; shown in the footer and claimed in the Organization JSON-LD. */
 export const repoUrl = "https://github.com/TGrpg/tgbox";
 

@@ -133,6 +133,7 @@ export async function startHarness() {
       "hidden_posts",
       "bot_users",
       "broadcasts",
+      "friend_link_requests",
     ].map((table) => env.DB.prepare(`DELETE FROM ${table}`)),
   );
   // R2 persists between tests as well, and order ids restart at 1 in every test.
@@ -157,6 +158,8 @@ export async function startHarness() {
   // The static site (SITE_URL): requested paths and the response for them.
   const site: string[] = [];
   let siteResponse: () => Response = () => new Response("Not found", { status: 404 });
+  // Outside websites (`*.example`) by hostname, e.g. a friend-link applicant's home page.
+  const websites = new Map<string, string>();
 
   vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(input instanceof Request ? input.url : input);
@@ -217,6 +220,10 @@ export async function startHarness() {
     if (url.hostname === "tgbox.test") {
       site.push(url.pathname);
       return siteResponse();
+    }
+    if (url.hostname.endsWith(".example")) {
+      const page = websites.get(url.hostname);
+      return page === undefined ? new Response("gone", { status: 404 }) : new Response(page);
     }
     if (url.hostname === "api.github.com") {
       dispatches.push({ url: url.href, body });
@@ -293,6 +300,7 @@ export async function startHarness() {
     serveFile: (respond: () => Response) => {
       fileResponse = respond;
     },
+    websites,
     /** Serves the static site (SITE_URL) responses. */
     serveSite: (respond: () => Response) => {
       siteResponse = respond;

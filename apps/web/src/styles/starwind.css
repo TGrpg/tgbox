@@ -331,14 +331,15 @@
 .prose-tg h3 {
   @apply mt-8 text-base font-semibold text-foreground;
 }
-.prose-tg a {
+/* Components dropped into an article (buttons, card grids) opt out with `.not-prose`. */
+.prose-tg a:where(:not(.not-prose *)) {
   @apply text-primary underline decoration-primary/30 underline-offset-4 transition-colors hover:decoration-primary;
 }
-.prose-tg ul,
-.prose-tg ol {
+.prose-tg ul:where(:not(.not-prose, .not-prose *)),
+.prose-tg ol:where(:not(.not-prose, .not-prose *)) {
   @apply space-y-2 pl-5;
 }
-.prose-tg ul {
+.prose-tg ul:where(:not(.not-prose, .not-prose *)) {
   @apply list-disc marker:text-brand;
 }
 .prose-tg ol {

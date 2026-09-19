@@ -39,6 +39,9 @@ export const auditActionLabels: Record<AuditAction, string> = {
   "broadcast.pause": "暂停群发",
   "broadcast.resume": "继续群发",
   "broadcast.cancel": "取消群发",
+  "friendLink.approve": "通过友链申请",
+  "friendLink.reject": "拒绝友链申请",
+  "friendLink.update": "修改友情链接",
   "usdt.unmatched": "USDT 无主入账",
 };
 

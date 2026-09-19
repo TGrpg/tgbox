@@ -1,18 +1,26 @@
 ---
+import ArrowUpRight from "@tabler/icons/outline/arrow-up-right.svg";
+import Plus from "@tabler/icons/outline/plus.svg";
 import type { Locale } from "@tgbox/shared";
 import { ui } from "@/i18n/ui.ts";
 import PageLayout from "@/layouts/PageLayout.astro";
-import { botUrl, botUsername } from "@/lib/site.ts";
+import { botLinksUrl } from "@/lib/site.ts";
+import { getSiteData } from "@/lib/site-data.ts";
 
 interface Props {
   locale: Locale;
 }
 const { locale } = Astro.props;
 const zh = locale === "zh";
-const bot = `@${botUsername}`;
+const friends = getSiteData().friendLinks.map((friend) => ({
+  ...friend,
+  host: new URL(friend.url).hostname.replace(/^www\./, ""),
+  // Approved applications carry one text in both fields; an admin may have filled only one.
+  description: (zh ? friend.descZh || friend.descEn : friend.descEn || friend.descZh) || null,
+}));
 
-/** Static list; edit here to add friend links. */
-const links = [
+/** Telegram's own resources, below the friends. */
+const official = [
   {
     name: "Telegram",
     url: "https://telegram.org/",
@@ -39,13 +47,92 @@ const links = [
   title={ui(locale).page.links}
   eyebrow="Links"
   description={zh
-      ? "与 Telegram 相关的实用网站，以及友情链接交换说明。"
-      : "Useful Telegram-related websites, and how to exchange links with us."}
+      ? "我们的友情链接网站，以及交换友链的方式。"
+      : "Sites we are friends with, and how to exchange links with us."}
 >
+  {friends.length > 0 ? (
+      <ul class="not-prose grid gap-3 sm:grid-cols-2" data-friend-links>
+        {friends.map((friend) => (
+            <li>
+              <a
+                href={friend.url}
+                rel="noopener"
+                target="_blank"
+                data-hover-lift
+                class="group flex h-full items-start gap-3 rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/40"
+              >
+                <span
+                  class="grid size-10 shrink-0 place-items-center rounded-full bg-primary-soft text-base font-semibold text-primary-soft-foreground"
+                  aria-hidden="true"
+                >
+                  {[...friend.name][0]?.toUpperCase()}
+                </span>
+                <span class="min-w-0 flex-1">
+                  <span class="flex items-center gap-1 font-medium text-foreground group-hover:text-primary">
+                    <span class="truncate">{friend.name}</span>
+                    <ArrowUpRight class="size-4 shrink-0 opacity-60" aria-hidden="true" />
+                  </span>
+                  <span class="block truncate text-xs text-muted-foreground">{friend.host}</span>
+                  {friend.description && (
+                    <span class="mt-1.5 block text-sm leading-relaxed text-muted-foreground">
+                      {friend.description}
+                    </span>
+                  )}
+                </span>
+              </a>
+            </li>
+          ))}
+      </ul>
+    ) : (
+      <p class="!mt-0 rounded-xl border border-dashed border-border p-6 text-center text-muted-foreground">
+        {zh ? "还没有友情链接，欢迎成为第一个。" : "No friend sites yet. Be the first."}
+      </p>
+    )}
+
+  <h2>{zh ? "交换友链" : "Exchange links"}</h2>
+  <p>
+    {zh
+        ? "欢迎与 Telegram、效率工具、开源资源相关的网站交换友情链接。申请条件："
+        : "We welcome link exchanges with sites about Telegram, productivity tools and open resources. Requirements:"}
+  </p>
+  <ul>
+    {zh ? (
+        <>
+          <li>网站可以正常访问，有持续更新的原创或整理内容；</li>
+          <li>内容合法合规，不涉及色情、赌博、诈骗等灰黑产；</li>
+          <li>已在你的网站上添加本站链接。</li>
+        </>
+      ) : (
+        <>
+          <li>The site is reachable and regularly updated with original or curated content;</li>
+          <li>Its content is lawful, with no adult, gambling, scam or other grey-market material;</li>
+          <li>You have already added a link to this site.</li>
+        </>
+      )}
+  </ul>
+  <p>
+    {zh
+        ? "点下面的按钮，在机器人里依次发送网址、名称和一句话简介即可，审核结果会私信通知你。"
+        : "Tap the button below and send the bot your site's address, name and a one-line description. We'll message you with the result."}
+  </p>
+  <p class="not-prose mt-4">
+    <a
+      href={botLinksUrl}
+      rel="noopener"
+      target="_blank"
+      data-press
+      class="inline-flex h-10 items-center gap-2 rounded-full bg-primary px-5 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+    >
+      <Plus class="size-4" aria-hidden="true" />
+      {ui(locale).footer.applyFriend}
+    </a>
+  </p>
+
+  <h2>{zh ? "官方资源" : "Official resources"}</h2>
   <ul
-    class="!mt-0 !list-none !space-y-0 !pl-0 divide-y divide-border rounded-xl border border-border bg-card"
+    class="!list-none !space-y-0 !pl-0 divide-y divide-border rounded-xl border border-border bg-card"
   >
-    {links.map((link) => (
+    {official.map((link) => (
         <li class="!mt-0 flex flex-col gap-1 p-4 sm:flex-row sm:items-baseline sm:gap-6">
           <a href={link.url} rel="noopener" target="_blank" class="shrink-0 font-medium sm:w-56">
             {link.name}
@@ -54,28 +141,4 @@ const links = [
         </li>
       ))}
   </ul>
-
-  {zh ? (
-      <>
-        <h2>交换友链</h2>
-        <p>欢迎与 Telegram、效率工具、开源资源相关的网站交换友情链接。申请条件：</p>
-        <ul>
-          <li>网站可以正常访问，有持续更新的原创或整理内容；</li>
-          <li>内容合法合规，不涉及色情、赌博、诈骗等灰黑产；</li>
-          <li>已在你的网站上添加本站链接。</li>
-        </ul>
-        <p>请私聊 <a href={botUrl} rel="noopener" target="_blank">{bot}</a> 并发送 <code>/help</code> 获取联系方式，附上网站名称、地址和一句话简介。</p>
-      </>
-    ) : (
-      <>
-        <h2>Exchange links</h2>
-        <p>We welcome link exchanges with sites about Telegram, productivity tools and open resources. Requirements:</p>
-        <ul>
-          <li>The site is reachable and regularly updated with original or curated content;</li>
-          <li>Its content is lawful, with no adult, gambling, scam or other grey-market material;</li>
-          <li>You have already added a link to this site.</li>
-        </ul>
-        <p>Message <a href={botUrl} rel="noopener" target="_blank">{bot}</a> and send <code>/help</code> for contact details, including your site name, URL and a one-line description.</p>
-      </>
-    )}
 </PageLayout>

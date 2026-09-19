@@ -69,6 +69,14 @@ const hiddenPosts = [{ id: 7, date: "2026-08-29T12:00:00.000Z", text: "被隐藏
 const approved = fixtureEntries.filter((entry) => (entry.status ?? "approved") === "approved");
 const hidden = fixtureEntries.filter((entry) => (entry.status ?? "approved") !== "approved");
 
+/** One more than the footer shows, so it links to the full list. */
+const friendLinks = Array.from({ length: 13 }, (_, n) => ({
+  name: `Friend ${n + 1}`,
+  url: `https://www.friend${n + 1}.example/`,
+  descZh: n === 0 ? "第一个友站" : "",
+  descEn: n === 0 ? "The first friend" : "",
+}));
+
 function html(route: string) {
   return readFileSync(path.join(client, route, "index.html"), "utf8");
 }
@@ -126,6 +134,7 @@ beforeAll(async () => {
   // The main build asserts the ad slots as an operator who turned them on would see them; the
   // default-off behaviour gets its own build below.
   data.showAdSlots = true;
+  data.friendLinks = friendLinks;
   const dataPath = path.join(work, "site-data.json");
   writeFileSync(dataPath, JSON.stringify(data));
   execFileSync(path.join(webRoot, "node_modules/.bin/astro"), ["build", "--outDir", outDir], {
@@ -450,6 +459,33 @@ describe("site build from snapshot data", () => {
       expect(page).not.toContain("data-lang-suggest-bar");
       expect(page).not.toContain("location.replace(");
     }
+  });
+
+  test("the footer shows the first friend sites, a link to all of them and the bot application", () => {
+    for (const [route, all, apply] of [
+      ["", "/links/", "申请友链"],
+      ["en/", "/en/links/", "Exchange links"],
+    ] as const) {
+      const row = html(route).split("data-friend-links")[1]?.split("</ul>")[0] ?? "";
+      expect(row.match(/href="https:\/\/www\.friend\d+\.example\/"/g)).toHaveLength(12);
+      expect(row).not.toContain("friend13.example");
+      expect(row).toContain(`href="${all}"`);
+      expect(row).toMatch(
+        new RegExp(`href="https://t\\.me/[^"]+\\?start=links"[\\s\\S]*?${apply}`),
+      );
+    }
+  });
+
+  test("the links page lists every friend site with its description in the page's language", () => {
+    const zhPage = html("links");
+    const enPage = html("en/links");
+    for (const page of [zhPage, enPage]) {
+      expect(page.match(/href="https:\/\/www\.friend\d+\.example\/"/g)?.length).toBe(13 * 2 - 1);
+      expect(page).toContain("friend1.example</span>");
+      expect(page).toContain("?start=links");
+    }
+    expect(zhPage).toContain("第一个友站");
+    expect(enPage).toContain("The first friend");
   });
 
   test("the about page answers the questions people search, with FAQPage markup", () => {

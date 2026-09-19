@@ -14,6 +14,7 @@ import { Route as AddRouteImport } from './routes/add'
 import { Route as AuditRouteImport } from './routes/audit'
 import { Route as BlacklistRouteImport } from './routes/blacklist'
 import { Route as EntriesRouteImport } from './routes/entries'
+import { Route as FriendLinksRouteImport } from './routes/friend-links'
 import { Route as PromotionsRouteImport } from './routes/promotions'
 import { Route as ReviewRouteImport } from './routes/review'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -43,6 +44,11 @@ const BlacklistRoute = BlacklistRouteImport.update({
 const EntriesRoute = EntriesRouteImport.update({
   id: '/entries',
   path: '/entries',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FriendLinksRoute = FriendLinksRouteImport.update({
+  id: '/friend-links',
+  path: '/friend-links',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PromotionsRoute = PromotionsRouteImport.update({
@@ -77,6 +83,7 @@ export interface FileRoutesByFullPath {
   '/audit': typeof AuditRoute
   '/blacklist': typeof BlacklistRoute
   '/entries': typeof EntriesRoute
+  '/friend-links': typeof FriendLinksRoute
   '/promotions': typeof PromotionsRoute
   '/review': typeof ReviewRoute
   '/settings': typeof SettingsRoute
@@ -89,6 +96,7 @@ export interface FileRoutesByTo {
   '/audit': typeof AuditRoute
   '/blacklist': typeof BlacklistRoute
   '/entries': typeof EntriesRoute
+  '/friend-links': typeof FriendLinksRoute
   '/promotions': typeof PromotionsRoute
   '/review': typeof ReviewRoute
   '/settings': typeof SettingsRoute
@@ -102,6 +110,7 @@ export interface FileRoutesById {
   '/audit': typeof AuditRoute
   '/blacklist': typeof BlacklistRoute
   '/entries': typeof EntriesRoute
+  '/friend-links': typeof FriendLinksRoute
   '/promotions': typeof PromotionsRoute
   '/review': typeof ReviewRoute
   '/settings': typeof SettingsRoute
@@ -116,6 +125,7 @@ export interface FileRouteTypes {
     | '/audit'
     | '/blacklist'
     | '/entries'
+    | '/friend-links'
     | '/promotions'
     | '/review'
     | '/settings'
@@ -128,6 +138,7 @@ export interface FileRouteTypes {
     | '/audit'
     | '/blacklist'
     | '/entries'
+    | '/friend-links'
     | '/promotions'
     | '/review'
     | '/settings'
@@ -140,6 +151,7 @@ export interface FileRouteTypes {
     | '/audit'
     | '/blacklist'
     | '/entries'
+    | '/friend-links'
     | '/promotions'
     | '/review'
     | '/settings'
@@ -153,6 +165,7 @@ export interface RootRouteChildren {
   AuditRoute: typeof AuditRoute
   BlacklistRoute: typeof BlacklistRoute
   EntriesRoute: typeof EntriesRoute
+  FriendLinksRoute: typeof FriendLinksRoute
   PromotionsRoute: typeof PromotionsRoute
   ReviewRoute: typeof ReviewRoute
   SettingsRoute: typeof SettingsRoute
@@ -195,6 +208,13 @@ declare module '@tanstack/react-router' {
       path: '/entries'
       fullPath: '/entries'
       preLoaderRoute: typeof EntriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/friend-links': {
+      id: '/friend-links'
+      path: '/friend-links'
+      fullPath: '/friend-links'
+      preLoaderRoute: typeof FriendLinksRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/promotions': {
@@ -241,6 +261,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuditRoute: AuditRoute,
   BlacklistRoute: BlacklistRoute,
   EntriesRoute: EntriesRoute,
+  FriendLinksRoute: FriendLinksRoute,
   PromotionsRoute: PromotionsRoute,
   ReviewRoute: ReviewRoute,
   SettingsRoute: SettingsRoute,

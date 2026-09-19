@@ -42,6 +42,7 @@ test("no private table is ever exported", () => {
     "bot_drafts",
     "usdt_payments",
     "audit_log",
+    "friend_link_requests",
   ];
   for (const table of privateTables) expect(exportedTables()).not.toContain(table);
 });

@@ -7,6 +7,14 @@ import { z } from "zod";
 
 const chatId = z.string().regex(/^-?\d+$/);
 
+function isHttpsUrl(value: string) {
+  try {
+    return new URL(value).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 export const ReviewMode = z.enum(["chat", "admins"]);
 export type ReviewMode = z.infer<typeof ReviewMode>;
 
@@ -34,6 +42,17 @@ export const BotSettings = z.object({
 });
 export type BotSettings = z.infer<typeof BotSettings>;
 
+/** A friend site shown in the footer and on /links/. Descriptions may be empty. */
+export const FriendLink = z.object({
+  name: z.string().trim().min(1).max(40),
+  url: z.string().trim().max(200).refine(isHttpsUrl, "must be an https:// URL"),
+  descZh: z.string().trim().max(120),
+  descEn: z.string().trim().max(120),
+});
+export type FriendLink = z.infer<typeof FriendLink>;
+
+export const MAX_FRIEND_LINKS = 30;
+
 /** Most substrings the post blocklist may hold; the snapshot scans every post against all of them. */
 export const MAX_POST_BLOCKLIST = 100;
 
@@ -54,6 +73,8 @@ export const SiteSettings = z.object({
    * turn off.
    */
   showAdSlots: z.boolean(),
+  /** In display order; the footer shows the first few, /links/ all of them. */
+  friendLinks: z.array(FriendLink).max(MAX_FRIEND_LINKS),
 });
 export type SiteSettings = z.infer<typeof SiteSettings>;
 
@@ -97,6 +118,7 @@ export const settingsDefaults: Settings = {
     postBlocklist: [],
     hidePostMedia: false,
     showAdSlots: false,
+    friendLinks: [],
   },
   payments: {
     starsEnabled: true,
@@ -179,14 +201,6 @@ export type PaymentProvider = z.infer<typeof PaymentProvider>;
 
 export const PaymentCurrency = z.enum(["XTR", "USDT"]);
 export type PaymentCurrency = z.infer<typeof PaymentCurrency>;
-
-const isHttpsUrl = (value: string) => {
-  try {
-    return new URL(value).protocol === "https:";
-  } catch {
-    return false;
-  }
-};
 
 /**
  * Brand-ad content: a home banner card, or the announcement bar (title + subtitle, no image). Users

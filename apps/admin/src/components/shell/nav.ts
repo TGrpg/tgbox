@@ -1,6 +1,7 @@
 import {
   BanIcon,
   ClipboardCheckIcon,
+  HandshakeIcon,
   LayoutDashboardIcon,
   ListIcon,
   type LucideIcon,
@@ -22,6 +23,7 @@ export type NavItem = {
     | "/promotions"
     | "/users"
     | "/blacklist"
+    | "/friend-links"
     | "/audit"
     | "/settings";
   label: string;
@@ -38,6 +40,7 @@ export const navItems: NavItem[] = [
   { to: "/taxonomy", label: "分类标签", icon: TagsIcon, primary: false },
   { to: "/promotions", label: "推广", icon: RocketIcon, primary: false },
   { to: "/users", label: "用户", icon: UsersIcon, primary: false },
+  { to: "/friend-links", label: "友情链接", icon: HandshakeIcon, primary: false },
   { to: "/blacklist", label: "黑名单", icon: BanIcon, primary: false },
   { to: "/audit", label: "操作日志", icon: ScrollTextIcon, primary: false },
   { to: "/settings", label: "设置", icon: SettingsIcon, primary: false },

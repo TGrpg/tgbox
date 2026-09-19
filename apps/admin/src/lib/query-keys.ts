@@ -24,6 +24,8 @@ export const queryKeys = {
   promotionCounts: ["promotion-counts"],
   products: ["products"],
   users: ["users"],
+  friendLinks: ["friend-links"],
+  friendLinkRequests: ["friend-link-requests"],
 } as const;
 
 export type QueryKeyRoot = keyof typeof queryKeys;

@@ -134,6 +134,13 @@
       "when": 1789806195502,
       "tag": "0019_taxonomy_crypto_ai",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1789809247226,
+      "tag": "0020_friend_link_requests",
+      "breakpoints": true
     }
   ]
 }

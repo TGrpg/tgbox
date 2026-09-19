@@ -25,6 +25,13 @@ export {
   setPromoted,
 } from "./entries.ts";
 export {
+  applyForFriendLink,
+  approveFriendLink,
+  type FriendLinkApplication,
+  rejectFriendLink,
+  setFriendLinks,
+} from "./friend-links.ts";
+export {
   type ModerationError,
   setEntryPostsVisibility,
   setPostVisibility,

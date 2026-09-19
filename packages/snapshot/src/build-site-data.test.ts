@@ -284,7 +284,12 @@ describe("buildSiteData", () => {
     const banner = (title: string, imageUrl?: string) =>
       JSON.stringify({ title, subtitle: "副标题", href: "https://t.me/techdaily", imageUrl });
     db.prepare("INSERT INTO settings (key, value, updated_at) VALUES ('site', ?, 0)").run(
-      JSON.stringify({ announcement: { enabled: true, zh: "公告", en: "Notice", href: null } }),
+      JSON.stringify({
+        announcement: { enabled: true, zh: "公告", en: "Notice", href: null },
+        friendLinks: [
+          { name: "Friend", url: "https://friend.example/", descZh: "友站", descEn: "" },
+        ],
+      }),
     );
     const insert = db.prepare(
       "INSERT INTO promotions (id, kind, entry_username, banner, starts_at, ends_at, created_at) VALUES (?, ?, ?, ?, ?, ?, 0)",
@@ -314,6 +319,9 @@ describe("buildSiteData", () => {
     const data = await buildSiteData({ dbPath, mediaDir: tempDir(), now: fixtureNow });
 
     expect(data.announcement).toEqual({ zh: "公告", en: "Notice", href: null });
+    expect(data.friendLinks).toEqual([
+      { name: "Friend", url: "https://friend.example/", descZh: "友站", descEn: "" },
+    ]);
     expect(data.promos).toEqual([
       {
         id: "2",

@@ -37,8 +37,8 @@ export function startHelp(app: App) {
     const locale = await app.locale(ctx);
     await pushMenuButton(ctx, locale);
     // Deep links: ?start=submit asks for a link here, ?start=promote is handled by `promote`,
-    // ?start=support is the Mini App's contact button.
-    if (ctx.match === "promote") return next();
+    // ?start=links by `friendLinks`, ?start=support is the Mini App's contact button.
+    if (ctx.match === "promote" || ctx.match === "links") return next();
     if (ctx.match === "submit") return askForLink(ctx);
     if (ctx.match === "support") return support(ctx);
     const m = messages(locale);

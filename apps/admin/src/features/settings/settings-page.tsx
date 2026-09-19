@@ -342,7 +342,7 @@ function SiteSection({ initial }: { initial: SiteSettings }) {
     setAnnouncement((current) => ({ ...current, ...next }));
 
   const blocklist = parsePostBlocklist(blocklistText);
-  const candidate: SiteSettings = {
+  const candidate: Omit<SiteSettings, "friendLinks"> = {
     announcement: {
       ...announcement,
       zh: announcement.zh.trim(),
@@ -353,7 +353,8 @@ function SiteSection({ initial }: { initial: SiteSettings }) {
     hidePostMedia,
     showAdSlots,
   };
-  const dirty = JSON.stringify(candidate) !== JSON.stringify(initial);
+  const { friendLinks: _, ...saved } = initial;
+  const dirty = JSON.stringify(candidate) !== JSON.stringify(saved);
   const missingText =
     candidate.announcement.enabled && (!candidate.announcement.zh || !candidate.announcement.en);
   const badHref =

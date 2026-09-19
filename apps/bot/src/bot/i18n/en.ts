@@ -2,6 +2,7 @@ import { isEntryProduct, type ProductKind } from "@tgbox/shared";
 import {
   type AdOrderSummary,
   type EntryStatusSummary,
+  type FriendLinkSummary,
   type OrderSummary,
   type ProductLabel,
   type PromotionTarget,
@@ -75,6 +76,29 @@ export const en: typeof zh = {
     ask: "Just send your question here and the team will get back to you.",
     sent: "✅ Sent to support. Hang tight.",
     unavailable: "Support can't take messages right now. Please try again later.",
+  },
+  friendLink: {
+    askUrl: (siteUrl: string) =>
+      [
+        "🤝 Apply for a link exchange",
+        "",
+        "Requirements: the site is reachable, lawful and regularly updated, and already links to us:",
+        siteUrl,
+        "",
+        "Step 1 of 3: send your website address (starting with https://).",
+      ].join("\n"),
+    invalidUrl: "That address isn't valid. Send the full address starting with https://.",
+    askName: "Step 2: the site's name (up to 40 characters).",
+    invalidName: "The name needs 1–40 characters. Please send it again.",
+    askDescription: "Step 3: describe your site in one sentence (up to 120 characters).",
+    invalidDescription: "The description needs 1–120 characters. Please send it again.",
+    submitted: (backlink: boolean) =>
+      backlink
+        ? "✅ Application sent. We'll message you with the result."
+        : "✅ Application sent. We'll message you with the result.\n\n⚠️ We couldn't find a link to us on your home page yet; adding one makes approval more likely.",
+    listed: "That site is already in our links.",
+    pending: "You already have a link application under review. Please wait for the result.",
+    cancelled: "Link application cancelled.",
   },
   sendLink:
     "Send the link of the channel, group or bot to submit (https://t.me/xxx, t.me/xxx or @xxx).",
@@ -263,6 +287,17 @@ export const en: typeof zh = {
         `Paid: ${o.amount} ${o.currency}`,
         `Buyer: ${o.buyerId}`,
       ].join("\n"),
+    friendLinkReview: (f: FriendLinkSummary) =>
+      [
+        "🤝 Link exchange request",
+        `#${f.id} ${f.name}`,
+        f.url,
+        `Description: ${f.description}`,
+        `Backlink: ${f.backlink ? "✅ found on the home page" : "❌ not found on the home page"}`,
+        `Applicant: ${f.applicantUsername ? `@${f.applicantUsername} ` : ""}${f.applicantId}`,
+      ].join("\n"),
+    friendLinkRejectedBy: (name: string) => `❌ Rejected (${name})`,
+    friendLinksFull: "The link list is full (30). Remove some in the admin first.",
     adRejected: (name: string, refunded: boolean, amount: string) =>
       `❌ Rejected (${name})${refunded ? ", refunded automatically" : `, refund ${amount} by hand`}`,
     orphanPayment: (orderId: number, provider: string, chargeId: string, amount: string) =>

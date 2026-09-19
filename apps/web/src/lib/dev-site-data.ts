@@ -176,6 +176,16 @@ export const devSiteData: SiteData = {
   promos: [],
   sponsoredAnnouncements: [],
   showAdSlots: true,
+  friendLinks: [
+    {
+      name: "Telegram",
+      url: "https://telegram.org/",
+      descZh: "Telegram 官方网站",
+      descEn: "The official Telegram website",
+    },
+    { name: "grammY", url: "https://grammy.dev/", descZh: "Telegram 机器人框架", descEn: "" },
+    { name: "Astro", url: "https://astro.build/", descZh: "", descEn: "The web framework" },
+  ],
   payments: { stars: true, usdt: true },
   products: (
     [

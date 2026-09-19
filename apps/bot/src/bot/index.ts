@@ -2,6 +2,7 @@ import { Bot } from "grammy";
 import { admin } from "./admin.ts";
 import { type BotDeps, type BotEnv, createApp } from "./app.ts";
 import { chatMembers } from "./chat-members.ts";
+import { friendLinks } from "./friend-links.ts";
 import { guard } from "./guard.ts";
 import { inlineSearch } from "./inline-search.ts";
 import { payments } from "./payments.ts";
@@ -60,6 +61,7 @@ export function createBot(
     guard(app),
     startHelp(app),
     promote(app),
+    friendLinks(app),
     submit(app),
     supportRelay(app),
   );

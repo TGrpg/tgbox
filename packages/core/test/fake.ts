@@ -42,6 +42,7 @@ export async function setup(config: Partial<CoreContext["config"]> = {}) {
       "usdt_payments",
       "bot_users",
       "broadcasts",
+      "friend_link_requests",
     ].map((table) => env.DB.prepare(`DELETE FROM ${table}`)),
   );
   await syncTaxonomy(db);
@@ -68,6 +69,8 @@ export async function setup(config: Partial<CoreContext["config"]> = {}) {
     throws: false,
     calls: [] as string[],
   };
+  // Outside websites (`*.example`), e.g. a friend-link applicant's home page.
+  const websites = new Map<string, string>();
   const ctx: CoreContext = {
     db,
     now: () => NOW,
@@ -111,6 +114,10 @@ export async function setup(config: Partial<CoreContext["config"]> = {}) {
         if (tron.throws) throw new Error("network down");
         return Response.json({ data: tron.transfers });
       }
+      if (url.hostname.endsWith(".example")) {
+        const page = websites.get(url.hostname);
+        return page === undefined ? new Response("gone", { status: 404 }) : new Response(page);
+      }
       if (url.hostname.endsWith("telesco.pe")) {
         return new Response(new Uint8Array([0xff, 0xd8, 0xff, 1, 2, 3]), {
           headers: { "content-type": "image/jpeg" },
@@ -129,6 +136,7 @@ export async function setup(config: Partial<CoreContext["config"]> = {}) {
     telegramResults,
     telegramFiles,
     tron,
+    websites,
   };
 }
 

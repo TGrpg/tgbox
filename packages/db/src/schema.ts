@@ -380,3 +380,31 @@ export const broadcasts = sqliteTable("broadcasts", {
   createdAt: integer("created_at").notNull(),
   finishedAt: integer("finished_at"),
 });
+
+export type FriendLinkRequestStatus = "pending" | "approved" | "rejected";
+
+/**
+ * Link-exchange applications from the bot. Private (applicant ids), so it never enters the site
+ * snapshot; approved links are copied into the `site` settings, which the build reads.
+ */
+export const friendLinkRequests = sqliteTable(
+  "friend_link_requests",
+  {
+    id: integer().primaryKey(),
+    tgUserId: integer("tg_user_id").notNull(),
+    url: text().notNull(),
+    name: text().notNull(),
+    description: text().notNull(),
+    /** The applicant's page linked back to the site when they applied. */
+    backlink: integer({ mode: "boolean" }).notNull(),
+    status: text().$type<FriendLinkRequestStatus>().notNull().default("pending"),
+    reviewedAt: integer("reviewed_at"),
+    createdAt: integer("created_at").notNull(),
+  },
+  // One open application per applicant; the bot checks it before inserting.
+  (t) => [
+    uniqueIndex("friend_link_requests_pending_user_unique")
+      .on(t.tgUserId)
+      .where(sql`status = 'pending'`),
+  ],
+);
