@@ -16,7 +16,10 @@ export type SnapshotOptions = {
   now: Date;
   /** kind stored in the database; null for a new submission */
   knownKind: EntryKind | null;
-  /** fetch `/s/{u}/1` for the creation date (only while tg_created_at is empty) */
+  /**
+   * fetch the first message for the creation date (only while tg_created_at is empty): `/s/{u}/1`
+   * for a channel, the `/{u}/1` embed for a group (groups have no /s/ preview)
+   */
   needCreatedAt: boolean;
 };
 
@@ -101,6 +104,13 @@ export async function fetchEntrySnapshot(
         }
       }
     }
+  }
+
+  if (verdict.liveness === "active" && verdict.kind === "group" && options.needCreatedAt) {
+    // Message 1 of a public group is its creation (or migration to a supergroup). When it was
+    // deleted the embed says "Post not found" and the date stays unknown.
+    const first = await get(`/${username}/1?embed=1&mode=tme`);
+    if (first?.status === 200) snapshot.createdAt = parseCreatedAt(first.html);
   }
 
   snapshot.liveness = verdict.liveness;

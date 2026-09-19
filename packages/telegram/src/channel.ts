@@ -55,7 +55,10 @@ export function parseChannelPage(html: string): { posts: PostView[]; hasPreview:
   return { posts, hasPreview };
 }
 
-/** Creation date from a `/s/{u}/1` page: the "Channel created" service message, else the earliest post. */
+/**
+ * Creation date from a `/s/{u}/1` page or a `/{u}/1` embed: the "Channel created" service message,
+ * else the earliest message.
+ */
 export function parseCreatedAt(html: string): string | null {
   let earliest: { id: number; date: string } | null = null;
   for (const message of messages(html)) {

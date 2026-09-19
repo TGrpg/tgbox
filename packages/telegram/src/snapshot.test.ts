@@ -53,8 +53,11 @@ describe("fetchEntrySnapshot", () => {
     expect(calls[1]?.init?.redirect).toBe("manual");
   });
 
-  test("group: only the profile is fetched, no tier", async () => {
-    const { fetch } = fakeFetch({ "https://t.me/grammyjs": html("profile-group.html") });
+  test("group: creation date from the first message's embed, no posts or tier", async () => {
+    const { fetch } = fakeFetch({
+      "https://t.me/grammyjs": html("profile-group.html"),
+      "https://t.me/grammyjs/1?embed=1&mode=tme": html("group-first-message.html"),
+    });
     const snap = await fetchEntrySnapshot("grammyjs", {
       fetch,
       now,
@@ -65,10 +68,35 @@ describe("fetchEntrySnapshot", () => {
       liveness: "active",
       kind: "group",
       posts: null,
-      createdAt: null,
+      createdAt: "2026-06-10T13:05:35+00:00",
       activityTier: null,
-      subrequests: 1,
+      subrequests: 2,
     });
+  });
+
+  test("group whose first message was deleted: no creation date", async () => {
+    const { fetch } = fakeFetch({
+      "https://t.me/grammyjs": html("profile-group.html"),
+      "https://t.me/grammyjs/1?embed=1&mode=tme": html("group-first-message-deleted.html"),
+    });
+    const snap = await fetchEntrySnapshot("grammyjs", {
+      fetch,
+      now,
+      knownKind: "group",
+      needCreatedAt: true,
+    });
+    expect(snap).toMatchObject({ liveness: "active", createdAt: null, subrequests: 2 });
+  });
+
+  test("group with a known creation date: only the profile is fetched", async () => {
+    const { fetch } = fakeFetch({ "https://t.me/grammyjs": html("profile-group.html") });
+    const snap = await fetchEntrySnapshot("grammyjs", {
+      fetch,
+      now,
+      knownKind: "group",
+      needCreatedAt: false,
+    });
+    expect(snap).toMatchObject({ liveness: "active", createdAt: null, subrequests: 1 });
   });
 
   test("channel whose /s/ now redirects → banned", async () => {

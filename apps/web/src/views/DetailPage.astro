@@ -134,6 +134,16 @@ const badge =
   "inline-flex h-6 items-center gap-1 rounded-md px-2 text-xs font-medium whitespace-nowrap";
 const iconButton =
   "grid size-10 shrink-0 place-items-center rounded-full bg-muted text-foreground/80 transition-colors outline-none hover:bg-primary-soft hover:text-primary-soft-foreground focus-visible:ring-3 focus-visible:ring-outline/40";
+// Only the stats Telegram actually shows for this kind: bots have no public creation date, and
+// activity is measured from a channel's post preview, which groups and bots don't have.
+const showCreated = entry.kind !== "bot";
+const showActivity = entry.kind === "channel";
+const statCount = 2 + Number(showCreated) + Number(showActivity);
+const statGrid = {
+  2: "grid-cols-2",
+  3: "grid-cols-2 sm:grid-cols-3 lg:grid-cols-2",
+  4: "grid-cols-2 sm:grid-cols-4 lg:grid-cols-2",
+}[statCount];
 const statCell =
   "flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl bg-muted/50 px-2 py-4 text-center";
 ---
@@ -366,7 +376,7 @@ const statCell =
           class="space-y-4 lg:sticky lg:top-36 lg:col-start-2 lg:row-span-3 lg:row-start-1"
         >
           <div class="rounded-3xl border border-border bg-card p-3 shadow-card sm:p-4">
-            <dl class="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2" data-pagefind-ignore>
+            <dl class:list={["grid gap-2", statGrid]} data-pagefind-ignore>
               <div class={statCell}>
                 <dt class="text-xs text-muted-foreground">{membersLabel}</dt>
                 <dd class="font-mono text-xl font-bold text-primary-accent tabular-nums">
@@ -383,42 +393,48 @@ const statCell =
                     </dd>
                   )}
               </div>
-              <div class={statCell}>
-                <dt class="text-xs text-muted-foreground">{detail.tgCreated}</dt>
-                <dd class="text-[0.95rem] font-semibold tabular-nums">
-                  {entry.tgCreatedAt ? (
-                    <time datetime={entry.tgCreatedAt}>{formatDate(entry.tgCreatedAt, locale)}</time>
-                  ) : (
-                    <span class="text-muted-foreground">{detail.unknown}</span>
-                  )}
-                </dd>
-              </div>
-              <div class={statCell}>
+              {showCreated && (
+                <div class={statCell}>
+                  <dt class="text-xs text-muted-foreground">{detail.tgCreated}</dt>
+                  <dd class="text-[0.95rem] font-semibold tabular-nums">
+                    {entry.tgCreatedAt ? (
+                      <time datetime={entry.tgCreatedAt}>{formatDate(entry.tgCreatedAt, locale)}</time>
+                    ) : (
+                      <span class="text-muted-foreground">{detail.unknown}</span>
+                    )}
+                  </dd>
+                </div>
+              )}
+              <div
+                class:list={[statCell, statCount === 3 && "col-span-2 sm:col-span-1 lg:col-span-2"]}
+              >
                 <dt class="text-xs text-muted-foreground">{detail.listed}</dt>
                 <dd class="text-[0.95rem] font-semibold tabular-nums">
                   <time datetime={entry.listedAt}>{formatDate(entry.listedAt, locale)}</time>
                 </dd>
               </div>
-              <div class={statCell}>
-                <dt class="text-xs text-muted-foreground">{detail.activity}</dt>
-                {tierLabel ? (
-                    <dd class="flex flex-col items-center gap-1.5">
-                      <span class="text-[0.95rem] font-semibold">{tierLabel}</span>
-                      <span class="flex gap-1" aria-hidden="true">
-                        {segments.map((filled) => (
-                          <span
-                            class:list={[
-                              "h-1.5 w-5 rounded-full",
-                              filled ? "bg-primary-accent" : "bg-muted-foreground/20",
-                            ]}
-                          ></span>
-                        ))}
-                      </span>
-                    </dd>
-                  ) : (
-                    <dd class="text-[0.95rem] font-semibold text-muted-foreground">{text.noActivity}</dd>
-                  )}
-              </div>
+              {showActivity && (
+                <div class={statCell}>
+                  <dt class="text-xs text-muted-foreground">{detail.activity}</dt>
+                  {tierLabel ? (
+                      <dd class="flex flex-col items-center gap-1.5">
+                        <span class="text-[0.95rem] font-semibold">{tierLabel}</span>
+                        <span class="flex gap-1" aria-hidden="true">
+                          {segments.map((filled) => (
+                            <span
+                              class:list={[
+                                "h-1.5 w-5 rounded-full",
+                                filled ? "bg-primary-accent" : "bg-muted-foreground/20",
+                              ]}
+                            ></span>
+                          ))}
+                        </span>
+                      </dd>
+                    ) : (
+                      <dd class="text-[0.95rem] font-semibold text-muted-foreground">{text.noActivity}</dd>
+                    )}
+                </div>
+              )}
             </dl>
           </div>
           <DetailPromos locale={locale} />
@@ -430,7 +446,12 @@ const statCell =
 
         {entry.kind === "channel" && entry.posts.length > 0 && (
           <div class="min-w-0 lg:col-start-1">
-            <DetailPosts locale={locale} username={entry.username} posts={entry.posts} />
+            <DetailPosts
+              locale={locale}
+              username={entry.username}
+              posts={entry.posts}
+              members={entry.members}
+            />
           </div>
         )}
       </div>
