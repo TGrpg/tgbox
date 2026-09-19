@@ -36,10 +36,10 @@ const channel: SeedRow = {
 test("migrations seed the taxonomy idempotently", () => {
   const db = migratedDb();
   const count = (table: string) => db.prepare(`SELECT count(*) AS n FROM ${table}`).get()?.n;
-  assert.equal(count("categories"), 48);
+  assert.equal(count("categories"), 54);
   // Migrations only ever insert: tags retired from the seed list are still seeded here, and are
   // removed from a live database with the admin's deleteTag instead.
-  assert.equal(count("tags"), 47);
+  assert.equal(count("tags"), 54);
   const before = db.prepare("SELECT total_changes() AS n").get()?.n;
   const again = readFileSync(
     path.join(repoRoot, "packages/db/migrations/0002_taxonomy.sql"),
