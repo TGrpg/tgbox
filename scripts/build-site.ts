@@ -112,7 +112,7 @@ async function countFiles(dir: string, filter: (file: string) => boolean = () =>
 const client = path.join(webDir, "dist/client");
 const isDetail = (file: string) => /[/\\]detail[/\\][^/\\]+[/\\]index\.html$/.test(file);
 console.log(
-  `build-site: ${await countFiles(client, isDetail)} detail pages (zh + en), ` +
+  `build-site: ${await countFiles(client, isDetail)} detail pages (every locale), ` +
     `${await countFiles(client)} static files in apps/web/dist/client, ` +
     `${await countFiles(path.join(webDir, "dist/pagefind"))} Pagefind files in apps/web/dist/pagefind`,
 );
