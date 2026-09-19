@@ -434,6 +434,24 @@ describe("site build from snapshot data", () => {
     }
   });
 
+  test("every page but the 404 offers its other-locale copy and remembers the reader's choice", () => {
+    for (const [route, other] of [
+      ["", "/en/"],
+      ["en/detail/techdaily", "/detail/techdaily/"],
+    ] as const) {
+      const page = html(route);
+      expect(page, route).toContain(`location.replace(${JSON.stringify(other)}`);
+      const bar = page.split("data-lang-suggest-bar")[1]?.split("</div>\n</div>")[0] ?? "";
+      expect(bar, route).toMatch(new RegExp(`href="${other}"[^>]*data-lang-switch`));
+      expect(bar, route).toContain("data-lang-stay");
+    }
+    for (const notFound of ["404.html", "en/404.html"]) {
+      const page = readFileSync(path.join(client, notFound), "utf8");
+      expect(page).not.toContain("data-lang-suggest-bar");
+      expect(page).not.toContain("location.replace(");
+    }
+  });
+
   test("the about page answers the questions people search, with FAQPage markup", () => {
     for (const [route, heading, question] of [
       ["about", "常见问题", "怎么找 Telegram 频道？"],

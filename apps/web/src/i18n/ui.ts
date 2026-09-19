@@ -62,6 +62,9 @@ const zh = {
   lang: {
     switchTo: "English",
     switchLabel: "Switch to English",
+    // Shown to visitors of the Chinese page, so written in English.
+    suggest: "This page is available in English.",
+    stay: "Keep reading in Chinese",
   },
   announcement: {
     cta: "查看",
@@ -243,6 +246,9 @@ const en: typeof zh = {
   lang: {
     switchTo: "中文",
     switchLabel: "切换到中文",
+    // Shown to visitors of the English page, so written in Chinese.
+    suggest: "本页有中文版。",
+    stay: "继续浏览英文版",
   },
   announcement: {
     cta: "View",

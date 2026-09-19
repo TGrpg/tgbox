@@ -428,6 +428,9 @@
 html[data-announcement-dismissed] [data-announcement] {
   display: none;
 }
+html:not([data-lang-suggest]) [data-lang-suggest-bar] {
+  display: none;
+}
 
 /* Tooltip for icon buttons: `<span role="tooltip" class="tip">` inside a `.group` trigger. */
 .tip {

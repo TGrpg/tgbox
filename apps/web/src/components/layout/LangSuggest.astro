@@ -1,0 +1,47 @@
+---
+import Language from "@tabler/icons/outline/language.svg";
+import X from "@tabler/icons/outline/x.svg";
+import type { Locale } from "@tgbox/shared";
+import { htmlLang } from "@/i18n/locale.ts";
+import { ui } from "@/i18n/ui.ts";
+
+interface Props {
+  locale: Locale;
+  /** This page in the other locale. */
+  href: string;
+}
+const { locale, href } = Astro.props;
+const target = locale === "zh" ? "en" : "zh";
+// Like the switcher's label, these strings are written in the language being offered.
+const strings = ui(locale).lang;
+---
+
+{/*
+  Shown only when the head script in BaseLayout sets html[data-lang-suggest]; both buttons are
+  handled by the layout's click listener, which remembers the choice.
+*/}
+<div data-lang-suggest-bar lang={htmlLang[target]} class="border-b border-border bg-primary-soft">
+  <div
+    class="mx-auto flex max-w-7xl items-center gap-3 px-4 py-2 text-sm text-primary-soft-foreground sm:px-6"
+  >
+    <Language class="size-4 shrink-0" aria-hidden="true" />
+    <p class="min-w-0 flex-1">{strings.suggest}</p>
+    <a
+      href={href}
+      hreflang={htmlLang[target]}
+      data-lang-switch={target}
+      class="inline-flex h-8 shrink-0 items-center rounded-full bg-primary px-3 font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:ring-3 focus-visible:ring-outline/40 outline-none"
+    >
+      {strings.switchLabel}
+    </a>
+    <button
+      type="button"
+      data-lang-stay={locale}
+      aria-label={strings.stay}
+      title={strings.stay}
+      class="inline-grid size-8 shrink-0 place-items-center rounded-full transition-colors hover:bg-background/60 focus-visible:ring-3 focus-visible:ring-outline/40 outline-none"
+    >
+      <X class="size-4" aria-hidden="true" />
+    </button>
+  </div>
+</div>

@@ -1,7 +1,7 @@
 ---
 import Language from "@tabler/icons/outline/language.svg";
 import type { Locale } from "@tgbox/shared";
-import { alternatePaths } from "@/i18n/locale.ts";
+import { alternatePaths, isNotFoundPath } from "@/i18n/locale.ts";
 import { ui } from "@/i18n/ui.ts";
 
 interface Props {
@@ -13,7 +13,7 @@ const { locale, path, class: className } = Astro.props;
 const target = locale === "zh" ? "en" : "zh";
 const strings = ui(locale).lang;
 // The 404 page has no counterpart URL (`/en/404/` is not a page): switch to the other home page.
-const href = alternatePaths(/^(\/en)?\/404(\.html)?\/?$/.test(path) ? "/" : path)[target];
+const href = alternatePaths(isNotFoundPath(path) ? "/" : path)[target];
 ---
 
 <a

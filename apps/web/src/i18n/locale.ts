@@ -22,3 +22,8 @@ export function localizePath(path: string, locale: Locale): string {
 export function alternatePaths(path: string): Record<Locale, string> {
   return { zh: localizePath(path, "zh"), en: localizePath(path, "en") };
 }
+
+/** The 404 page (`/404.html` or `/en/404.html`) has no counterpart in the other locale. */
+export function isNotFoundPath(path: string): boolean {
+  return /^(\/en)?\/404(\.html)?\/?$/.test(path);
+}

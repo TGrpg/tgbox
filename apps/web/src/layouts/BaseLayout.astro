@@ -4,13 +4,15 @@ import type { Locale } from "@tgbox/shared";
 import Announcement from "@/components/layout/Announcement.astro";
 import BackToTop from "@/components/layout/BackToTop.astro";
 import Footer from "@/components/layout/Footer.astro";
+import LangSuggest from "@/components/layout/LangSuggest.astro";
 import MobileTabBar from "@/components/layout/MobileTabBar.astro";
 import Seo from "@/components/layout/Seo.astro";
 import SiteHeader from "@/components/layout/SiteHeader.astro";
 import SearchDialog from "@/components/search/SearchDialog.tsx";
-import { htmlLang } from "@/i18n/locale.ts";
+import { alternatePaths, htmlLang, isNotFoundPath } from "@/i18n/locale.ts";
 import { ui } from "@/i18n/ui.ts";
 import { announcementKey, paidAnnouncement } from "@/lib/announcement.ts";
+import { langChoice } from "@/lib/lang-pref.ts";
 import { siteUrl } from "@/lib/site.ts";
 import { byMembers, getSiteData } from "@/lib/site-data.ts";
 
@@ -56,6 +58,24 @@ const hotKeywords = byMembers(data.entries)
   .map((entry) => entry.title);
 // Only the admin's own notice stays dismissed across pages; a paid bar comes back on the next load.
 const dismissKey = announcement && !sponsored ? announcementKey(announcement) : "";
+// The other locale's copy of this page; a 404 has none, so it neither redirects nor suggests.
+const otherLocalePath = isNotFoundPath(path)
+  ? null
+  : alternatePaths(path)[locale === "zh" ? "en" : "zh"];
+// A remembered language wins before first paint; otherwise the browser's may earn a suggestion.
+const langScript =
+  otherLocalePath &&
+  `(() => {
+  const root = document.documentElement;
+  let stored = null;
+  try { stored = localStorage.getItem("locale"); } catch {}
+  const choice = (${langChoice.toString()})(stored, navigator.languages || [navigator.language], ${JSON.stringify(locale)});
+  if (choice && "redirect" in choice) {
+    location.replace(${JSON.stringify(otherLocalePath)} + location.search + location.hash);
+  } else if (choice) {
+    root.dataset.langSuggest = "";
+  }
+})();`;
 const pagefindUrl = (import.meta.env.PUBLIC_PAGEFIND_URL ?? "/pagefind").replace(/\/$/, "");
 ---
 
@@ -95,6 +115,7 @@ const pagefindUrl = (import.meta.env.PUBLIC_PAGEFIND_URL ?? "/pagefind").replace
       if (dismissKey) root.dataset.announcementKey = dismissKey;
     })();
     </script>
+    {langScript && <script is:inline set:html={langScript} />}
     <slot name="head" />
   </head>
   <body class="flex min-h-dvh flex-col">
@@ -104,6 +125,7 @@ const pagefindUrl = (import.meta.env.PUBLIC_PAGEFIND_URL ?? "/pagefind").replace
     >
       {ui(locale).nav.skipToContent}
     </a>
+    {otherLocalePath && <LangSuggest locale={locale} href={otherLocalePath} />}
     <SiteHeader locale={locale} path={path} />
     {paidBars.map((bar, index) => (
         <Announcement locale={locale} announcement={bar} sponsored rotation={index > 0 ? "hidden" : "shown"} />
@@ -133,6 +155,12 @@ const pagefindUrl = (import.meta.env.PUBLIC_PAGEFIND_URL ?? "/pagefind").replace
       if (target.closest("[data-theme-toggle]")) {
         const dark = root.classList.toggle("dark");
         localStorage.setItem("theme", dark ? "dark" : "light");
+      } else if (target.closest("[data-lang-switch], [data-lang-stay]")) {
+        const choice = target.closest("[data-lang-switch], [data-lang-stay]");
+        try {
+          localStorage.setItem("locale", choice.dataset.langSwitch || choice.dataset.langStay);
+        } catch {}
+        delete root.dataset.langSuggest;
       } else if (target.closest("[data-announcement-dismiss]")) {
         root.dataset.announcementDismissed = "";
         if (root.dataset.announcementKey) localStorage.setItem(root.dataset.announcementKey, "1");
