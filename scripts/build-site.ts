@@ -36,6 +36,15 @@ const { values } = parseArgs({
   },
 });
 
+// The build bakes the site's own origin into canonical links, hreflang, Open Graph and the
+// sitemap. Without SITE_URL that origin is `http://localhost:4321`, which deploys clean and is
+// only visible weeks later in Search Console — so refuse rather than publish it.
+if (values.remote && !process.env.SITE_URL) {
+  throw new Error(
+    "SITE_URL is required for --remote; deploy with `gh workflow run build-deploy.yml` instead",
+  );
+}
+
 const dataDir = path.resolve(repoRoot, values["data-dir"]);
 const webDir = path.join(repoRoot, "apps/web");
 await mkdir(dataDir, { recursive: true });
@@ -96,11 +105,10 @@ run("pnpm", ["--filter", "@tgbox/web", "exec", "astro", "build"], {
   env: { SITE_DATA_PATH: siteData },
 });
 
-// 4. Pagefind → apps/web/dist/pagefind (CI uploads it to R2). Locally also copy it into
-// dist/client/pagefind so search works in `wrangler dev` preview without R2.
-run("pnpm", ["--filter", "@tgbox/web", "exec", "node", "scripts/pagefind.ts", "dist"], {
-  env: values.remote ? {} : { PAGEFIND_LOCAL: "1" },
-});
+// 4. Pagefind → apps/web/dist/pagefind, copied into dist/client/pagefind so it ships with the
+// site. Past ~6,000 entries, set PAGEFIND_R2=1 and upload it instead (scripts/sync-pagefind.ts)
+// so it stops counting against the 20,000 static-file limit.
+run("pnpm", ["--filter", "@tgbox/web", "exec", "node", "scripts/pagefind.ts", "dist"]);
 
 async function countFiles(dir: string, filter: (file: string) => boolean = () => true) {
   if (!existsSync(dir)) return 0;

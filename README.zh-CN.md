@@ -144,7 +144,7 @@ pnpm --filter @tgbox/admin dev         # 后台 → http://localhost:8789（本�
    - **GitHub token**（机器人用来触发构建）：classic token 勾 `public_repo`，或 fine-grained token 只授权本仓库并把 **Contents 设为 Read and write**。用 `wrangler secret put` 存为 Worker 密钥 `GITHUB_DISPATCH_TOKEN`，并在 `apps/bot/wrangler.jsonc`、`apps/admin/wrangler.jsonc` 里填好 `GITHUB_REPO`。
    - 仓库 Secret `CLOUDFLARE_ACCOUNT_ID`，Variables `SITE_URL`、`R2_PUBLIC_URL`、`PUBLIC_BOT_USERNAME`。
    - 手动运行一次 **Build & deploy**。之后审核通过、支付成功、推广到期都会触发构建（约 3–5 分钟上线），另有每天 00:30 UTC 的定时构建（刷新排行榜）和每 6 小时一次的变更检查。
-   - Pagefind 索引随网站一起发布；条目超过约 6,000 个时改用 `scripts/sync-pagefind.ts` 放到 R2（那条路径需要 `R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY` 和 `PUBLIC_PAGEFIND_URL`），避免占用静态文件配额。
+   - Pagefind 索引随网站一起发布；条目超过约 6,000 个时设 `PAGEFIND_R2=1`，改用 `scripts/sync-pagefind.ts` 放到 R2（那条路径需要 `R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY` 和 `PUBLIC_PAGEFIND_URL`），避免占用静态文件配额。
 
 ### 免费额度
 

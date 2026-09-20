@@ -157,7 +157,7 @@ Checks: `pnpm check` (Biome + typecheck), `pnpm test`, `pnpm --filter @tgbox/web
    - **GitHub token** so the bot can trigger builds — a classic token with the `public_repo` scope, or a fine-grained token limited to this repository with **Contents: Read and write**. Store it as the Worker secret `GITHUB_DISPATCH_TOKEN` (`wrangler secret put`), and set `GITHUB_REPO` in `apps/bot/wrangler.jsonc` and `apps/admin/wrangler.jsonc`.
    - Repository secret `CLOUDFLARE_ACCOUNT_ID`, and variables `SITE_URL`, `R2_PUBLIC_URL`, `PUBLIC_BOT_USERNAME`.
    - Run **Build & deploy** once by hand. After that: approvals, payments and expiries dispatch a build (live in ~3–5 minutes), plus a daily build at 00:30 UTC for the rankings and a dirty check every 6 hours.
-   - The Pagefind index ships with the site. Past roughly 6,000 entries, move it to R2 with `scripts/sync-pagefind.ts` (that path needs `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` and `PUBLIC_PAGEFIND_URL`) so it stops counting against the static-file limit.
+   - The Pagefind index ships with the site. Past roughly 6,000 entries, set `PAGEFIND_R2=1` and move it to R2 with `scripts/sync-pagefind.ts` (that path needs `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` and `PUBLIC_PAGEFIND_URL`) so it stops counting against the static-file limit.
 
 ### Free-plan budget
 

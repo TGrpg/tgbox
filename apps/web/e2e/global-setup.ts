@@ -22,7 +22,6 @@ export default async function globalSetup() {
     ...process.env,
     SITE_DATA_PATH: dataPath,
     SITE_URL: `http://127.0.0.1:${port}`,
-    PAGEFIND_LOCAL: "1",
   };
   execFileSync(path.join(webRoot, "node_modules/.bin/astro"), ["build", "--outDir", outDir], {
     cwd: webRoot,

@@ -5,10 +5,10 @@
  *
  * Indexes the zh detail pages (`<dist>/client/detail/<u>/index.html`; en pages would duplicate
  * every result) into `<dist>/pagefind`, and the Traditional copies (`zh-hant/detail/…`) into
- * `<dist>/pagefind/zh-hant`, so a reader typing Traditional characters finds them. Deploy can
- * upload the directory to R2 so the index doesn't count against the static-asset file limit. With
- * `PAGEFIND_LOCAL=1` it also copies it to `<dist>/client/pagefind` so `/pagefind/pagefind.js`
- * works in local preview and e2e tests.
+ * `<dist>/pagefind/zh-hant`, so a reader typing Traditional characters finds them. It also copies
+ * the directory to `<dist>/client/pagefind`, so `/pagefind/pagefind.js` is served by the site
+ * itself. Set `PAGEFIND_R2=1` to skip that copy and serve the index from R2 instead (see
+ * scripts/sync-pagefind.ts and PUBLIC_PAGEFIND_URL).
  */
 import { cpSync, rmSync } from "node:fs";
 import path from "node:path";
@@ -34,7 +34,7 @@ for (const [glob, output] of [
 await close();
 
 // Copy rather than writing twice: a second writeFiles() on the same index emits empty files.
-if (process.env.PAGEFIND_LOCAL === "1") {
+if (process.env.PAGEFIND_R2 !== "1") {
   cpSync(outputPath, path.join(site, "pagefind"), { recursive: true });
   console.log(`pagefind: copied to ${path.join(site, "pagefind")}`);
 }

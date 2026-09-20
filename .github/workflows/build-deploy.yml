@@ -23,9 +23,6 @@ env:
   SITE_URL: ${{ vars.SITE_URL }}
   R2_PUBLIC_URL: ${{ vars.R2_PUBLIC_URL }}
   PUBLIC_BOT_USERNAME: ${{ vars.PUBLIC_BOT_USERNAME }}
-  # The Pagefind index ships with the site (a few dozen files). Past ~6,000 entries, move it to R2
-  # instead (scripts/sync-pagefind.ts) so it stops counting against the 20,000 static-file limit.
-  PAGEFIND_LOCAL: "1"
   # Optional fine-grained token with Contents: write on TGrpg/awesome-telegram. Without it the
   # awesome list still regenerates on its own daily schedule.
   AWESOME_DISPATCH_TOKEN: ${{ secrets.AWESOME_DISPATCH_TOKEN }}
@@ -70,6 +67,27 @@ jobs:
         if: steps.dirty.outputs.build == 'true'
         working-directory: apps/web
         run: pnpm exec wrangler deploy
+
+      # A build that baked the wrong origin, or lost the Pagefind copy, deploys perfectly cleanly
+      # and only surfaces weeks later as localhost canonicals in Search Console or as dead search.
+      - name: Smoke-check the deployed site
+        if: steps.dirty.outputs.build == 'true'
+        run: |
+          base="${SITE_URL%/}"
+          for attempt in 1 2 3; do
+            canonical=$(curl -fsS "$base/" \
+              | grep -o '<link rel="canonical" href="[^"]*"' | head -1 | cut -d'"' -f4) && break
+            sleep 5
+          done
+          echo "canonical: $canonical"
+          if [ "$canonical" != "$base/" ]; then
+            echo "::error::home canonical is '$canonical', expected '$base/' — SITE_URL was wrong at build time"
+            exit 1
+          fi
+          if ! curl -fsS -o /dev/null "$base/pagefind/pagefind.js"; then
+            echo "::error::$base/pagefind/pagefind.js is missing — site search is dead"
+            exit 1
+          fi
 
       # Changes made after this build started keep the flag for the next run.
       - name: Clear dirty flag
