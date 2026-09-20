@@ -1,6 +1,16 @@
 name: Build & deploy
 
 on:
+  # Code changes never touch the dirty flag, so without this they would sit unpublished until the
+  # daily forced build. Listing the paths that feed the build is too easy to get wrong — apps/web
+  # pulls in core, db, shared, telegram and hant, and the D1 export reads apps/bot's bindings — so
+  # exclude what provably cannot affect the output instead.
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - ".github/workflows/ci.yml"
   repository_dispatch:
     types: [content-changed]
   schedule:
@@ -53,7 +63,10 @@ jobs:
             --command "SELECT value FROM site_state WHERE key = 'dirty_since'" \
             | jq -r '.[0].results[0].value // empty')
           echo "dirty_since=${value:-none}"
-          if [ -n "$value" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "${{ github.event.schedule }}" = "30 0 * * *" ]; then
+          if [ -n "$value" ] \
+            || [ "${{ github.event_name }}" = "workflow_dispatch" ] \
+            || [ "${{ github.event_name }}" = "push" ] \
+            || [ "${{ github.event.schedule }}" = "30 0 * * *" ]; then
             echo "build=true" >> "$GITHUB_OUTPUT"
           else
             echo "Site is clean; nothing to build."
