@@ -2,6 +2,7 @@ import {
   type AppPreview,
   type Locale,
   PreviewResult,
+  parseStartPayload,
   parseTelegramRef,
   type SubmitError,
   SubmitResult,
@@ -22,7 +23,7 @@ import { useStaticJson } from "./use-static.ts";
 
 type Step =
   | { name: "link" }
-  | { name: "form"; preview: AppPreview }
+  | { name: "form"; preview: AppPreview; reference: string }
   | { name: "done"; submissionId: number };
 
 /**
@@ -57,7 +58,7 @@ export function SubmitScreen({ locale }: { locale: Locale }) {
 
   async function check() {
     const username = parseTelegramRef(link);
-    if (username === null) {
+    if (username === null || parseStartPayload(link) === undefined) {
       setError(strings.submit.errors.invalid);
       return;
     }
@@ -84,10 +85,10 @@ export function SubmitScreen({ locale }: { locale: Locale }) {
     const { suggestion } = result.data.preview;
     setCategoryId(suggestion.categoryId);
     setTagIds(suggestion.tagIds);
-    setStep({ name: "form", preview: result.data.preview });
+    setStep({ name: "form", preview: result.data.preview, reference: link });
   }
 
-  async function send(preview: AppPreview) {
+  async function send(reference: string) {
     if (categoryId === null) {
       setError(strings.submit.errors.needCategory);
       return;
@@ -95,7 +96,7 @@ export function SubmitScreen({ locale }: { locale: Locale }) {
     setBusy(true);
     setError(null);
     const result = await apiCall("/submit", SubmitResult, {
-      json: { username: preview.username, categoryId, tagIds },
+      json: { username: reference, startPayload: parseStartPayload(reference), categoryId, tagIds },
     });
     setBusy(false);
     if (!result.ok) {
@@ -203,6 +204,11 @@ export function SubmitScreen({ locale }: { locale: Locale }) {
                 {strings.submit.change}
               </Button>
             </div>
+            {step.preview.kind === "bot" && parseStartPayload(step.reference) && (
+              <p>
+                Bot start payload: <code>{parseStartPayload(step.reference)}</code>
+              </p>
+            )}
             {step.preview.description && (
               <p className="line-clamp-3 text-muted-foreground text-xs" dir="auto">
                 {step.preview.description}
@@ -257,7 +263,7 @@ export function SubmitScreen({ locale }: { locale: Locale }) {
             text={busy ? strings.submit.submitting : strings.submit.submitButton}
             disabled={blocked || categoryId === null}
             loading={busy}
-            onClick={() => void send(step.preview)}
+            onClick={() => void send(step.reference)}
           />
         )}
       </div>

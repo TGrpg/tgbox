@@ -60,7 +60,15 @@ describe("EntryView translations", () => {
   };
 
   test("both translations default to null so a snapshot without them still parses", () => {
-    expect(EntryView.parse(entry)).toMatchObject({ descriptionZh: null, descriptionEn: null });
+    expect(EntryView.parse(entry)).toMatchObject({
+      descriptionZh: null,
+      descriptionEn: null,
+      startPayload: null,
+    });
+    expect(EntryView.safeParse({ ...entry, startPayload: "botlist" }).success).toBe(false);
+    expect(EntryView.safeParse({ ...entry, kind: "bot", startPayload: "botlist" }).success).toBe(
+      true,
+    );
     expect(EntryView.parse({ ...entry, descriptionZh: "\u4f60\u597d" })).toMatchObject({
       descriptionZh: "\u4f60\u597d",
       descriptionEn: null,

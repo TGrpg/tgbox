@@ -4,6 +4,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 const db = vi.hoisted(() => ({
   createDb: vi.fn(() => ({})),
   getPromotion: vi.fn(),
+  getEntryByUsername: vi.fn(),
   recordClick: vi.fn(),
   clickDay: (ms: number) => new Date(ms).toISOString().slice(0, 10),
 }));
@@ -120,4 +121,21 @@ test.each(["abc", "-1", "0", "1.5", ""])("a malformed id (%s) never reaches D1",
   expect(response.headers.get("location")).toBe("/");
   expect(db.getPromotion).not.toHaveBeenCalled();
   expect(db.recordClick).not.toHaveBeenCalled();
+});
+
+test("a promoted bot uses its approved start payload", async () => {
+  db.getPromotion.mockResolvedValue({
+    id: 9,
+    kind: "pin",
+    entryUsername: "SomeBot",
+    banner: null,
+    startsAt: NOW - DAY,
+    endsAt: NOW + DAY,
+  });
+  db.getEntryByUsername.mockResolvedValue({
+    username: "SomeBot",
+    kind: "bot",
+    startPayload: "botlist",
+  });
+  expect((await call("9")).headers.get("location")).toBe("https://t.me/SomeBot?start=botlist");
 });

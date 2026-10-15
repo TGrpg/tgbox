@@ -60,6 +60,5 @@ export const formatCount = (value: number | null) => (value === null ? "—" : c
 export const formatDate = (ms: number) =>
   new Date(ms).toLocaleDateString("zh-CN", { year: "2-digit", month: "2-digit", day: "2-digit" });
 
-export const telegramUrl = (username: string) => `https://t.me/${username}`;
 export const sitePageUrl = (siteUrl: string, username: string) =>
   `${siteUrl.replace(/\/$/, "")}/detail/${username}/`;

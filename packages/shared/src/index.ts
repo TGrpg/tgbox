@@ -8,4 +8,5 @@ export * from "./settings.ts";
 export * from "./site-data.ts";
 export * from "./suggest.ts";
 export * from "./tags.ts";
+export * from "./telegram-links.ts";
 export { parseTelegramRef } from "./username.ts";

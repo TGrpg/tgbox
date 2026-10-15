@@ -1,4 +1,5 @@
 import { type BannerContent, isEntryProduct, type ProductKind } from "./settings.ts";
+import { type TelegramTarget, telegramLinks } from "./telegram-links.ts";
 
 /**
  * Paid promotions are clicked through `/r/<promotion id>` so the owner (and the advertiser) can
@@ -13,10 +14,17 @@ export const promoClickUrl = (promoId: string) => `/r/${promoId}`;
 export function promoTarget(promotion: {
   kind: ProductKind;
   entryUsername: string | null;
+  entryTarget?: TelegramTarget | null;
   banner: BannerContent | null;
 }) {
   if (isEntryProduct(promotion.kind)) {
-    return promotion.entryUsername ? `https://t.me/${promotion.entryUsername}` : null;
+    return promotion.entryUsername
+      ? telegramLinks(
+          promotion.entryTarget?.username === promotion.entryUsername
+            ? promotion.entryTarget
+            : { username: promotion.entryUsername, kind: "channel" },
+        ).web
+      : null;
   }
   const href = promotion.banner?.href;
   // Banner links are advertiser-supplied: never redirect to javascript:, data: or a relative path.
@@ -45,6 +53,7 @@ export function promoRedirect(input: {
   promotion: {
     kind: ProductKind;
     entryUsername: string | null;
+    entryTarget?: TelegramTarget | null;
     banner: BannerContent | null;
     startsAt: number;
     endsAt: number;

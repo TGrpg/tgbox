@@ -19,6 +19,7 @@ import type {
 } from "@tgbox/shared";
 import { sql } from "drizzle-orm";
 import {
+  check,
   index,
   integer,
   primaryKey,
@@ -52,36 +53,47 @@ export const tags = sqliteTable("tags", {
   nameEn: text("name_en").notNull(),
 });
 
-export const entries = sqliteTable("entries", {
-  id: integer().primaryKey(),
-  username: text().notNull().unique(),
-  kind: text().$type<EntryKind>().notNull(),
-  categoryId: integer("category_id").notNull(),
-  title: text().notNull(),
-  description: text().notNull().default(""),
-  /**
-   * Workers AI translations of `description`, written by the hourly cron. Both are cleared when
-   * the source description changes, so a stale translation never reaches the site.
-   */
-  descriptionZh: text("description_zh"),
-  descriptionEn: text("description_en"),
-  /** Last translation attempt, including the ones skipped as too short/long (so they aren't retried). */
-  descriptionTranslatedAt: integer("description_translated_at"),
-  lang: text(),
-  verified: integer({ mode: "boolean" }).notNull().default(false),
-  avatarVersion: text("avatar_version"),
-  tgCreatedAt: integer("tg_created_at"),
-  listedAt: integer("listed_at").notNull(),
-  status: text().$type<EntryStatus>().notNull().default("approved"),
-  liveness: text().$type<Liveness>().notNull().default("active"),
-  failCount: integer("fail_count").notNull().default(0),
-  firstFailAt: integer("first_fail_at"),
-  lastFailAt: integer("last_fail_at"),
-  isPromoted: integer("is_promoted", { mode: "boolean" }).notNull().default(false),
-  /** Hide every post preview of this entry on the site. */
-  hidePosts: integer("hide_posts", { mode: "boolean" }).notNull().default(false),
-  updatedAt: integer("updated_at").notNull(),
-});
+export const entries = sqliteTable(
+  "entries",
+  {
+    id: integer().primaryKey(),
+    username: text().notNull().unique(),
+    /** Reviewed opt-in bot deep-link payload; null for legacy and non-bot rows. */
+    startPayload: text("start_payload"),
+    kind: text().$type<EntryKind>().notNull(),
+    categoryId: integer("category_id").notNull(),
+    title: text().notNull(),
+    description: text().notNull().default(""),
+    /**
+     * Workers AI translations of `description`, written by the hourly cron. Both are cleared when
+     * the source description changes, so a stale translation never reaches the site.
+     */
+    descriptionZh: text("description_zh"),
+    descriptionEn: text("description_en"),
+    /** Last translation attempt, including the ones skipped as too short/long (so they aren't retried). */
+    descriptionTranslatedAt: integer("description_translated_at"),
+    lang: text(),
+    verified: integer({ mode: "boolean" }).notNull().default(false),
+    avatarVersion: text("avatar_version"),
+    tgCreatedAt: integer("tg_created_at"),
+    listedAt: integer("listed_at").notNull(),
+    status: text().$type<EntryStatus>().notNull().default("approved"),
+    liveness: text().$type<Liveness>().notNull().default("active"),
+    failCount: integer("fail_count").notNull().default(0),
+    firstFailAt: integer("first_fail_at"),
+    lastFailAt: integer("last_fail_at"),
+    isPromoted: integer("is_promoted", { mode: "boolean" }).notNull().default(false),
+    /** Hide every post preview of this entry on the site. */
+    hidePosts: integer("hide_posts", { mode: "boolean" }).notNull().default(false),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (t) => [
+    check(
+      "entries_start_payload_valid",
+      sql`${t.startPayload} IS NULL OR (${t.kind} = 'bot' AND length(${t.startPayload}) BETWEEN 1 AND 64 AND instr(${t.startPayload}, char(0)) = 0 AND ${t.startPayload} NOT GLOB '*[^A-Za-z0-9_-]*')`,
+    ),
+  ],
+);
 
 export const entryStats = sqliteTable("entry_stats", {
   entryId: integer("entry_id").primaryKey(),
@@ -106,6 +118,7 @@ export const submissions = sqliteTable(
     id: integer().primaryKey(),
     tgUserId: integer("tg_user_id").notNull(),
     username: text().notNull(),
+    startPayload: text("start_payload"),
     kind: text().$type<EntryKind>().notNull(),
     categoryId: integer("category_id").notNull(),
     tagIds: text("tag_ids", { mode: "json" }).$type<number[]>().notNull(),
@@ -120,6 +133,10 @@ export const submissions = sqliteTable(
     adminMessageId: integer("admin_message_id"),
   },
   (t) => [
+    check(
+      "submissions_start_payload_valid",
+      sql`${t.startPayload} IS NULL OR (${t.kind} = 'bot' AND length(${t.startPayload}) BETWEEN 1 AND 64 AND instr(${t.startPayload}, char(0)) = 0 AND ${t.startPayload} NOT GLOB '*[^A-Za-z0-9_-]*')`,
+    ),
     uniqueIndex("submissions_pending_username_unique")
       .on(t.username)
       .where(sql`status = 'pending'`),

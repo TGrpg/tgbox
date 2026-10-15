@@ -93,9 +93,13 @@ export async function buildSiteData(options: BuildSiteDataOptions): Promise<Site
       ? "e.description_zh, e.description_en"
       : "NULL AS description_zh, NULL AS description_en";
 
+    const startColumn = hasColumn("entries", "start_payload")
+      ? "e.start_payload"
+      : "NULL AS start_payload";
+
     const rows = db
       .prepare(
-        `SELECT e.id, e.username, e.kind, e.category_id, c.slug AS category, e.title, e.description,
+        `SELECT e.id, e.username, e.kind, ${startColumn}, e.category_id, c.slug AS category, e.title, e.description,
            ${translationColumns},
            e.lang, e.verified, e.avatar_version, e.tg_created_at, e.listed_at, e.updated_at,
            e.is_promoted,
@@ -168,6 +172,7 @@ export async function buildSiteData(options: BuildSiteDataOptions): Promise<Site
         id,
         categoryId: int(row.category_id),
         username,
+        startPayload: row.kind === "bot" ? textOrNull(row.start_payload) : null,
         kind,
         category: text(row.category),
         tags: tagsByEntry.get(id) ?? [],

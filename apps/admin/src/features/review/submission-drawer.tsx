@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { RejectReason } from "@tgbox/core";
 import type { Submission } from "@tgbox/db";
+import { telegramLinks } from "@tgbox/shared";
 import { CheckIcon, ExternalLinkIcon, RefreshCwIcon, XIcon } from "lucide-react";
 import { motion } from "motion/react";
 import { type ReactNode, useState } from "react";
@@ -70,7 +71,7 @@ export function SubmissionDrawer({
                   </SheetTitle>
                   <SheetDescription>
                     <a
-                      href={`https://t.me/${submission.username}`}
+                      href={telegramLinks(submission).web}
                       target="_blank"
                       rel="noreferrer"
                       className="inline-flex items-center gap-1 hover:underline"
@@ -83,6 +84,11 @@ export function SubmissionDrawer({
               </div>
             </SheetHeader>
             <SheetPanel className="flex flex-col gap-5">
+              {submission.startPayload && (
+                <p>
+                  Bot start payload — review before approval: <code>{submission.startPayload}</code>
+                </p>
+              )}
               <SubmissionFacts submission={submission} names={names} />
               <LivePreview key={submission.id} submission={submission} />
             </SheetPanel>
