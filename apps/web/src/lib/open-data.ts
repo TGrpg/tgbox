@@ -23,6 +23,7 @@ export function openData(data: SiteData) {
     tags: data.tags.map(({ slug, nameZh, nameEn, count }) => ({ slug, nameZh, nameEn, count })),
     entries: byMembers(data.entries).map((entry) => ({
       username: entry.username,
+      startPayload: entry.startPayload,
       kind: entry.kind,
       category: entry.category,
       tags: entry.tags,

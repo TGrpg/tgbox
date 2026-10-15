@@ -1,3 +1,4 @@
+import { telegramLinks } from "@tgbox/shared";
 import {
   EllipsisVerticalIcon,
   ExternalLinkIcon,
@@ -22,7 +23,7 @@ import {
 } from "@/components/coss/ui/menu.tsx";
 import { Spinner } from "@/components/coss/ui/spinner.tsx";
 import type { EntryRow } from "@/functions/entries.ts";
-import { sitePageUrl, telegramUrl } from "./labels.ts";
+import { sitePageUrl } from "./labels.ts";
 import {
   useRefreshEntry,
   useSetEntryPostsVisibility,
@@ -95,9 +96,7 @@ export function RowActions({
         >
           <ExternalLinkIcon /> 打开站点页面
         </MenuItem>
-        <MenuItem
-          render={<a href={telegramUrl(entry.username)} target="_blank" rel="noreferrer" />}
-        >
+        <MenuItem render={<a href={telegramLinks(entry).web} target="_blank" rel="noreferrer" />}>
           <SendIcon /> 打开 t.me
         </MenuItem>
         <MenuSeparator />

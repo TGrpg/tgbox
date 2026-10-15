@@ -212,7 +212,7 @@ const ringLength = 2 * Math.PI * RING_RADIUS;
 </style>
 
 <script>
-import { parseTelegramRef } from "@tgbox/shared";
+import { goTelegramTarget, telegramLinks } from "@tgbox/shared";
 import { animate } from "motion/mini";
 import { springs, springTransition } from "@/lib/motion-presets.ts";
 
@@ -230,20 +230,21 @@ if (root) {
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const lift = springTransition(springs.lift);
   const status = root.querySelector<HTMLElement>("[data-go-status]");
-  const raw = new URLSearchParams(location.search).get("u") ?? "";
-  const username = raw ? parseTelegramRef(`@${raw.replace(/^@/, "")}`) : null;
+  const targetRef = goTelegramTarget(new URLSearchParams(location.search));
+  const username = targetRef?.username;
   const say = (text: string | undefined) => {
     if (status) status.textContent = text ?? "";
   };
 
-  if (!username) {
+  if (!username || !targetRef) {
     say(root.dataset.invalid);
   } else {
+    const links = telegramLinks(targetRef);
     const target = root.querySelector<HTMLElement>("[data-go-target]");
     if (target) target.textContent = `@${username}`;
-    root.querySelector("[data-go-app]")?.setAttribute("href", `tg://resolve?domain=${username}`);
+    root.querySelector("[data-go-app]")?.setAttribute("href", links.native);
     const goNow = root.querySelector<HTMLAnchorElement>("[data-go-now]");
-    if (goNow) goNow.href = `https://t.me/${username}`;
+    if (goNow) goNow.href = links.web;
     const actions = root.querySelector<HTMLElement>("[data-go-actions]");
     if (actions) actions.hidden = false;
     showEntry(username);
@@ -263,7 +264,7 @@ if (root) {
     const probes = [...root.querySelectorAll<HTMLAnchorElement>("[data-go-host]")].map(
       async (link) => {
         const host = link.dataset.goHost ?? "";
-        const url = `https://${host}/${username}`;
+        const url = links.mirror(host);
         link.href = url;
         const time = root.querySelector(`[data-go-time="${host}"]`);
         const bar = root.querySelector<HTMLElement>(`[data-go-bar="${host}"]`);

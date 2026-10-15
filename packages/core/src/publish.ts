@@ -1,4 +1,5 @@
 import { getEntryByUsername, listCategories } from "@tgbox/db";
+import { telegramLinks } from "@tgbox/shared";
 import type { CoreContext } from "./context.ts";
 import { getSettings } from "./settings.ts";
 
@@ -38,7 +39,7 @@ export async function publishEntryToChannel(ctx: CoreContext, input: { username:
       reply_markup: {
         inline_keyboard: [
           [
-            { text: "打开 Telegram", url: `https://t.me/${entry.username}` },
+            { text: "打开 Telegram", url: telegramLinks(entry).web },
             { text: "网站详情", url },
           ],
         ],

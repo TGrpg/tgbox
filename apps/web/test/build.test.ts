@@ -117,6 +117,7 @@ beforeAll(async () => {
   );
   writeFileSync(path.join(mediaDir, "posts/devnotes.json"), JSON.stringify(hiddenPosts));
   const db = new DatabaseSync(dbPath);
+  db.exec("UPDATE entries SET start_payload = 'botlist' WHERE username = 'gptbot'");
   db.exec("UPDATE entries SET hide_posts = 1 WHERE username = 'devnotes'");
   db.exec(
     `UPDATE entries SET updated_at = ${Date.parse(techdailyUpdatedAt)} WHERE username = 'techdaily'`,
@@ -1297,4 +1298,20 @@ describe("site build from snapshot data", () => {
       payments: { stars: expect.any(Boolean), usdt: expect.any(Boolean) },
     });
   });
+});
+
+test("built detail and exports retain opt-in bot start payload on actual launch surfaces", () => {
+  for (const prefix of ["", "en/", "zh-hant/"]) {
+    const page = html(`${prefix}detail/gptbot`);
+    expect(page).toContain('href="https://t.me/gptbot?start=botlist"');
+    expect(page).toContain('href="tg://resolve?domain=gptbot&amp;start=botlist"');
+    expect(page).toContain("u=gptbot&amp;kind=bot&amp;start=botlist");
+    expect(page).toContain('data-pagefind-meta="startPayload:botlist"');
+  }
+  for (const file of ["entries.json", "app-browse.json"]) {
+    const data = JSON.parse(readFileSync(path.join(client, "data", file), "utf8"));
+    expect(
+      data.entries.find((entry: { username: string }) => entry.username === "gptbot").startPayload,
+    ).toBe("botlist");
+  }
 });

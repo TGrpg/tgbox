@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { clickDay, createDb, getPromotion, recordClick } from "@tgbox/db";
+import { clickDay, createDb, getEntryByUsername, getPromotion, recordClick } from "@tgbox/db";
 import { promoRedirect } from "@tgbox/shared";
 import type { APIRoute } from "astro";
 
@@ -9,7 +9,7 @@ import type { APIRoute } from "astro";
  * be observed as it happens: the number is what an advertiser is shown for the money they paid,
  * and the site is rebuilt only every few hours, so it cannot be derived from the snapshot.
  *
- * Cost: one Worker request, one D1 read and one D1 write per click — 100k requests/day and 100k
+ * Cost: one Worker request, one D1 read (two for entry promotions) and one D1 write per click — 100k requests/day and 100k
  * rows written/day on the free plan, i.e. clicks are the budget, not the pages. Nothing about the
  * visitor is read or stored: no IP, no referrer, no cookie, only a per-day counter per promotion.
  */
@@ -33,8 +33,11 @@ export const ALL: APIRoute = async ({ params, request }) => {
   const db = createDb(env.DB);
   const now = Date.now();
   const promotion = await getPromotion(db, promotionId);
+  const entry = promotion?.entryUsername
+    ? await getEntryByUsername(db, promotion.entryUsername)
+    : null;
   const decision = promoRedirect({
-    promotion: promotion ?? null,
+    promotion: promotion ? { ...promotion, entryTarget: entry } : null,
     now,
     method: request.method,
     userAgent: request.headers.get("user-agent"),

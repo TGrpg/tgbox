@@ -9,7 +9,7 @@ import Send from "@tabler/icons/outline/send.svg";
 import Speakerphone from "@tabler/icons/outline/speakerphone.svg";
 import UsersGroup from "@tabler/icons/outline/users-group.svg";
 import World from "@tabler/icons/outline/world.svg";
-import { type EntryView, type SiteLocale, t } from "@tgbox/shared";
+import { type EntryView, type SiteLocale, t, telegramLinks } from "@tgbox/shared";
 import Avatar from "@/components/Avatar.astro";
 import DetailPosts from "@/components/DetailPosts.astro";
 import DetailPromos from "@/components/DetailPromos.astro";
@@ -59,8 +59,9 @@ const tags = entry.tags.map((slug) => {
 const defaultAvatar = "/images/default-avatar.svg";
 const path = localizePath(`/detail/${entry.username}/`, locale);
 const pageUrl = absoluteUrl(path);
-const tmeUrl = `https://t.me/${entry.username}`;
-const goHref = `${localizePath("/go/", locale)}?u=${entry.username}`;
+const links = telegramLinks(entry);
+const tmeUrl = links.web;
+const goHref = `${localizePath("/go/", locale)}?${links.goQuery}`;
 
 function languageName(code: string) {
   try {
@@ -192,6 +193,7 @@ const statCell =
           data-pagefind-body
           class="rounded-3xl border border-border bg-card p-5 shadow-card sm:p-8"
         >
+          {entry.kind === "bot" && entry.startPayload && <span hidden data-pagefind-meta={`startPayload:${entry.startPayload}`}></span>}
           <span hidden data-pagefind-filter={`kind:${entry.kind}`}></span>
           <span hidden data-pagefind-meta={`url:/detail/${entry.username}/`}></span>
           <span hidden data-pagefind-meta={`image:${entry.avatarUrl ?? defaultAvatar}`}></span>
@@ -352,7 +354,7 @@ const statCell =
               data-pagefind-ignore
             >
               <a
-                href={`tg://resolve?domain=${entry.username}`}
+                href={links.native}
                 class="inline-flex items-center gap-1 hover:text-primary-accent"
               >
                 <BrandTelegram class="size-4" aria-hidden="true" />

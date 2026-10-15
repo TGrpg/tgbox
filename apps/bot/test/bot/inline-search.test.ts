@@ -55,3 +55,26 @@ test("empty query answers nothing", async () => {
   await h.inline(user, "  ");
   expect(h.telegram).toEqual([]);
 });
+
+test("inline results retain the approved bot start payload", async () => {
+  const now = Date.now();
+  await insertApprovedEntry(db, {
+    entry: {
+      username: "tagged_bot",
+      kind: "bot",
+      categoryId: 1,
+      title: "Unique Payload Bot",
+      listedAt: now,
+      startPayload: "botlist",
+    },
+    stats: { members: null, online: null, activityTier: null, statsWrittenAt: now },
+    tagIds: [],
+    now,
+  });
+  await h.inline(user, "Payload");
+  const { list } = results();
+  expect(buttons({ method: "", payload: list[0] }).map((button) => button.url)).toContain(
+    "https://t.me/tagged_bot?start=botlist",
+  );
+  expect(JSON.stringify(list[0])).toContain("https://t.me/tagged_bot?start=botlist");
+});

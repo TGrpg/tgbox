@@ -39,6 +39,7 @@ function toItem(data: {
   return [
     {
       username,
+      startPayload: kind === "bot" ? (data.meta.startPayload ?? null) : null,
       kind,
       title: data.meta.title ?? username,
       members: null,

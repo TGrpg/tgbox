@@ -500,3 +500,18 @@ describe("post visibility", () => {
     expect(entry(data, "techdaily").posts).toEqual(posts);
   });
 });
+
+test("snapshot exports reviewed bot payload and old pre-migration databases default to null", async () => {
+  const dbPath = fixtureDb();
+  const db = new DatabaseSync(dbPath);
+  db.prepare("UPDATE entries SET start_payload = ? WHERE username = ?").run("botlist", "gptbot");
+  db.close();
+  const tagged = await buildSiteData({ dbPath, mediaDir: tempDir(), now: fixtureNow });
+  expect(entry(tagged, "gptbot").startPayload).toBe("botlist");
+  expect(entry(tagged, "techdaily").startPayload).toBeNull();
+  const legacyDb = new DatabaseSync(dbPath);
+  legacyDb.exec("ALTER TABLE entries DROP COLUMN start_payload");
+  legacyDb.close();
+  const legacy = await buildSiteData({ dbPath, mediaDir: tempDir(), now: fixtureNow });
+  expect(legacy.entries.every((row) => row.startPayload === null)).toBe(true);
+});

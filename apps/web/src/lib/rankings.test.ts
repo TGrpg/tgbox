@@ -10,6 +10,7 @@ function entry(username: string, overrides: Partial<EntryView> = {}): EntryView 
   return {
     username,
     kind: "channel",
+    startPayload: null,
     category: "tech",
     tags: [],
     title: username,

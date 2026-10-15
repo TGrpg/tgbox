@@ -31,46 +31,56 @@ export const RelatedRefs = z.object({
 });
 export type RelatedRefs = z.infer<typeof RelatedRefs>;
 
-export const EntryView = z.object({
-  username: z.string(),
-  kind: EntryKind,
-  /** category slug (unique within kind) */
-  category: z.string(),
-  /** tag slugs */
-  tags: z.array(z.string()),
-  title: z.string(),
-  description: z.string(),
-  /**
-   * Machine translation of `description` (Workers AI, hourly cron). Only the language the source
-   * text is *not* written in is filled in — the other stays null and `description` is the text to
-   * show. Both are null while no translation exists (too short, too long, or not translated yet).
-   */
-  descriptionZh: z.string().nullable().default(null),
-  descriptionEn: z.string().nullable().default(null),
-  /** detected language code (e.g. "zh", "en"), null when unknown */
-  lang: z.string().nullable(),
-  verified: z.boolean(),
-  /** absolute URL under R2_PUBLIC_URL, null when no avatar */
-  avatarUrl: z.string().nullable(),
-  members: z.number().int().nullable(),
-  /** groups: online count; bots: null (monthly users are stored in members) */
-  online: z.number().int().nullable(),
-  activityTier: ActivityTier.nullable(),
-  /** ISO 8601 */
-  tgCreatedAt: z.string().nullable(),
-  /** ISO 8601 */
-  listedAt: z.string(),
-  /**
-   * ISO 8601; last time the entry's own content changed (title, description, avatar, …). Stat
-   * refreshes don't touch it, which is what makes it usable as a sitemap `<lastmod>`.
-   */
-  updatedAt: z.string(),
-  /** Highest live entry promotion (paid, or the admin's manual flag = `pin`); null when none. */
-  promo: z.enum(entryProductKinds).nullable(),
-  posts: z.array(PostView),
-  memberHistory: z.array(MemberPoint),
-  related: RelatedRefs,
-});
+export const EntryView = z
+  .object({
+    username: z.string(),
+    kind: EntryKind,
+    startPayload: z
+      .string()
+      .regex(/^[A-Za-z0-9_-]{1,64}$/)
+      .nullable()
+      .default(null),
+    /** category slug (unique within kind) */
+    category: z.string(),
+    /** tag slugs */
+    tags: z.array(z.string()),
+    title: z.string(),
+    description: z.string(),
+    /**
+     * Machine translation of `description` (Workers AI, hourly cron). Only the language the source
+     * text is *not* written in is filled in — the other stays null and `description` is the text to
+     * show. Both are null while no translation exists (too short, too long, or not translated yet).
+     */
+    descriptionZh: z.string().nullable().default(null),
+    descriptionEn: z.string().nullable().default(null),
+    /** detected language code (e.g. "zh", "en"), null when unknown */
+    lang: z.string().nullable(),
+    verified: z.boolean(),
+    /** absolute URL under R2_PUBLIC_URL, null when no avatar */
+    avatarUrl: z.string().nullable(),
+    members: z.number().int().nullable(),
+    /** groups: online count; bots: null (monthly users are stored in members) */
+    online: z.number().int().nullable(),
+    activityTier: ActivityTier.nullable(),
+    /** ISO 8601 */
+    tgCreatedAt: z.string().nullable(),
+    /** ISO 8601 */
+    listedAt: z.string(),
+    /**
+     * ISO 8601; last time the entry's own content changed (title, description, avatar, …). Stat
+     * refreshes don't touch it, which is what makes it usable as a sitemap `<lastmod>`.
+     */
+    updatedAt: z.string(),
+    /** Highest live entry promotion (paid, or the admin's manual flag = `pin`); null when none. */
+    promo: z.enum(entryProductKinds).nullable(),
+    posts: z.array(PostView),
+    memberHistory: z.array(MemberPoint),
+    related: RelatedRefs,
+  })
+  .refine((entry) => entry.startPayload === null || entry.kind === "bot", {
+    message: "Start payload is only valid for bots",
+    path: ["startPayload"],
+  });
 export type EntryView = z.infer<typeof EntryView>;
 
 export const SiteStats = z.object({

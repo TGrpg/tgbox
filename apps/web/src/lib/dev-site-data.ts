@@ -7,7 +7,8 @@ type Optional =
   | "tgCreatedAt"
   | "updatedAt"
   | "descriptionZh"
-  | "descriptionEn";
+  | "descriptionEn"
+  | "startPayload";
 type DevEntry = Omit<EntryView, Optional> & Partial<Pick<EntryView, Optional>>;
 
 /** Tiny built-in dataset so `astro dev` / `astro build` work on a fresh clone without a snapshot. */
@@ -131,6 +132,7 @@ const devEntries: DevEntry[] = [
 
 const entries: EntryView[] = devEntries
   .map((entry) => ({
+    startPayload: null,
     tgCreatedAt: null,
     descriptionZh: null,
     descriptionEn: null,
