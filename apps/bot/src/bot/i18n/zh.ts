@@ -3,7 +3,6 @@ import { type EntryKind, isEntryProduct, type ProductKind } from "@tgbox/shared"
 
 export type SubmissionSummary = {
   username: string;
-  startPayload?: string | null;
   kind: EntryKind;
   title: string;
   description: string;
@@ -297,9 +296,6 @@ export const zh = {
         "📥 新提交",
         `${zhKinds[s.kind]}：${s.title}`,
         `https://t.me/${s.username}`,
-        ...(s.startPayload
-          ? [`Bot start payload (review before approval): ${s.startPayload}`]
-          : []),
         `成员：${s.members ?? "未知"}`,
         `分类：${s.category}`,
         `标签：${s.tags.length ? s.tags.join("、") : "无"}`,

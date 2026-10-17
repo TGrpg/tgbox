@@ -239,9 +239,6 @@ export const en: typeof zh = {
         "📥 New submission",
         `${s.kind}: ${s.title}`,
         `https://t.me/${s.username}`,
-        ...(s.startPayload
-          ? [`Bot start payload (review before approval): ${s.startPayload}`]
-          : []),
         `Members: ${s.members ?? "unknown"}`,
         `Category: ${s.category}`,
         `Tags: ${s.tags.length ? s.tags.join(", ") : "none"}`,

@@ -1436,13 +1436,6 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
-        },
-        "start_payload": {
-          "name": "start_payload",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
         }
       },
       "indexes": {
@@ -1466,12 +1459,7 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {
-        "submissions_start_payload_valid": {
-          "name": "submissions_start_payload_valid",
-          "value": "\"submissions\".\"start_payload\" IS NULL OR (\"submissions\".\"kind\" = 'bot' AND length(\"submissions\".\"start_payload\") BETWEEN 1 AND 64 AND instr(\"submissions\".\"start_payload\", char(0)) = 0 AND \"submissions\".\"start_payload\" NOT GLOB '*[^A-Za-z0-9_-]*')"
-        }
-      }
+      "checkConstraints": {}
     },
     "support_threads": {
       "name": "support_threads",

@@ -31,7 +31,6 @@ export async function notifyNewSubmission(
   input: {
     submissionId: number;
     username: string;
-    startPayload?: string | null;
     kind: "channel" | "group" | "bot";
     title: string;
     categoryId: number;
@@ -62,9 +61,6 @@ export async function notifyNewSubmission(
     "",
     input.title,
     `@${input.username}`,
-    ...(input.startPayload
-      ? [`Bot start payload (review before approval): ${input.startPayload}`]
-      : []),
     ...(tagNames.length > 0 ? [`标签：${tagNames.join("、")}`] : []),
     "",
     `来自 Mini App · 提交者 ${input.submitterId}`,

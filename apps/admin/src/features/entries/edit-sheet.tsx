@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Button } from "@/components/coss/ui/button.tsx";
 import { Checkbox } from "@/components/coss/ui/checkbox.tsx";
+import { Input } from "@/components/coss/ui/input.tsx";
 import { Label } from "@/components/coss/ui/label.tsx";
 import {
   Sheet,
@@ -17,12 +18,13 @@ import { useIsMobile } from "@/features/entries/use-is-mobile.ts";
 import { $getEntryTags, type EntryRow } from "@/functions/entries.ts";
 import { taxonomyQueryOptions } from "@/functions/taxonomy.ts";
 import { queryKeys } from "@/lib/query-keys.ts";
+import { checkStartPayloadEdit } from "./edit.ts";
 import { kindLabel } from "./labels.ts";
-import { useEditEntry } from "./mutations.ts";
+import { useEditEntry, useSetEntryStartPayload } from "./mutations.ts";
 import { OptionSelect } from "./option-select.tsx";
 import { TagPicker } from "./tag-picker.tsx";
 
-/** Edit drawer: category, tags and promoted flag (v1 scope). */
+/** Edit drawer: taxonomy, promotion and admin-curated bot payload. */
 export function EditEntrySheet({
   entry,
   onClose,
@@ -52,6 +54,9 @@ function EditForm({ entry, onClose }: { entry: EntryRow; onClose: () => void }) 
   const [tagIds, setTagIds] = useState<number[] | null>(null);
   const [promoted, setPromoted] = useState(entry.promoted);
   const edit = useEditEntry(onClose);
+  const payload = useSetEntryStartPayload();
+  const [startPayload, setStartPayload] = useState(entry.startPayload ?? "");
+  const payloadError = entry.kind === "bot" ? checkStartPayloadEdit(startPayload) : null;
   const selectedTags = tagIds ?? tags.data ?? entry.tagIds;
 
   const categories = (taxonomy.data?.categories ?? []).filter((row) => row.kind === entry.kind);
@@ -86,6 +91,27 @@ function EditForm({ entry, onClose }: { entry: EntryRow; onClose: () => void }) 
                 onChange={setTagIds}
               />
             </div>
+            {entry.kind === "bot" && (
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="start-payload">Start 参数</Label>
+                <Input
+                  id="start-payload"
+                  value={startPayload}
+                  aria-invalid={payloadError !== null}
+                  aria-describedby="start-payload-help start-payload-error"
+                  onChange={(event) => setStartPayload(event.target.value)}
+                />
+                <p id="start-payload-help" className="text-xs text-muted-foreground">
+                  仅在 bot
+                  主人要求时填写。会附加到全站所有打开链接：t.me/&lt;username&gt;?start=…；留空即清除。
+                </p>
+                {payloadError && (
+                  <p id="start-payload-error" role="alert" className="text-xs text-destructive">
+                    {payloadError}
+                  </p>
+                )}
+              </div>
+            )}
             <Label className="flex items-center gap-2">
               <Checkbox
                 checked={promoted || entry.pinnedByPromotion}
@@ -107,9 +133,34 @@ function EditForm({ entry, onClose }: { entry: EntryRow; onClose: () => void }) 
           取消
         </Button>
         <Button
-          loading={edit.isPending}
-          disabled={taxonomy.isPending || tags.isPending}
-          onClick={() => edit.mutate({ id: entry.id, categoryId, tagIds: selectedTags, promoted })}
+          loading={edit.isPending || payload.isPending}
+          disabled={
+            taxonomy.isPending ||
+            tags.isPending ||
+            payloadError !== null ||
+            edit.isPending ||
+            payload.isPending
+          }
+          onClick={async () => {
+            let startPayloadChanged = false;
+            const next = startPayload.trim() === "" ? null : startPayload;
+            if (entry.kind === "bot" && next !== entry.startPayload) {
+              try {
+                const result = await payload.mutateAsync({ id: entry.id, startPayload: next });
+                if (!result.ok) return;
+                startPayloadChanged = result.changed;
+              } catch {
+                return;
+              }
+            }
+            edit.mutate({
+              id: entry.id,
+              categoryId,
+              tagIds: selectedTags,
+              promoted,
+              startPayloadChanged,
+            });
+          }}
         >
           保存
         </Button>

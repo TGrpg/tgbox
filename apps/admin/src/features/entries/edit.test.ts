@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { checkEntryEdit, diffSnapshots } from "./edit.ts";
+import { checkEntryEdit, checkStartPayloadEdit, diffSnapshots } from "./edit.ts";
 
 const taxonomy = {
   categories: [
@@ -41,3 +41,10 @@ test("diffSnapshots lists only changed fields", () => {
     { field: "members", before: 10, after: 12 },
   ]);
 });
+
+test.each(["", " \t ", "ref_1-X", "a".repeat(64)])("valid admin payload %j", (value) =>
+  expect(checkStartPayloadEdit(value)).toBeNull(),
+);
+test.each(["bad value", "a/b", "x".repeat(65), " padded "])("invalid admin payload %j", (value) =>
+  expect(checkStartPayloadEdit(value)).toBe("仅支持 1–64 位字母、数字、_ 或 -"),
+);

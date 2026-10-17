@@ -12,14 +12,7 @@ import {
   rejectSubmission as rejectSubmissionRow,
   type Submission,
 } from "@tgbox/db";
-import {
-  entryKinds,
-  isStartPayload,
-  MAX_TAGS,
-  parseStartPayload,
-  parseTelegramRef,
-  type SubmitError,
-} from "@tgbox/shared";
+import { entryKinds, MAX_TAGS, parseTelegramRef, type SubmitError } from "@tgbox/shared";
 import { fetchEntrySnapshot } from "@tgbox/telegram";
 import { audit } from "./audit.ts";
 import { markDirtyAndDispatch } from "./build.ts";
@@ -65,23 +58,8 @@ export async function checkSubmission(
  */
 export async function submitEntry(
   ctx: CoreContext,
-  input: {
-    tgUserId: number;
-    username: string;
-    startPayload?: string | null;
-    categoryId: number;
-    tagIds: number[];
-  },
+  input: { tgUserId: number; username: string; categoryId: number; tagIds: number[] },
 ): Promise<{ ok: true; submissionId: number } | { ok: false; error: SubmitError }> {
-  const fromLink = parseStartPayload(input.username);
-  if (
-    fromLink === undefined ||
-    (input.startPayload != null && !isStartPayload(input.startPayload)) ||
-    (fromLink !== null && input.startPayload !== undefined && input.startPayload !== fromLink)
-  ) {
-    return { ok: false, error: "invalid" };
-  }
-  const parsedStart = input.startPayload ?? fromLink;
   const allowed = await checkSubmission(ctx, input);
   if (!allowed.ok) return allowed;
   const { username } = allowed;
@@ -107,7 +85,6 @@ export async function submitEntry(
   const submissionId = await createSubmission(ctx.db, {
     tgUserId: input.tgUserId,
     username,
-    startPayload: kind === "bot" ? parsedStart : null,
     kind,
     categoryId: category.id,
     tagIds,
@@ -126,7 +103,6 @@ export async function submitEntry(
     notifyNewSubmission(ctx, {
       submissionId,
       username,
-      startPayload: kind === "bot" ? parsedStart : null,
       kind,
       title: snap.profile?.title ?? username,
       categoryId: category.id,
@@ -195,7 +171,6 @@ export async function listApprovedSubmission(ctx: CoreContext, submission: Submi
     ({ id: entryId } = await insertApprovedEntry(ctx.db, {
       entry: {
         username: submission.username,
-        startPayload: submission.kind === "bot" ? submission.startPayload : null,
         kind: submission.kind,
         categoryId: submission.categoryId,
         title: profile?.title ?? submission.fetchedTitle ?? submission.username,

@@ -7,15 +7,43 @@ import {
   recordLivenessResult,
   setEntryCategory,
   setEntryPromoted,
+  setEntryStartPayload as setEntryStartPayloadRow,
   setEntryStatus,
   setEntryTags,
 } from "@tgbox/db";
-import { type EntryStatus, entryKinds, MAX_TAGS, parseTelegramRef } from "@tgbox/shared";
+import {
+  type EntryStatus,
+  entryKinds,
+  isStartPayload,
+  MAX_TAGS,
+  parseTelegramRef,
+} from "@tgbox/shared";
 import { fetchEntrySnapshot } from "@tgbox/telegram";
 import { audit } from "./audit.ts";
 import { markDirtyAndDispatch } from "./build.ts";
 import type { Actor, CoreContext } from "./context.ts";
 import { applyActiveSnapshot, type MediaBucket } from "./refresh.ts";
+
+export type StartPayloadError = "not_found" | "not_bot" | "invalid";
+
+/** Only admins may curate a payload; submission inputs never supply one. */
+export async function setEntryStartPayload(
+  ctx: CoreContext,
+  input: { id: number; startPayload: string | null; actor: Actor },
+): Promise<{ ok: true; changed: boolean } | { ok: false; error: StartPayloadError }> {
+  const row = await getEntryWithStats(ctx.db, input.id);
+  if (!row) return { ok: false, error: "not_found" };
+  const startPayload = input.startPayload?.trim() === "" ? null : input.startPayload;
+  if (startPayload !== null && row.entry.kind !== "bot") return { ok: false, error: "not_bot" };
+  if (startPayload !== null && !isStartPayload(startPayload))
+    return { ok: false, error: "invalid" };
+  const changed = await setEntryStartPayloadRow(ctx.db, input.id, startPayload, ctx.now());
+  if (changed) {
+    await audit(ctx, input.actor, "entry.start_payload", `entry:${input.id}`, { startPayload });
+    await markDirtyAndDispatch(ctx);
+  }
+  return { ok: true, changed };
+}
 
 /** Bulk status change. Returns the ids whose status actually changed. */
 export async function setEntriesStatus(

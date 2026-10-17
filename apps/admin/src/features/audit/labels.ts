@@ -6,6 +6,7 @@ export const auditActionLabels: Record<AuditAction, string> = {
   "entry.list": "收录条目",
   "entry.status": "修改状态",
   "entry.category": "修改分类",
+  "entry.start_payload": "修改启动参数",
   "entry.tags": "修改标签",
   "entry.promote": "推荐设置",
   "entry.posts": "消息显示",

@@ -11,9 +11,7 @@ import {
 import {
   type EntryKind,
   entryKinds,
-  isStartPayload,
   MAX_TAGS,
-  parseStartPayload,
   parseTelegramRef,
   type SiteLocale,
   suggestTaxonomy,
@@ -34,7 +32,6 @@ const isStep = (step: string): step is Step => steps.includes(step);
 
 type Draft = {
   username: string;
-  startPayload: string | null;
   kind: EntryKind;
   title: string;
   description: string;
@@ -58,7 +55,6 @@ function parseDraft(step: string, payload: unknown): { step: Step; draft: Draft 
     !isStep(step) ||
     !kind ||
     typeof p.username !== "string" ||
-    !(p.startPayload == null || (kind === "bot" && isStartPayload(p.startPayload))) ||
     typeof p.title !== "string" ||
     typeof p.description !== "string" ||
     !(p.members === null || typeof p.members === "number") ||
@@ -73,7 +69,6 @@ function parseDraft(step: string, payload: unknown): { step: Step; draft: Draft 
     step,
     draft: {
       username: p.username,
-      startPayload: typeof p.startPayload === "string" ? p.startPayload : null,
       kind,
       title: p.title,
       description: p.description,
@@ -249,8 +244,7 @@ export function submit(app: App) {
     const m = messages(locale);
     const settings = (await app.settings()).bot;
     const username = parseTelegramRef(ctx.message.text);
-    const parsedStart = parseStartPayload(ctx.message.text);
-    if (!username || parsedStart === undefined) {
+    if (!username) {
       // With the support relay on, anything that isn't a link is a question for the support staff.
       if (relayEnabled(settings)) {
         // …except a mistyped username or link, which would otherwise vanish into the relay with no
@@ -297,7 +291,6 @@ export function submit(app: App) {
       );
       const draft: Draft = {
         username,
-        startPayload: kind === "bot" ? parsedStart : null,
         kind,
         title,
         description,
@@ -405,7 +398,6 @@ export function submit(app: App) {
       const submissionId = await createSubmission(app.db, {
         tgUserId: userId,
         username: draft.username,
-        startPayload: draft.startPayload,
         kind: draft.kind,
         categoryId: draft.categoryId,
         tagIds: selectedTags.map((tag) => tag.id),
@@ -466,7 +458,6 @@ export function submit(app: App) {
 function profileText(locale: SiteLocale, draft: Draft) {
   const m = messages(locale);
   const lines = [m.profile(m.kinds[draft.kind], draft.title, draft.username)];
-  if (draft.startPayload) lines.push(`Bot start payload: ${draft.startPayload}`);
   if (draft.members !== null) lines.push(`${m.members}: ${draft.members.toLocaleString("en")}`);
   if (draft.description) lines.push(truncate(draft.description, 300));
   return lines.join("\n");

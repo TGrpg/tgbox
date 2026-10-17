@@ -396,26 +396,3 @@ describe("submission flow", () => {
     });
   });
 });
-
-test("bot chat flow preserves payload in its draft and pending moderation notice", async () => {
-  await h.message(owner, "https://t.me/botfather?start=botlist");
-  expect((await getBotDraft(db, owner.id, Date.now()))?.payload).toMatchObject({
-    startPayload: "botlist",
-  });
-  await press(owner, "sc:", 0);
-  await press(owner, "sd:");
-  await press(owner, "so:");
-  const [row] = await db.select().from(submissions).where(eq(submissions.username, "botfather"));
-  expect(row).toMatchObject({ kind: "bot", startPayload: "botlist" });
-  expect(
-    h
-      .calls("sendMessage")
-      .some((call) => String(call.payload.text).includes("review before approval): botlist")),
-  ).toBe(true);
-});
-
-test("ambiguous start input creates no draft", async () => {
-  await h.message(owner, "https://t.me/botfather?start=a&start=b");
-  expect(await getBotDraft(db, owner.id, Date.now())).toBeUndefined();
-  expect(h.tme).toEqual([]);
-});

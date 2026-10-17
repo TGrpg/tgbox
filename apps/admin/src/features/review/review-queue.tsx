@@ -540,9 +540,6 @@ function Identity({ submission }: { submission: Submission }) {
         </div>
         <div className="truncate text-muted-foreground text-xs leading-5">
           @{submission.username}
-          {submission.startPayload && (
-            <span className="block">Bot start payload: {submission.startPayload}</span>
-          )}
         </div>
       </div>
     </div>

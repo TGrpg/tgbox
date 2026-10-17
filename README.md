@@ -179,8 +179,6 @@ Checks: `pnpm check` (Biome + typecheck), `pnpm test`, `pnpm --filter @tgbox/web
 - [x] Guides, growth rankings and structured data tuned for search
 - [ ] Semantic search, monthly ranking archives
 
-Optional bot deep-link payloads are documented in [bot start payloads](docs/bot-start-payload.md).
-
 ## Contributing
 
 Issues and pull requests are welcome. Please run `pnpm check` and `pnpm test` before opening a PR. Tests never call Telegram or remote Cloudflare; `t.me` pages are covered by HTML fixtures in `packages/telegram/fixtures`.

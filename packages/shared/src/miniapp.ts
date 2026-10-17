@@ -75,11 +75,6 @@ export type SubmitError = z.infer<typeof SubmitError>;
 
 export const SubmitRequest = z.object({
   username: z.string(),
-  startPayload: z
-    .string()
-    .regex(/^[A-Za-z0-9_-]{1,64}$/)
-    .nullable()
-    .optional(),
   categoryId: z.number().int(),
   tagIds: z.array(z.number().int()),
 });

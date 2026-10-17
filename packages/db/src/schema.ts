@@ -118,7 +118,6 @@ export const submissions = sqliteTable(
     id: integer().primaryKey(),
     tgUserId: integer("tg_user_id").notNull(),
     username: text().notNull(),
-    startPayload: text("start_payload"),
     kind: text().$type<EntryKind>().notNull(),
     categoryId: integer("category_id").notNull(),
     tagIds: text("tag_ids", { mode: "json" }).$type<number[]>().notNull(),
@@ -133,10 +132,6 @@ export const submissions = sqliteTable(
     adminMessageId: integer("admin_message_id"),
   },
   (t) => [
-    check(
-      "submissions_start_payload_valid",
-      sql`${t.startPayload} IS NULL OR (${t.kind} = 'bot' AND length(${t.startPayload}) BETWEEN 1 AND 64 AND instr(${t.startPayload}, char(0)) = 0 AND ${t.startPayload} NOT GLOB '*[^A-Za-z0-9_-]*')`,
-    ),
     uniqueIndex("submissions_pending_username_unique")
       .on(t.username)
       .where(sql`status = 'pending'`),

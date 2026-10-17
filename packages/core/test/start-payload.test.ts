@@ -1,89 +1,162 @@
-import { approveSubmissions, submitEntry } from "@tgbox/core";
-import { getEntryByUsername, getSubmission, listCategories, upsertSetting } from "@tgbox/db";
-import { settingsDefaults, telegramLinks } from "@tgbox/shared";
-import { expect, test } from "vitest";
+import {
+  approveSubmissions,
+  checkSubmission,
+  setEntryStartPayload,
+  submitEntry,
+} from "@tgbox/core";
+import {
+  entries,
+  getEntryByUsername,
+  getSiteState,
+  getSubmission,
+  listAuditLog,
+  listCategories,
+} from "@tgbox/db";
+import { parseTelegramRef, telegramLinks } from "@tgbox/shared";
+import { expect, test, vi } from "vitest";
 import { actor, db, NOW, setup } from "./fake.ts";
 
-test("a reviewed bot payload survives submission, notification, approval and publication", async () => {
-  const { ctx, telegram } = await setup({
-    BOT_TOKEN: "1:test",
-    ADMIN_CHAT_ID: "900",
-    SITE_URL: "https://tgbox.test",
+async function seed(kind: "bot" | "channel" = "bot", startPayload: string | null = null) {
+  const [entry] = await db
+    .insert(entries)
+    .values({
+      username: "some_bot",
+      kind,
+      categoryId: 1,
+      title: "Bot",
+      listedAt: 1,
+      updatedAt: 1,
+      startPayload,
+    })
+    .returning();
+  if (!entry) throw new Error("missing entry");
+  return entry;
+}
+
+test.each([
+  ["https://t.me/SomeBot?start=", "SomeBot"],
+  ["https://t.me/SomeBot?start=ref_1", "SomeBot"],
+  ["t.me/s/somechannel?start=x", "somechannel"],
+  ["https://t.me/somechannel/123?start=x", "somechannel"],
+])("submission ignores query in %s", async (username, parsed) => {
+  const { ctx } = await setup();
+  expect(parseTelegramRef(username)).toBe(parsed);
+  expect(await checkSubmission(ctx, { tgUserId: 42, username })).toEqual({
+    ok: true,
+    username: parsed,
   });
-  await upsertSetting(
-    db,
-    "bot",
-    JSON.stringify({ ...settingsDefaults.bot, publishChannelId: "-100999" }),
-    NOW,
-  );
-  const category = (await listCategories(db)).find((row) => row.kind === "bot");
-  if (!category) throw new Error("missing bot category");
+  // The fixture for an unknown username is a channel profile.
+  const category = (await listCategories(db)).find((row) => row.kind === "channel");
+  if (!category) throw new Error("missing category");
   const result = await submitEntry(ctx, {
     tgUserId: 42,
-    username: "https://t.me/some_bot?start=botlist",
+    username,
     categoryId: category.id,
     tagIds: [],
   });
-  expect(result.ok).toBe(true);
-  if (!result.ok) return;
-  expect(await getSubmission(db, result.submissionId)).toMatchObject({
-    startPayload: "botlist",
-    status: "pending",
-  });
-  expect(
-    telegram.some((call) => JSON.stringify(call.body).includes("review before approval): botlist")),
-  ).toBe(true);
-  await approveSubmissions(ctx, { ids: [result.submissionId], actor });
-  const entry = await getEntryByUsername(db, "some_bot");
-  expect(entry?.startPayload).toBe("botlist");
-  if (!entry) throw new Error("missing entry");
-  expect(telegramLinks(entry).web).toBe("https://t.me/some_bot?start=botlist");
-  expect(
-    telegram.some((call) =>
-      JSON.stringify(call.body).includes("https://t.me/some_bot?start=botlist"),
-    ),
-  ).toBe(true);
-});
-
-test("invalid payload is refused before profile fetch or persistence; non-bot payload is discarded", async () => {
-  const { ctx, tme } = await setup();
-  const category = (await listCategories(db)).find((row) => row.kind === "channel");
-  if (!category) throw new Error("missing category");
-  const input = { tgUserId: 42, categoryId: category.id, tagIds: [] };
-  expect(await submitEntry(ctx, { ...input, username: "t.me/some_bot?start=a&start=b" })).toEqual({
-    ok: false,
-    error: "invalid",
-  });
-  expect(tme).toEqual([]);
-  const result = await submitEntry(ctx, { ...input, username: "t.me/some_channel?start=botlist" });
   if (!result.ok) throw new Error(result.error);
-  expect(await getSubmission(db, result.submissionId)).toMatchObject({
-    kind: "channel",
-    startPayload: null,
-  });
+  const submission = await getSubmission(db, result.submissionId);
+  expect(submission?.username).toBe(parsed.toLowerCase());
+  expect(submission).not.toHaveProperty("startPayload");
+  await approveSubmissions(ctx, { ids: [result.submissionId], actor });
+  expect((await getEntryByUsername(db, parsed.toLowerCase()))?.startPayload).toBeNull();
 });
 
-test("explicit core payload is validated and cannot contradict a tagged input", async () => {
-  const { ctx, tme } = await setup();
+test("bot approval never adopts a submitter's referral", async () => {
+  const { ctx } = await setup();
   const category = (await listCategories(db)).find((row) => row.kind === "bot");
   if (!category) throw new Error("missing category");
-  const input = { tgUserId: 42, categoryId: category.id, tagIds: [] };
-  expect(
-    await submitEntry(ctx, {
-      ...input,
-      username: "t.me/some_bot?start=first",
-      startPayload: "second",
-    }),
-  ).toEqual({ ok: false, error: "invalid" });
-  expect(
-    await submitEntry(ctx, { ...input, username: "some_bot", startPayload: "invalid payload" }),
-  ).toEqual({ ok: false, error: "invalid" });
-  expect(tme).toEqual([]);
   const result = await submitEntry(ctx, {
-    ...input,
-    username: "some_bot",
-    startPayload: "botlist",
+    tgUserId: 42,
+    username: "t.me/some_bot?start=ref_1",
+    categoryId: category.id,
+    tagIds: [],
   });
   if (!result.ok) throw new Error(result.error);
-  expect((await getSubmission(db, result.submissionId))?.startPayload).toBe("botlist");
+  await approveSubmissions(ctx, { ids: [result.submissionId], actor });
+  expect((await getEntryByUsername(db, "some_bot"))?.startPayload).toBeNull();
+});
+
+test("admin sets a payload, audits it and dispatches a dirty site", async () => {
+  const { ctx, dispatches } = await setup();
+  const entry = await seed();
+  expect(await setEntryStartPayload(ctx, { id: entry.id, startPayload: "Ref_1-x", actor })).toEqual(
+    { ok: true, changed: true },
+  );
+  const saved = await getEntryByUsername(db, entry.username);
+  expect(saved).toMatchObject({ startPayload: "Ref_1-x", updatedAt: NOW });
+  expect(saved && telegramLinks(saved).web).toBe("https://t.me/some_bot?start=Ref_1-x");
+  const { rows } = await listAuditLog(db, { limit: 10 });
+  expect(rows).toHaveLength(1);
+  expect(rows[0]).toMatchObject({
+    actor,
+    action: "entry.start_payload",
+    target: `entry:${entry.id}`,
+    payload: { startPayload: "Ref_1-x" },
+  });
+  expect(await getSiteState(db, "dirty_since")).toBe(String(NOW));
+  expect(dispatches).toHaveLength(1);
+});
+
+test.each([null, "", "  \t "])("admin clears with %j", async (startPayload) => {
+  const { ctx } = await setup();
+  const entry = await seed("bot", "old");
+  expect(await setEntryStartPayload(ctx, { id: entry.id, startPayload, actor })).toEqual({
+    ok: true,
+    changed: true,
+  });
+  expect((await getEntryByUsername(db, entry.username))?.startPayload).toBeNull();
+  expect((await listAuditLog(db, { limit: 10 })).rows[0]?.payload).toEqual({ startPayload: null });
+});
+
+test.each([null, "same"])(
+  "unchanged %j writes zero rows, no audit and no dispatch",
+  async (startPayload) => {
+    const { ctx, dispatches } = await setup();
+    const entry = await seed("bot", startPayload);
+    const run = vi.spyOn(Object.getPrototypeOf(db.$client.prepare("SELECT 1")), "run");
+    expect(await setEntryStartPayload(ctx, { id: entry.id, startPayload, actor })).toEqual({
+      ok: true,
+      changed: false,
+    });
+    expect(await run.mock.results[0]?.value).toMatchObject({ meta: { rows_written: 0 } });
+    run.mockRestore();
+    expect((await getEntryByUsername(db, entry.username))?.updatedAt).toBe(1);
+    expect((await listAuditLog(db, { limit: 10 })).rows).toEqual([]);
+    expect(await getSiteState(db, "dirty_since")).toBeUndefined();
+    expect(dispatches).toEqual([]);
+  },
+);
+
+test.each(["bad value", "x".repeat(65), "a/b", "a\0b", " padded "])(
+  "invalid %j is an error, never a write",
+  async (startPayload) => {
+    const { ctx, dispatches } = await setup();
+    const entry = await seed();
+    const update = vi.spyOn(db, "update");
+    expect(await setEntryStartPayload(ctx, { id: entry.id, startPayload, actor })).toEqual({
+      ok: false,
+      error: "invalid",
+    });
+    expect(update).not.toHaveBeenCalled();
+    update.mockRestore();
+    expect(dispatches).toEqual([]);
+  },
+);
+
+test("missing entry and non-bot return errors; clearing a non-bot is allowed", async () => {
+  const { ctx } = await setup();
+  expect(await setEntryStartPayload(ctx, { id: 99999, startPayload: "ref", actor })).toEqual({
+    ok: false,
+    error: "not_found",
+  });
+  const entry = await seed("channel");
+  expect(await setEntryStartPayload(ctx, { id: entry.id, startPayload: "ref", actor })).toEqual({
+    ok: false,
+    error: "not_bot",
+  });
+  expect(await setEntryStartPayload(ctx, { id: entry.id, startPayload: " ", actor })).toEqual({
+    ok: true,
+    changed: false,
+  });
 });

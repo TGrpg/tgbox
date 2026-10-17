@@ -1,12 +1,10 @@
 import { describe, expect, test } from "vitest";
-import { goTelegramTarget, parseStartPayload, telegramLinks } from "./telegram-links.ts";
-import { parseTelegramRef } from "./username.ts";
+import { goTelegramTarget, isStartPayload, telegramLinks } from "./telegram-links.ts";
 
 describe("opt-in bot start payload transport", () => {
   test.each(["botlist", "a".repeat(64), "A_0-x"])("retains valid %s", (payload) => {
     const input = `https://t.me/TestBot?start=${payload}`;
-    expect(parseTelegramRef(input)).toBe("TestBot");
-    expect(parseStartPayload(input)).toBe(payload);
+    expect(isStartPayload(payload)).toBe(true);
     const target = { username: "TestBot", kind: "bot" as const, startPayload: payload };
     const links = telegramLinks(target);
     expect(links.web).toBe(input);
@@ -16,26 +14,9 @@ describe("opt-in bot start payload transport", () => {
       expect(new URL(links.mirror(host)).searchParams.get("start")).toBe(payload);
     }
   });
-  test.each([
-    "https://t.me/TestBot?start=",
-    "https://t.me/TestBot?start=a&start=b",
-    "https://t.me/TestBot?start=a&%73tart=b",
-    "https://t.me/TestBot?start=a%20b",
-    `https://t.me/TestBot?start=${"x".repeat(65)}`,
-    "https://t.me/TestBot?start=x%2Fy",
-    "ftp://t.me/TestBot?start=botlist",
-    "https://t.me/s/TestBot?start=botlist",
-    "https://t.me/TestBot/12?start=botlist",
-    "https://t.me/iv?start=botlist",
-    "https://t.me/joinchat/hash?start=botlist",
-    "https://evil.test/TestBot?start=botlist",
-    "https://user:secret@t.me/TestBot?start=botlist",
-  ])("rejects invalid or ambiguous input %s", (input) => {
-    expect(parseStartPayload(input)).toBeUndefined();
-  });
-  test.each(["@TestBot", "TestBot", "t.me/TestBot", "https://t.me/TestBot?unknown=value"])(
-    "legacy reference %s has no payload",
-    (input) => expect(parseStartPayload(input)).toBeNull(),
+  test.each(["", "bad payload", "x".repeat(65), "a/b", "a\0b"])(
+    "rejects invalid payload %j",
+    (payload) => expect(isStartPayload(payload)).toBe(false),
   );
   test("channels, groups and legacy bots keep bare links, never arbitrary query strings", () => {
     for (const kind of ["channel", "group", "bot"] as const) {

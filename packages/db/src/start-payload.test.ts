@@ -1,32 +1,81 @@
 import { env } from "cloudflare:workers";
-import { expect, test } from "vitest";
-import { createDb, createSubmission, getSubmission, syncTaxonomy } from "./index.ts";
+import { expect, test, vi } from "vitest";
+import { createDb, entries, getEntryByUsername, setEntryStartPayload } from "./index.ts";
 
-test("migrated D1 persists nullable payload and enforces bot-only Telegram grammar", async () => {
+test("entries alone persist nullable bot payloads and enforce Telegram grammar", async () => {
   const db = createDb(env.DB);
-  await syncTaxonomy(db);
-  const base = { tgUserId: 42, kind: "bot" as const, categoryId: 1, tagIds: [], createdAt: 1 };
-  const id = await createSubmission(db, { ...base, username: "legacy_bot" });
-  if (id === null) throw new Error("missing legacy submission");
-  expect((await getSubmission(db, id))?.startPayload).toBeNull();
-  for (const payload of ["", "bad payload", "x".repeat(65), "x/y", "a\0b"]) {
+  await db.insert(entries).values({
+    username: "legacy_bot",
+    kind: "bot",
+    categoryId: 1,
+    title: "Bot",
+    listedAt: 1,
+    updatedAt: 1,
+  });
+  expect((await getEntryByUsername(db, "legacy_bot"))?.startPayload).toBeNull();
+  for (const startPayload of ["", "bad payload", "x".repeat(65), "x/y", "a\0b"]) {
     await expect(
-      createSubmission(db, { ...base, username: `bad_${payload.length}`, startPayload: payload }),
+      db
+        .insert(entries)
+        .values({
+          username: "bad_bot",
+          kind: "bot",
+          categoryId: 1,
+          title: "Bot",
+          listedAt: 1,
+          updatedAt: 1,
+          startPayload,
+        })
+        .run(),
     ).rejects.toThrow();
   }
   await expect(
-    createSubmission(db, {
-      ...base,
-      username: "wrong_kind",
-      kind: "group",
-      startPayload: "botlist",
-    }),
+    db
+      .insert(entries)
+      .values({
+        username: "wrong_kind",
+        kind: "group",
+        categoryId: 1,
+        title: "Group",
+        listedAt: 1,
+        updatedAt: 1,
+        startPayload: "ref",
+      })
+      .run(),
   ).rejects.toThrow();
-  const good = await createSubmission(db, {
-    ...base,
-    username: "tagged_bot",
-    startPayload: "botlist",
+  const columns = await env.DB.prepare("PRAGMA table_info(submissions)").all<{ name: string }>();
+  expect(columns.results.map((col) => col.name)).not.toContain("start_payload");
+});
+
+test("conditional payload update writes no rows when unchanged and timestamps only changes", async () => {
+  const db = createDb(env.DB);
+  const [entry] = await db
+    .insert(entries)
+    .values({
+      username: "curated_bot",
+      kind: "bot",
+      categoryId: 1,
+      title: "Bot",
+      listedAt: 1,
+      updatedAt: 1,
+    })
+    .returning();
+  if (!entry) throw new Error("missing bot");
+  // Observe real D1 results, including the billing metadata for a no-op UPDATE.
+  const run = vi.spyOn(Object.getPrototypeOf(db.$client.prepare("SELECT 1")), "run");
+  expect(await setEntryStartPayload(db, entry.id, null, 2)).toBe(false);
+  expect(await run.mock.results[0]?.value).toMatchObject({ meta: { rows_written: 0 } });
+  run.mockRestore();
+  expect(await setEntryStartPayload(db, entry.id, "ref", 3)).toBe(true);
+  expect(await setEntryStartPayload(db, entry.id, "ref", 4)).toBe(false);
+  expect(await getEntryByUsername(db, entry.username)).toMatchObject({
+    startPayload: "ref",
+    updatedAt: 3,
   });
-  if (good === null) throw new Error("missing tagged submission");
-  expect((await getSubmission(db, good))?.startPayload).toBe("botlist");
+  expect(await setEntryStartPayload(db, entry.id, null, 5)).toBe(true);
+  expect(await getEntryByUsername(db, entry.username)).toMatchObject({
+    startPayload: null,
+    updatedAt: 5,
+  });
+  expect(await setEntryStartPayload(db, 99999, "ref", 6)).toBe(false);
 });

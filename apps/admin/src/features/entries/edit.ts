@@ -1,4 +1,4 @@
-import { type EntryKind, MAX_TAGS } from "@tgbox/shared";
+import { type EntryKind, isStartPayload, MAX_TAGS } from "@tgbox/shared";
 
 type Category = { id: number; kind: EntryKind };
 
@@ -68,4 +68,9 @@ export function diffSnapshots(before: Snapshot, after: Snapshot): FieldChange[] 
   return fields
     .filter((field) => before[field] !== after[field])
     .map((field) => ({ field, before: before[field], after: after[field] }));
+}
+
+/** Blank input clears; otherwise Telegram's payload grammar applies without trimming. */
+export function checkStartPayloadEdit(value: string) {
+  return value.trim() === "" || isStartPayload(value) ? null : "仅支持 1–64 位字母、数字、_ 或 -";
 }
