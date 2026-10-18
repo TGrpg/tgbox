@@ -20,8 +20,10 @@ export {
   type ListEntryError,
   listEntryManually,
   refreshEntryNow,
+  type StartPayloadError,
   setEntriesStatus,
   setEntryCategoryAndTags,
+  setEntryStartPayload,
   setPromoted,
 } from "./entries.ts";
 export {

@@ -1,5 +1,5 @@
 import { type QueryClient, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { ModerationError } from "@tgbox/core";
+import type { ModerationError, StartPayloadError } from "@tgbox/core";
 import type { EntryStatus } from "@tgbox/shared";
 import { toastManager } from "@/components/coss/ui/toast.tsx";
 import {
@@ -9,6 +9,7 @@ import {
   $setEntriesCategory,
   $setEntriesPromoted,
   $setEntriesStatus,
+  $setEntryStartPayload,
   type EntryRow,
 } from "@/functions/entries.ts";
 import {
@@ -129,8 +130,16 @@ export function useSetCategory() {
 export function useEditEntry(onDone: () => void) {
   const settled = useSettled();
   return useMutation({
-    mutationFn: (input: { id: number; categoryId: number; tagIds: number[]; promoted: boolean }) =>
-      $editEntry({ data: input }),
+    mutationFn: async ({
+      startPayloadChanged = false,
+      ...input
+    }: {
+      id: number;
+      categoryId: number;
+      tagIds: number[];
+      promoted: boolean;
+      startPayloadChanged?: boolean;
+    }) => ({ ...(await $editEntry({ data: input })), startPayloadChanged }),
     onError: failed,
     onSuccess: (result) => {
       if (!result.ok) {
@@ -142,7 +151,11 @@ export function useEditEntry(onDone: () => void) {
         });
         return;
       }
-      const changed = result.categoryChanged || result.tagsChanged || result.promotedChanged;
+      const changed =
+        result.categoryChanged ||
+        result.tagsChanged ||
+        result.promotedChanged ||
+        result.startPayloadChanged;
       toastManager.add({ type: "success", title: changed ? "已保存" : "没有变化" });
       onDone();
     },
@@ -287,6 +300,30 @@ export function useSetPostVisibility(username: string) {
         title: "操作失败",
         description: moderationErrorText[result.error],
       });
+    },
+    onSettled: settled,
+  });
+}
+
+const startPayloadErrorText: Record<StartPayloadError, string> = {
+  not_found: "条目不存在",
+  not_bot: "仅机器人可设置启动参数",
+  invalid: "仅支持 1–64 位字母、数字、_ 或 -",
+};
+
+export function useSetEntryStartPayload() {
+  const settled = useSettled();
+  return useMutation({
+    mutationFn: (input: { id: number; startPayload: string | null }) =>
+      $setEntryStartPayload({ data: input }),
+    onError: () => toastManager.add({ type: "error", title: "启动参数保存失败，请重试" }),
+    onSuccess: (result) => {
+      if (!result.ok)
+        toastManager.add({
+          type: "error",
+          title: "保存失败",
+          description: startPayloadErrorText[result.error],
+        });
     },
     onSettled: settled,
   });

@@ -5,6 +5,7 @@ import {
   refreshEntryNow,
   setEntriesStatus,
   setEntryCategoryAndTags,
+  setEntryStartPayload,
   setPromoted,
 } from "@tgbox/core";
 import {
@@ -71,6 +72,7 @@ export const $listEntries = createServerFn({ method: "GET" })
       rows: rows.map(({ entry, stats }) => ({
         id: entry.id,
         username: entry.username,
+        startPayload: entry.startPayload,
         kind: entry.kind,
         title: entry.title,
         verified: entry.verified,
@@ -223,3 +225,10 @@ export const $refreshEntry = createServerFn({ method: "POST" })
     if (!before || !after || !result) return null;
     return { ...result, changes: diffSnapshots(snapshotOf(before), snapshotOf(after)) };
   });
+
+export const $setEntryStartPayload = createServerFn({ method: "POST" })
+  .middleware([adminMiddleware])
+  .inputValidator(z.object({ id: z.number().int(), startPayload: z.string().max(64).nullable() }))
+  .handler(({ data, context }) =>
+    setEntryStartPayload(context.core, { ...data, actor: context.auth.actor }),
+  );

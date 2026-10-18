@@ -1,4 +1,5 @@
 import { searchEntries } from "@tgbox/db";
+import { telegramLinks } from "@tgbox/shared";
 import { Composer, type Context, InlineKeyboard, InlineQueryResultBuilder } from "grammy";
 import type { App } from "./app.ts";
 import { truncate } from "./submit.ts";
@@ -16,7 +17,7 @@ export function inlineSearch(app: App) {
     const rows = await searchEntries(app.db, query, 20);
     const results = rows.map(({ entry, members }) => {
       const detailUrl = `${site}/detail/${entry.username}/`;
-      const telegramUrl = `https://t.me/${entry.username}`;
+      const telegramUrl = telegramLinks(entry).web;
       const summary = [
         `@${entry.username}`,
         members === null ? null : `${m.members}: ${members.toLocaleString("en")}`,

@@ -7,6 +7,7 @@ export const auditActions = [
   "entry.list",
   "entry.status",
   "entry.category",
+  "entry.start_payload",
   "entry.tags",
   "entry.promote",
   "entry.posts",

@@ -1,4 +1,10 @@
-import type { EntryKind, EntryProductKind, Locale } from "@tgbox/shared";
+import {
+  type EntryKind,
+  type EntryProductKind,
+  type Locale,
+  type TelegramTarget,
+  telegramLinks,
+} from "@tgbox/shared";
 import { ExternalLinkIcon, Share2Icon } from "lucide-react";
 import { Button } from "@/components/coss/ui/button";
 import { appUi } from "@/i18n/ui-app.ts";
@@ -8,6 +14,7 @@ import { shareEntry, type TelegramWebApp } from "./telegram.ts";
 
 export type BrowseItem = {
   username: string;
+  startPayload?: string | null;
   kind: EntryKind;
   title: string;
   members: number | null;
@@ -17,8 +24,8 @@ export type BrowseItem = {
 };
 
 /** Links must not navigate the webview away from the app; Telegram opens them itself. */
-export function openInTelegram(webApp: TelegramWebApp | null, username: string) {
-  const url = `https://t.me/${username}`;
+export function openInTelegram(webApp: TelegramWebApp | null, target: TelegramTarget) {
+  const url = telegramLinks(target).web;
   if (webApp) webApp.openTelegramLink(url);
   else window.open(url, "_blank", "noopener");
 }
@@ -88,7 +95,7 @@ export function EntryCard({
         >
           <Share2Icon aria-hidden />
         </Button>
-        <Button size="sm" onClick={() => openInTelegram(webApp, entry.username)}>
+        <Button size="sm" onClick={() => openInTelegram(webApp, entry)}>
           <ExternalLinkIcon aria-hidden />
           {strings.browse.open}
         </Button>

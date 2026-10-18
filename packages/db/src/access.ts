@@ -354,6 +354,21 @@ export async function setEntryCategory(db: Db, id: number, categoryId: number, n
   return result.meta.changes > 0;
 }
 
+/** Returns true only when the nullable payload changed. */
+export async function setEntryStartPayload(
+  db: Db,
+  id: number,
+  startPayload: string | null,
+  now: number,
+) {
+  const result = await db
+    .update(entries)
+    .set({ startPayload, updatedAt: now })
+    .where(and(eq(entries.id, id), differs(entries.startPayload, startPayload)))
+    .run();
+  return result.meta.changes > 0;
+}
+
 /** Replaces an entry's tags; writes nothing (and leaves FTS alone) when the set is unchanged. */
 export async function setEntryTags(db: Db, id: number, tagIds: number[], now: number) {
   const current = new Set(await getEntryTagIds(db, id));

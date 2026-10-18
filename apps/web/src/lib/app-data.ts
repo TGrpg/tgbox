@@ -16,6 +16,7 @@ export const APP_BROWSE_LIMIT = 200;
 
 export type AppEntry = {
   username: string;
+  startPayload?: string | null;
   kind: EntryKind;
   title: string;
   members: number | null;
@@ -69,6 +70,7 @@ function appEntries(data: SiteData): AppEntry[] {
     return [
       {
         username: entry.username,
+        startPayload: entry.startPayload,
         kind: entry.kind,
         title: entry.title,
         members: entry.members,

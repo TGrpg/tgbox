@@ -141,6 +141,13 @@
       "when": 1789809247226,
       "tag": "0020_friend_link_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "6",
+      "when": 1792041639000,
+      "tag": "0021_bot_start_payload",
+      "breakpoints": true
     }
   ]
 }
