@@ -6,6 +6,7 @@ import {
   listEntriesNeedingTranslation,
   setEntryStatus,
   setEntryTranslation,
+  stampTranslationFailed,
   stampTranslationSkipped,
   updateEntryCold,
 } from "./index.ts";
@@ -117,6 +118,24 @@ test("a new description drops both translations, another cold field keeps them",
     .raw();
   expect(cleared).toEqual([null, null]);
   expect(await usernames()).toEqual(["news"]);
+});
+
+test("an entry the model keeps failing on goes behind the rest instead of blocking them", async () => {
+  const stuck = await listEntry("stuck", "每天更新的资源频道", "zh");
+  await listEntry("fresh_a", "每天更新的资源频道 A", "zh");
+  await listEntry("fresh_b", "每天更新的资源频道 B", "zh");
+  expect(await usernames(1)).toEqual(["stuck"]);
+
+  await stampTranslationFailed(db, stuck, NOW);
+  expect(await usernames()).toEqual(["fresh_a", "fresh_b", "stuck"]);
+  expect(await usernames(1)).toEqual(["fresh_a"]);
+});
+
+test("an edit that leaves the description alone doesn't queue a translated entry again", async () => {
+  const id = await listEntry("avatar_change", "每天更新的资源频道", "zh");
+  await setEntryTranslation(db, { entryId: id, locale: "en", text: "A channel", now: NOW });
+  await updateEntryCold(db, id, { title: "New title", avatarVersion: "v2" }, NOW + 1000);
+  expect(await usernames()).toEqual([]);
 });
 
 test("only approved entries are translated", async () => {

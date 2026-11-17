@@ -2,6 +2,7 @@ import { dispatchStaleBuild, markDirtyAndDispatch, runPromotionMaintenance } fro
 import {
   listEntriesNeedingTranslation,
   setEntryTranslation,
+  stampTranslationFailed,
   stampTranslationSkipped,
 } from "@tgbox/db";
 import type { Locale } from "@tgbox/shared";
@@ -82,16 +83,18 @@ async function translateDescriptions(
       });
       const translated = "translated_text" in result ? (result.translated_text ?? "").trim() : "";
       if (!translated) {
-        // An empty answer is the model's problem, not the entry's: leave it for the next run.
+        // An empty answer is the model's problem, not the entry's: retry it, after the others.
         console.error("translation returned nothing", entry.username);
+        await stampTranslationFailed(app.db, entry.id, now);
         tally.failed++;
         continue;
       }
       await setEntryTranslation(app.db, { entryId: entry.id, locale, text: translated, now });
       tally.translated++;
     } catch (error) {
-      // One bad entry must not cost the rest of the batch.
+      // One bad entry must not cost the rest of the batch, nor hold the head of the next one.
       console.error("translating failed", entry.username, error);
+      await stampTranslationFailed(app.db, entry.id, now).catch(() => {});
       tally.failed++;
     }
   }

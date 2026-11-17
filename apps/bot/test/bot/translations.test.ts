@@ -134,9 +134,10 @@ describe("hourly description translations", () => {
 
     await h.scheduled(NOON, HOURLY);
     expect(h.aiCalls).toHaveLength(2);
+    // Stamped as failed: still queued, but behind entries that were never tried.
     expect(await translationOf(first)).toMatchObject({
       description_en: null,
-      description_translated_at: null,
+      description_translated_at: -NOON,
     });
     expect(await translationOf(second)).toMatchObject({ description_en: "second translation" });
     expect((await listEntriesNeedingTranslation(db, 10, NOON)).map((row) => row.username)).toEqual([
@@ -148,7 +149,10 @@ describe("hourly description translations", () => {
     const entry = await listEntry("每天更新的资源频道", "zh");
     h.answerAi(() => ({}));
     await h.scheduled(NOON, HOURLY);
-    expect(await translationOf(entry)).toMatchObject({ description_translated_at: null });
+    expect(await translationOf(entry)).toMatchObject({ description_translated_at: -NOON });
+    expect((await listEntriesNeedingTranslation(db, 10, NOON)).map((row) => row.username)).toEqual([
+      entry,
+    ]);
     expect(h.dispatches).toEqual([]);
   });
 

@@ -1,5 +1,5 @@
 import type { Locale } from "@tgbox/shared";
-import { and, asc, eq, isNull, ne, or, sql } from "drizzle-orm";
+import { and, asc, eq, isNull, lt, ne, or, sql } from "drizzle-orm";
 import type { Db } from "./access.ts";
 import { entries } from "./schema.ts";
 
@@ -14,9 +14,12 @@ export type TranslationCandidate = {
 };
 
 /**
- * Approved entries whose description has no current translation: never translated, translated
- * before the description last changed, or stamped in the future (a clock skew would otherwise
- * freeze the entry forever). Oldest attempt first, so nothing starves.
+ * Approved entries whose description has no current translation: never attempted, last attempt
+ * failed (a negative stamp), the description changed since (`updateEntryCold` drops both
+ * translations then, so any other edit — a new title or avatar — keeps the entry out), or stamped
+ * in the future (a clock skew would otherwise freeze the entry forever). Ordered by when the entry
+ * was last tried, never-tried first, so an entry that keeps failing goes to the back instead of
+ * holding the head of every batch.
  */
 export function listEntriesNeedingTranslation(
   db: Db,
@@ -41,12 +44,17 @@ export function listEntriesNeedingTranslation(
         ne(entries.description, ""),
         or(
           isNull(entries.descriptionTranslatedAt),
-          sql`${entries.descriptionTranslatedAt} < ${entries.updatedAt}`,
+          lt(entries.descriptionTranslatedAt, 0),
+          and(
+            sql`${entries.descriptionTranslatedAt} < ${entries.updatedAt}`,
+            isNull(entries.descriptionZh),
+            isNull(entries.descriptionEn),
+          ),
           sql`${entries.descriptionTranslatedAt} > ${now}`,
         ),
       ),
     )
-    .orderBy(asc(sql`coalesce(${entries.descriptionTranslatedAt}, 0)`), asc(entries.id))
+    .orderBy(asc(sql`coalesce(abs(${entries.descriptionTranslatedAt}), 0)`), asc(entries.id))
     .limit(take);
 }
 
@@ -68,8 +76,21 @@ export async function setEntryTranslation(
 }
 
 /**
- * Records a translation attempt that produced nothing (description too short or too long, or the
- * model failed for good), so the entry isn't retried on every run. `updated_at` is untouched, so
+ * Records a model failure as a negative stamp: the entry stays queued, behind everything tried
+ * longer ago, so a description the model keeps failing on can't block the rest of the queue.
+ */
+export async function stampTranslationFailed(db: Db, entryId: number, now: number) {
+  const result = await db
+    .update(entries)
+    .set({ descriptionTranslatedAt: -now })
+    .where(eq(entries.id, entryId))
+    .run();
+  return { rowsWritten: result.meta.rows_written };
+}
+
+/**
+ * Records a translation attempt that produced nothing (description too short or too long), so the
+ * entry isn't retried on every run. `updated_at` is untouched, so
  * the next real description change puts it back in the queue.
  */
 export async function stampTranslationSkipped(db: Db, entryId: number, now: number) {
