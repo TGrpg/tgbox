@@ -9,7 +9,9 @@ test("the unique-amount migration quarantines all ambiguous quotes and preserves
            (2, 10000100, 'address', 'pending', 10, 20),
            (3, 10000200, 'address', 'pending', 10, 20),
            (4, 10000200, 'address', 'paid', 10, 20)`).run();
-  const migration = env.TEST_MIGRATIONS.find((item) => item.name.startsWith("0022_"));
+  const migration = env.TEST_MIGRATIONS.find((item) =>
+    item.name.startsWith("0023_usdt_unique_amount"),
+  );
   if (!migration) throw new Error("migration missing");
   if (migration.queries.length)
     await env.DB.batch(migration.queries.map((sql) => env.DB.prepare(sql)));
