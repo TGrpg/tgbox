@@ -4,8 +4,11 @@ import { toastManager } from "@/components/coss/ui/toast.tsx";
 import {
   $approveSubmissions,
   $rejectSubmissions,
+  APPROVE_PER_REQUEST,
+  REJECT_PER_REQUEST,
   reviewQueueQueryOptions,
 } from "@/functions/review.ts";
+import { inChunks } from "@/lib/chunks.ts";
 import { invalidate } from "@/lib/query-keys.ts";
 import { rejectReasonLabels } from "./labels.ts";
 
@@ -43,7 +46,12 @@ export function useReviewActions(page: number) {
   };
 
   const approve = useMutation({
-    mutationFn: (ids: number[]) => $approveSubmissions({ data: { ids } }),
+    mutationFn: async (ids: number[]) =>
+      (
+        await inChunks(ids, APPROVE_PER_REQUEST, (chunk) =>
+          $approveSubmissions({ data: { ids: chunk } }),
+        )
+      ).flat(),
     onMutate: removeOptimistically,
     onError: (error, _ids, context) => fail(error, context),
     onSuccess: (results) => {
@@ -59,8 +67,12 @@ export function useReviewActions(page: number) {
   });
 
   const reject = useMutation({
-    mutationFn: (input: { ids: number[]; reason: RejectReason }) =>
-      $rejectSubmissions({ data: input }),
+    mutationFn: async (input: { ids: number[]; reason: RejectReason }) =>
+      (
+        await inChunks(input.ids, REJECT_PER_REQUEST, (ids) =>
+          $rejectSubmissions({ data: { ...input, ids } }),
+        )
+      ).flat(),
     onMutate: (input) => removeOptimistically(input.ids),
     onError: (error, _input, context) => fail(error, context),
     onSuccess: (results, input) => {

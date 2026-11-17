@@ -14,10 +14,17 @@ import { adminMiddleware } from "@/server/middleware.ts";
 export const reviewTabs = ["pending", "approved", "rejected"] as const;
 export type ReviewTab = (typeof reviewTabs)[number];
 
-/** Bulk mutations fetch t.me per approved item; keep a request well under the subrequest limit. */
+/** Most rows the review page acts on at once; the client splits them into requests below. */
 export const MAX_BULK = 20;
 
-const ids = z.array(z.number().int().positive()).min(1).max(MAX_BULK);
+/**
+ * Per request, against the 50-subrequest limit: an approval costs ~10 (read, transition, audit,
+ * up to three t.me pages, entry lookup and insert, dirty flag), a rejection 3.
+ */
+export const APPROVE_PER_REQUEST = 4;
+export const REJECT_PER_REQUEST = 12;
+
+const ids = (max: number) => z.array(z.number().int().positive()).min(1).max(max);
 
 const $listReviewQueue = createServerFn({ method: "GET" })
   .middleware([adminMiddleware])
@@ -55,14 +62,14 @@ export const submissionPreviewQueryOptions = (
 
 export const $approveSubmissions = createServerFn({ method: "POST" })
   .middleware([adminMiddleware])
-  .inputValidator(z.object({ ids }))
+  .inputValidator(z.object({ ids: ids(APPROVE_PER_REQUEST) }))
   .handler(({ data, context }) =>
     approveSubmissions(context.core, { ids: data.ids, actor: context.auth.actor }),
   );
 
 export const $rejectSubmissions = createServerFn({ method: "POST" })
   .middleware([adminMiddleware])
-  .inputValidator(z.object({ ids, reason: z.enum(rejectReasons) }))
+  .inputValidator(z.object({ ids: ids(REJECT_PER_REQUEST), reason: z.enum(rejectReasons) }))
   .handler(({ data, context }) =>
     rejectSubmissions(context.core, {
       ids: data.ids,

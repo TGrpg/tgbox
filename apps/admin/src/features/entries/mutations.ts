@@ -10,13 +10,16 @@ import {
   $setEntriesPromoted,
   $setEntriesStatus,
   $setEntryStartPayload,
+  CATEGORY_PER_REQUEST,
   type EntryRow,
+  FLAGS_PER_REQUEST,
 } from "@/functions/entries.ts";
 import {
   $setEntryPostsVisibility,
   $setPostVisibility,
   type EntryPostsView,
 } from "@/functions/posts.ts";
+import { inChunks } from "@/lib/chunks.ts";
 import { invalidate, queryKeys } from "@/lib/query-keys.ts";
 import { entryEditErrorText } from "./edit.ts";
 import { formatCount, livenessLabel, statusLabel } from "./labels.ts";
@@ -65,8 +68,13 @@ export function useSetStatus() {
   const client = useQueryClient();
   const settled = useSettled();
   return useMutation({
-    mutationFn: (input: { ids: number[]; status: EntryStatus }) =>
-      $setEntriesStatus({ data: input }),
+    mutationFn: async (input: { ids: number[]; status: EntryStatus }) => ({
+      changed: (
+        await inChunks(input.ids, FLAGS_PER_REQUEST, (ids) =>
+          $setEntriesStatus({ data: { ...input, ids } }),
+        )
+      ).flatMap((result) => result.changed),
+    }),
     onMutate: async (input) => {
       await client.cancelQueries({ queryKey: queryKeys.entries });
       return { rollback: patchRows(client, input.ids, { status: input.status }) };
@@ -89,8 +97,13 @@ export function useSetPromoted() {
   const client = useQueryClient();
   const settled = useSettled();
   return useMutation({
-    mutationFn: (input: { ids: number[]; promoted: boolean }) =>
-      $setEntriesPromoted({ data: input }),
+    mutationFn: async (input: { ids: number[]; promoted: boolean }) => ({
+      changed: (
+        await inChunks(input.ids, FLAGS_PER_REQUEST, (ids) =>
+          $setEntriesPromoted({ data: { ...input, ids } }),
+        )
+      ).flatMap((result) => result.changed),
+    }),
     onMutate: async (input) => {
       await client.cancelQueries({ queryKey: queryKeys.entries });
       return { rollback: patchRows(client, input.ids, { promoted: input.promoted }) };
@@ -112,8 +125,15 @@ export function useSetPromoted() {
 export function useSetCategory() {
   const settled = useSettled();
   return useMutation({
-    mutationFn: (input: { ids: number[]; categoryId: number }) =>
-      $setEntriesCategory({ data: input }),
+    mutationFn: async (input: { ids: number[]; categoryId: number }) => {
+      const results = await inChunks(input.ids, CATEGORY_PER_REQUEST, (ids) =>
+        $setEntriesCategory({ data: { ...input, ids } }),
+      );
+      return {
+        changed: results.flatMap((result) => result.changed),
+        skipped: results.flatMap((result) => result.skipped),
+      };
+    },
     onError: failed,
     onSuccess: (result) =>
       toastManager.add({

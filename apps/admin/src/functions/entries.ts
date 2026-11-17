@@ -30,7 +30,14 @@ import {
 import { queryKeys } from "@/lib/query-keys.ts";
 import { adminMiddleware } from "@/server/middleware.ts";
 
-const ids = z.array(z.number().int().positive()).min(1).max(100);
+/**
+ * Per request, against the 50-subrequest limit: a status or promoted flag is one write per entry
+ * plus one audit and the dirty flag; a category change reads the entry, writes it, audits it.
+ */
+export const FLAGS_PER_REQUEST = 30;
+export const CATEGORY_PER_REQUEST = 8;
+
+const ids = (max: number) => z.array(z.number().int().positive()).min(1).max(max);
 
 const avatarUrl = (entry: Entry) =>
   entry.avatarVersion === null
@@ -104,7 +111,7 @@ export const entriesQueryOptions = (search: EntriesSearch) =>
 
 export const $setEntriesStatus = createServerFn({ method: "POST" })
   .middleware([adminMiddleware])
-  .inputValidator(z.object({ ids, status: EntryStatus }))
+  .inputValidator(z.object({ ids: ids(FLAGS_PER_REQUEST), status: EntryStatus }))
   .handler(({ data, context }) =>
     setEntriesStatus(context.core, {
       ids: data.ids,
@@ -115,7 +122,7 @@ export const $setEntriesStatus = createServerFn({ method: "POST" })
 
 export const $setEntriesPromoted = createServerFn({ method: "POST" })
   .middleware([adminMiddleware])
-  .inputValidator(z.object({ ids, promoted: z.boolean() }))
+  .inputValidator(z.object({ ids: ids(FLAGS_PER_REQUEST), promoted: z.boolean() }))
   .handler(({ data, context }) =>
     setPromoted(context.core, {
       ids: data.ids,
@@ -127,7 +134,9 @@ export const $setEntriesPromoted = createServerFn({ method: "POST" })
 /** Bulk category change. Entries of another kind than the category are skipped. */
 export const $setEntriesCategory = createServerFn({ method: "POST" })
   .middleware([adminMiddleware])
-  .inputValidator(z.object({ ids, categoryId: z.number().int().positive() }))
+  .inputValidator(
+    z.object({ ids: ids(CATEGORY_PER_REQUEST), categoryId: z.number().int().positive() }),
+  )
   .handler(async ({ data, context }) => {
     const { db } = context.core;
     const categories = await listCategories(db);
