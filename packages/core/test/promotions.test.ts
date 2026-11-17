@@ -1,6 +1,5 @@
 import { env } from "cloudflare:workers";
 import {
-  approveAdOrder,
   type CoreContext,
   checkOrderSlots,
   checkSlots,
@@ -12,6 +11,7 @@ import {
   rejectOrder,
   runPromotionMaintenance,
   setPlacementSlots,
+  startPaidOrder,
   upsertProduct,
 } from "@tgbox/core";
 import {
@@ -22,7 +22,7 @@ import {
   listProducts,
   setEntryStatus,
 } from "@tgbox/db";
-import { describe, expect, test } from "vitest";
+import { describe, expect, onTestFinished, test } from "vitest";
 import { actor, auditRows, db, NOW, setup } from "./fake.ts";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -180,13 +180,77 @@ describe("paying", () => {
     expect(await listActivePromotions(db, NOW)).toEqual([]);
     expect(await checkSlots(ctx, "banner")).toEqual({ available: 4, nextFreeAt: null });
 
-    expect(await approveAdOrder(ctx, { orderId: created.id, actor })).toMatchObject({
-      status: "active",
-      endsAt: NOW + 7 * DAY,
+    expect(await startPaidOrder(ctx, { orderId: created.id, actor })).toMatchObject({
+      ok: true,
+      order: { status: "active", endsAt: NOW + 7 * DAY },
     });
-    expect(await approveAdOrder(ctx, { orderId: created.id, actor })).toBeNull();
+    expect(await startPaidOrder(ctx, { orderId: created.id, actor })).toEqual({
+      ok: false,
+      error: "not_paid",
+    });
     expect(await listActivePromotions(db, NOW, "banner")).toMatchObject([{ banner }]);
     expect(await checkSlots(ctx, "banner")).toEqual({ available: 4, nextFreeAt: NOW + 7 * DAY });
+  });
+
+  test("two buyers paying for the last slot: the later one waits, paid, until an admin starts it", async () => {
+    const { ctx } = await setup();
+    const slots = (await listProducts(db)).find((p) => p.kind === "pin")?.slots ?? 10;
+    onTestFinished(() => setPlacementSlots(ctx, { kind: "pin", slots, actor }).then(() => {}));
+    await setPlacementSlots(ctx, { kind: "pin", slots: 1, actor });
+    await listed("first_pin");
+    await listed("second_pin");
+    // Both were quoted while the slot was free.
+    const first = await order(ctx, PIN_7, { targetUsername: "first_pin" });
+    const second = await order(ctx, PIN_7, { targetUsername: "second_pin" });
+
+    expect(await markOrderPaid(ctx, starsPayment(first.id))).toMatchObject({
+      changed: true,
+      waiting: false,
+      order: { status: "active" },
+    });
+    expect(await markOrderPaid(ctx, starsPayment(second.id))).toMatchObject({
+      changed: true,
+      waiting: true,
+      order: { status: "paid" },
+    });
+    expect(await listActivePromotions(db, NOW)).toMatchObject([{ entryUsername: "first_pin" }]);
+    // A redelivered callback neither starts it nor reports it again.
+    expect(await markOrderPaid(ctx, starsPayment(second.id))).toMatchObject({
+      changed: false,
+      waiting: true,
+    });
+
+    expect(await startPaidOrder(ctx, { orderId: second.id, actor })).toEqual({
+      ok: false,
+      error: "no_slots",
+    });
+    const [live] = await listActivePromotions(db, NOW);
+    await endPromotion(ctx, { promotionId: live?.id ?? 0, actor });
+    expect(await startPaidOrder(ctx, { orderId: second.id, actor })).toMatchObject({
+      ok: true,
+      order: { status: "active", endsAt: NOW + 7 * DAY },
+    });
+    expect(await listActivePromotions(db, NOW)).toMatchObject([{ entryUsername: "second_pin" }]);
+  });
+
+  test("a full category doesn't hold back a category pin paid in another one", async () => {
+    const { ctx } = await setup();
+    const product = await weekOf("category_pin");
+    for (const name of ["news_a", "news_b", "news_c", "news_d"]) await listed(name, 1);
+    await listed("games_a", 2);
+    const pending = [];
+    for (const name of ["news_a", "news_b", "news_c", "news_d", "games_a"]) {
+      pending.push(await order(ctx, product, { targetUsername: name }));
+    }
+    const paid = [];
+    for (const created of pending) paid.push(await markOrderPaid(ctx, starsPayment(created.id)));
+    expect(paid.map((result) => result?.waiting)).toEqual([false, false, false, true, false]);
+    expect((await listActivePromotions(db, NOW)).map((row) => row.entryUsername)).toEqual([
+      "news_a",
+      "news_b",
+      "news_c",
+      "games_a",
+    ]);
   });
 
   test("rejecting a Stars banner refunds it through the Bot API", async () => {
@@ -279,7 +343,7 @@ describe("promotion tiers", () => {
     await markOrderPaid(ctx, starsPayment(created.id));
     expect(await listActivePromotions(db, NOW)).toEqual([]);
     expect(await checkSlots(ctx, "announcement")).toEqual({ available: 0, nextFreeAt: null });
-    await approveAdOrder(ctx, { orderId: created.id, actor });
+    await startPaidOrder(ctx, { orderId: created.id, actor });
     expect(await listActivePromotions(db, NOW)).toMatchObject([{ kind: "announcement", banner }]);
   });
 });

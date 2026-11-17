@@ -1,9 +1,9 @@
 import {
-  approveAdOrder,
   checkOrderSlots,
   markOrderPaid,
   refundStars,
   rejectOrder,
+  startPaidOrder,
   tgActor,
 } from "@tgbox/core";
 import { getOrder, getProduct, type Order } from "@tgbox/db";
@@ -37,7 +37,8 @@ const reviewer = (ctx: Context) =>
 
 /**
  * Records a payment from either provider and sends the follow-up messages in the background:
- * pins are live (buyer told), banners go to the review chat. A payment for an order that is gone
+ * pins are live (buyer told), banners go to the review chat, and a pin paid while its placement
+ * filled up goes to the review chat to be started or refunded. A payment for an order that is gone
  * or already paid by another charge is refunded (Stars) or flagged to the review chat.
  */
 export async function recordPayment(
@@ -62,14 +63,35 @@ export async function recordPayment(
   if (!result.changed) return;
   const { order } = result;
   await app.background(async () => {
-    const buyerText = isEntryProduct(order.kind)
-      ? localized(input.locale, (l) => l.promote.paidEntry(orderTarget(order), order.days))
-      : localized(input.locale, (l) => l.promote.paidAd);
+    const buyerText = result.waiting
+      ? localized(input.locale, (l) => l.promote.paidWaiting(orderTarget(order)))
+      : isEntryProduct(order.kind)
+        ? localized(input.locale, (l) => l.promote.paidEntry(orderTarget(order), order.days))
+        : localized(input.locale, (l) => l.promote.paidAd);
     await app.api
       .sendMessage(order.tgUserId, buyerText)
       .catch((error: unknown) => console.error("payment notice failed", error));
-    if (!isEntryProduct(order.kind)) await sendAdReview(app, order);
+    if (result.waiting) await sendSlotReview(app, order);
+    else if (!isEntryProduct(order.kind)) await sendAdReview(app, order);
   });
+}
+
+/** A paid entry promotion with no free slot: admins start it once one frees, or refund it. */
+async function sendSlotReview(app: App, order: Order) {
+  const m = messages("zh").admin;
+  await app.sendReview(
+    m.slotWaiting({
+      ...orderTarget(order),
+      id: order.id,
+      amount: `${order.amount ?? ""} ${order.currency ?? ""}`.trim(),
+      buyerId: order.tgUserId,
+    }),
+    {
+      reply_markup: new InlineKeyboard()
+        .text(m.startNow, `ba:${order.id}`)
+        .text(m.refund, `bj:${order.id}`),
+    },
+  );
 }
 
 async function handleOrphanPayment(app: App, input: Parameters<typeof recordPayment>[1]) {
@@ -187,20 +209,33 @@ export function payments(app: App) {
       .catch((error: unknown) => console.error("closing banner review failed", error));
   }
 
+  // Approves a brand ad, or starts a pin that was paid while its placement was full.
   composer.callbackQuery(/^ba:(\d+)$/, async (ctx) => {
-    const order = await approveAdOrder(app.core, {
+    const result = await startPaidOrder(app.core, {
       orderId: Number(ctx.match[1]),
       actor: tgActor(ctx.from.id),
     });
-    if (!order) {
+    if (!result.ok && result.error === "no_slots") {
+      await ctx.answerCallbackQuery({
+        text: messages("zh").admin.stillFull,
+        show_alert: true,
+      });
+      return;
+    }
+    if (!result.ok) {
       await answerAlreadyHandled(app, ctx);
       return;
     }
+    const { order } = result;
     const endsAt = order.endsAt ?? app.now();
     await app.background(() =>
       app.api.sendMessage(
         order.tgUserId,
-        localized(null, (m) => m.promote.adApproved(orderTarget(order), endsAt)),
+        localized(null, (m) =>
+          isEntryProduct(order.kind)
+            ? m.promote.entryStarted(orderTarget(order), endsAt)
+            : m.promote.adApproved(orderTarget(order), endsAt),
+        ),
       ),
     );
     await ctx.answerCallbackQuery();
@@ -221,9 +256,16 @@ export function payments(app: App) {
     await app.background(() =>
       app.api.sendMessage(
         order.tgUserId,
-        localized(null, (m) =>
-          refunded ? m.promote.adRejectedRefunded : m.promote.adRejectedManual(order.id, support),
-        ),
+        localized(null, (m) => {
+          if (isEntryProduct(order.kind)) {
+            return refunded
+              ? m.promote.slotRefunded
+              : m.promote.slotRefundManual(order.id, support);
+          }
+          return refunded
+            ? m.promote.adRejectedRefunded
+            : m.promote.adRejectedManual(order.id, support);
+        }),
       ),
     );
     await ctx.answerCallbackQuery();

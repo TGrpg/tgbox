@@ -23,7 +23,8 @@ export async function runUsdtWatch(app: App): Promise<number> {
       if (!order) return;
       // Unlike Stars, there is no pre-checkout hook: minutes pass between the buyer being quoted
       // and the transfer confirming, so the buyer is told and the payment is recorded either way —
-      // `markOrderPaid` only auto-activates a pin, and a full slot leaves it for an admin.
+      // `markOrderPaid` only auto-activates a pin, and a full slot leaves it for an admin to start
+      // or refund.
       await recordPayment(app, {
         orderId,
         provider: "usdt",

@@ -153,12 +153,22 @@ export async function createOrder(
   return { ok: true, order };
 }
 
-/** paid → active: starts the promotion now for the order's days and rebuilds the site. */
-async function activateOrder(ctx: CoreContext, order: Order, actor: Actor) {
+/**
+ * paid → active: starts the promotion now for the order's days and rebuilds the site. `no_slots`
+ * when its placement is full; the order stays `paid` (holding its place) for an admin to start
+ * once a slot frees, or to refund.
+ */
+async function activateOrder(
+  ctx: CoreContext,
+  order: Order,
+  actor: Actor,
+): Promise<"started" | "no_slots" | "not_paid"> {
   const now = ctx.now();
   const endsAt = now + order.days * DAY_MS;
   const promotionId = await activateOrderRow(ctx.db, { id: order.id, startsAt: now, endsAt });
-  if (promotionId === null) return false;
+  if (promotionId === null) {
+    return (await getOrder(ctx.db, order.id))?.status === "paid" ? "no_slots" : "not_paid";
+  }
   // The site is marked first: a lost audit row costs less than a live promotion nobody sees.
   await markDirtyAndDispatch(ctx);
   await audit(ctx, actor, "promotion.start", promotionTarget(promotionId), {
@@ -166,12 +176,16 @@ async function activateOrder(ctx: CoreContext, order: Order, actor: Actor) {
     kind: order.kind,
     endsAt,
   });
-  return true;
+  return "started";
 }
 
 /**
  * Records a payment (idempotent: retried callbacks return `changed: false`). Entry promotions go
  * live immediately; brand ads stay `paid` until reviewed. Returns null for an unknown order.
+ *
+ * Nothing holds a slot between quoting and paying, so two buyers can pay for the last one. The
+ * later entry promotion then stays `paid` with `waiting: true`: its buyer is told it goes live when
+ * a slot frees, and an admin starts it then (`startPaidOrder`) or refunds it.
  *
  * Re-entrant: when an earlier attempt for the same charge stopped after recording the payment, a
  * retry finishes starting the promotion (and reports `changed`) instead of stopping at "already
@@ -213,16 +227,28 @@ export async function markOrderPaid(
     (order.status === "paid" &&
       order.provider === input.provider &&
       order.chargeId === input.chargeId);
-  const started = ours && isEntryProduct(order.kind) && (await activateOrder(ctx, order, actor));
-  return { order: (await getOrder(ctx.db, order.id)) ?? order, changed: changed || started };
+  const activation =
+    ours && isEntryProduct(order.kind) ? await activateOrder(ctx, order, actor) : null;
+  return {
+    order: (await getOrder(ctx.db, order.id)) ?? order,
+    changed: changed || activation === "started",
+    waiting: activation === "no_slots",
+  };
 }
 
-/** Admin approves a paid brand ad. Returns the updated order, or null if it was not awaiting review. */
-export async function approveAdOrder(ctx: CoreContext, input: { orderId: number; actor: Actor }) {
+/**
+ * Admin starts a paid order: approves a brand ad, or starts an entry promotion that was paid while
+ * its placement was full. `not_paid` when someone else handled it first.
+ */
+export async function startPaidOrder(
+  ctx: CoreContext,
+  input: { orderId: number; actor: Actor },
+): Promise<{ ok: true; order: Order } | { ok: false; error: "not_paid" | "no_slots" }> {
   const order = await getOrder(ctx.db, input.orderId);
-  if (!order || isEntryProduct(order.kind) || order.status !== "paid") return null;
-  if (!(await activateOrder(ctx, order, input.actor))) return null;
-  return (await getOrder(ctx.db, order.id)) ?? null;
+  if (order?.status !== "paid") return { ok: false, error: "not_paid" };
+  const activation = await activateOrder(ctx, order, input.actor);
+  if (activation !== "started") return { ok: false, error: activation };
+  return { ok: true, order: (await getOrder(ctx.db, order.id)) ?? order };
 }
 
 /**

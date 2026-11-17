@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { createOrder, markOrderPaid } from "@tgbox/core";
+import { createOrder, endPromotion, markOrderPaid } from "@tgbox/core";
 import {
   createUsdtPayment,
   getBotDraft,
@@ -449,6 +449,64 @@ describe("buying a pin with Stars", () => {
     expect(h.calls("refundStarPayment").map((c) => c.payload)).toEqual([
       { user_id: buyer.id, telegram_payment_charge_id: "charge_2" },
     ]);
+  });
+});
+
+describe("a pin paid after its placement filled up", () => {
+  /** A pin quoted while slots were free, paid by Stars once all ten are taken. */
+  async function paidWhileFull() {
+    const late = await order({ productId: 1, targetUsername: "@pin_me" });
+    for (let i = 0; i < 10; i++) {
+      const other = await order({ productId: 1, targetUsername: "@pin_me" });
+      await markOrderPaid(core, {
+        orderId: other.id,
+        provider: "manual",
+        chargeId: `m${i}`,
+        amount: "0",
+        currency: "XTR",
+      });
+    }
+    await successfulPayment(late.id, "late_charge");
+    return late.id;
+  }
+
+  test("stays paid, tells the buyer and asks admins to start or refund it", async () => {
+    const id = await paidWhileFull();
+    expect(await getOrder(db, id)).toMatchObject({ status: "paid", chargeId: "late_charge" });
+    const notice = h.calls("sendMessage").find((c) => c.payload.chat_id === buyer.id);
+    expect(notice?.payload.text).toContain("名额刚好被占满");
+    const review = h
+      .calls("sendMessage")
+      .find((c) => String(c.payload.chat_id) === String(ADMIN_CHAT_ID));
+    expect(review?.payload.text).toContain(`订单 #${id}`);
+    expect(JSON.stringify(review?.payload.reply_markup)).toContain(`ba:${id}`);
+    expect(JSON.stringify(review?.payload.reply_markup)).toContain(`bj:${id}`);
+
+    h.reset();
+    await h.callback(ADMIN, `ba:${id}`, reviewMessage);
+    expect(h.calls("answerCallbackQuery")[0]?.payload).toMatchObject({
+      text: "名额仍然是满的，等有空位再点上线。",
+      show_alert: true,
+    });
+    expect(await getOrder(db, id)).toMatchObject({ status: "paid" });
+
+    const [live] = await listActivePromotions(db, Date.now(), "pin");
+    await endPromotion(core, { promotionId: live?.id ?? 0, actor: "system" });
+    await h.callback(ADMIN, `ba:${id}`, reviewMessage);
+    expect(await getOrder(db, id)).toMatchObject({ status: "active" });
+    const started = h.calls("sendMessage").find((c) => c.payload.chat_id === buyer.id);
+    expect(started?.payload.text).toContain("你的推广（全站置顶 @pin_me）已上线");
+  });
+
+  test("refunding it returns the Stars and tells the buyer it couldn't go live", async () => {
+    const id = await paidWhileFull();
+    h.reset();
+    await h.callback(ADMIN, `bj:${id}`, reviewMessage);
+    expect(h.calls("refundStarPayment").map((c) => c.payload)).toEqual([
+      { user_id: buyer.id, telegram_payment_charge_id: "late_charge" },
+    ]);
+    const notice = h.calls("sendMessage").find((c) => c.payload.chat_id === buyer.id);
+    expect(notice?.payload.text).toContain("你的推广没能上线，Stars 已原路退回");
   });
 });
 

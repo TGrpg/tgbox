@@ -68,8 +68,9 @@ export function OrdersTab() {
 
   const total = list.data?.total ?? 0;
   const pages = Math.max(1, Math.ceil(total / ORDERS_PAGE_SIZE));
+  // A paid order is either a brand ad awaiting review or a pin paid while its placement was full.
   const actions = (order: OrderRow, wide?: boolean) =>
-    !isEntryProduct(order.kind) && order.status === "paid" ? (
+    order.status === "paid" ? (
       <div className={wide ? "flex gap-2 *:flex-1" : "flex justify-end gap-2"}>
         <Button
           size={wide ? "default" : "sm"}
@@ -77,7 +78,7 @@ export function OrdersTab() {
           onClick={() => setRejecting(order)}
         >
           <XIcon aria-hidden />
-          拒绝
+          {isEntryProduct(order.kind) ? "退款" : "拒绝"}
         </Button>
         <Button
           size={wide ? "default" : "sm"}
@@ -85,7 +86,7 @@ export function OrdersTab() {
           onClick={() => approve.mutate(order.id)}
         >
           <CheckIcon aria-hidden />
-          通过
+          {isEntryProduct(order.kind) ? "上线" : "通过"}
         </Button>
       </div>
     ) : null;
@@ -280,8 +281,10 @@ function OrderStatusBadge({ order }: { order: OrderRow }) {
   return (
     <div className="flex flex-col items-start gap-1">
       <Badge variant={orderStatusVariants[order.status]}>
-        {!isEntryProduct(order.kind) && order.status === "paid"
-          ? "待审核"
+        {order.status === "paid"
+          ? isEntryProduct(order.kind)
+            ? "等待名额"
+            : "待审核"
           : orderStatusLabels[order.status]}
       </Badge>
       {order.note && (
@@ -320,18 +323,19 @@ function useApproveOrder() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (orderId: number) => $approveOrder({ data: { orderId } }),
-    onSuccess: (result) =>
-      result.ok
-        ? toastManager.add({
-            type: "success",
-            title: "广告已上线",
-            description: "已标记网站待构建",
-          })
-        : toastManager.add({
-            type: "error",
-            title: "订单已被处理",
-            description: "不再是待审核状态",
-          }),
+    onSuccess: (result) => {
+      if (result.ok) {
+        toastManager.add({ type: "success", title: "已上线", description: "已标记网站待构建" });
+      } else if (result.error === "no_slots") {
+        toastManager.add({
+          type: "warning",
+          title: "名额仍然是满的",
+          description: "等有名额空出再上线，或给买家退款",
+        });
+      } else {
+        toastManager.add({ type: "error", title: "订单已被处理", description: "不再是待处理状态" });
+      }
+    },
     onError: (error) =>
       toastManager.add({ type: "error", title: "操作失败", description: error.message }),
     onSettled: () => invalidate(queryClient, ...settleKeys),
@@ -364,7 +368,7 @@ function RejectForm({ order }: { order: OrderRow }) {
           <DialogTitle>{result.ok ? "订单已拒绝" : "订单已被处理"}</DialogTitle>
           <DialogDescription>
             {!result.ok
-              ? "该订单不再是待审核状态，列表已刷新。"
+              ? "该订单不再是待处理状态，列表已刷新。"
               : result.refunded
                 ? "Stars 已自动退还给买家。"
                 : result.provider === "cryptopay"
@@ -389,7 +393,9 @@ function RejectForm({ order }: { order: OrderRow }) {
   return (
     <>
       <DialogHeader>
-        <DialogTitle>拒绝广告订单 #{order.id}</DialogTitle>
+        <DialogTitle>
+          {isEntryProduct(order.kind) ? "退款" : "拒绝广告"}订单 #{order.id}
+        </DialogTitle>
         <DialogDescription>
           {order.provider === "stars"
             ? "拒绝后会自动退还 Stars。"

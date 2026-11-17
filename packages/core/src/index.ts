@@ -60,7 +60,6 @@ export {
   watchUsdtPayments,
 } from "./payments/usdt-watch.ts";
 export {
-  approveAdOrder,
   checkOrderSlots,
   checkSlots,
   createManualPromotion,
@@ -73,6 +72,7 @@ export {
   rejectOrder,
   runPromotionMaintenance,
   setPlacementSlots,
+  startPaidOrder,
   upsertProduct,
 } from "./promotions.ts";
 export { publishEntryToChannel } from "./publish.ts";

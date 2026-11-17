@@ -147,17 +147,28 @@ export async function markOrderPaidRow(
  * paid → active and the promotion it starts, in one batch (a D1 batch is a transaction), so an
  * order is never active with nothing to show. The promotion is copied from the order row and only
  * written when this batch made it active. Returns the new promotion's id, or null if the order
- * was not `paid`.
+ * was not `paid` or its placement has no free slot.
+ *
+ * The slot check is part of the UPDATE, so two payments racing for the last slot can't both start:
+ * live promotions of the kind (in the entry's category, for category pins) must be fewer than the
+ * placement's size. Raw SQL because the correlated subqueries must name `orders` explicitly.
  */
 export async function activateOrderRow(
   db: Db,
   input: { id: number; startsAt: number; endsAt: number },
 ) {
   const [, inserted] = await batchWrite(db, [
-    db
-      .update(orders)
-      .set({ status: "active", startsAt: input.startsAt, endsAt: input.endsAt })
-      .where(and(eq(orders.id, input.id), eq(orders.status, "paid"))),
+    sql`UPDATE orders SET status = 'active', starts_at = ${input.startsAt}, ends_at = ${input.endsAt}
+      WHERE id = ${input.id} AND status = 'paid'
+        AND (
+          SELECT COUNT(*) FROM promotions AS live
+          WHERE live.kind = orders.kind AND live.ends_at > ${input.startsAt}
+            AND (orders.kind <> 'category_pin' OR live.entry_username IN (
+              SELECT username FROM entries WHERE category_id = (
+                SELECT category_id FROM entries WHERE username = orders.target_username
+              )
+            ))
+        ) < (SELECT COALESCE(MAX(slots), 0) FROM products WHERE kind = orders.kind)`,
     // `starts_at` is this call's own timestamp; the NOT EXISTS keeps a concurrent activation in the
     // same millisecond (whose update changed nothing) from adding a second row.
     sql`INSERT INTO promotions (kind, order_id, entry_username, banner, starts_at, ends_at, created_at)

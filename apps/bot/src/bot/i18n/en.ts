@@ -221,6 +221,13 @@ export const en: typeof zh = {
     paidEntry: (t: PromotionTarget, days: number) =>
       `✅ Payment received! Your ${enTarget(t)} is live for ${days} days. The site updates in a few minutes.`,
     paidAd: "✅ Payment received! Your ad is awaiting review; you'll be notified of the result.",
+    paidWaiting: (t: PromotionTarget) =>
+      `✅ Payment received! But the slots for your ${enTarget(t)} filled up just now. It goes live as soon as one frees up, and you'll be told; if you'd rather not wait, contact support for a refund.`,
+    entryStarted: (t: PromotionTarget, endsAt: number) =>
+      `🎉 Your promotion (${enTarget(t)}) is live until ${utcTime(endsAt)}. The site updates in a few minutes.`,
+    slotRefunded: "Sorry, your promotion couldn't go live. Your Stars were refunded.",
+    slotRefundManual: (orderId: number, support: string | null) =>
+      `Sorry, your promotion couldn't go live. Please contact support${support ? ` @${support}` : ""} for a refund (order #${orderId}).`,
     adApproved: (t: PromotionTarget, endsAt: number) =>
       `🎉 Your ad (${enTarget(t)}) was approved and is live until ${utcTime(endsAt)}.`,
     adRejectedRefunded: "Sorry, your ad was not approved. Your Stars were refunded.",
@@ -302,6 +309,18 @@ export const en: typeof zh = {
       `❌ Rejected (${name})${refunded ? ", refunded automatically" : `, refund ${amount} by hand`}`,
     orphanPayment: (orderId: number, provider: string, chargeId: string, amount: string) =>
       `⚠️ Payment for invalid order #${orderId} (${provider} ${chargeId}, ${amount}). Check and refund by hand.`,
+    slotWaiting: (o: PromotionTarget & { id: number; amount: string; buyerId: number }) =>
+      [
+        "⏳ Paid, but every slot is taken",
+        `Order #${o.id}: ${enTarget(o)}`,
+        `Paid: ${o.amount}`,
+        `Buyer: ${o.buyerId}`,
+        "",
+        "Tap Start once a slot frees up, or Refund rather than keep the buyer waiting.",
+      ].join("\n"),
+    startNow: "▶️ Start",
+    refund: "↩️ Refund",
+    stillFull: "Still no free slot. Start it once one frees up.",
     banUsage: "Usage: /ban <userId|@username> [reason]",
     unbanUsage: "Usage: /unban <userId|@username>",
     banned: (target: string) => `Banned ${target}`,

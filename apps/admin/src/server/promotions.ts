@@ -1,4 +1,4 @@
-import { type Actor, approveAdOrder, type CoreContext, rejectOrder } from "@tgbox/core";
+import { type Actor, type CoreContext, rejectOrder, startPaidOrder } from "@tgbox/core";
 import { listOrders, listProducts } from "@tgbox/db";
 import { entryProductKinds, OrderStatus, ProductKind } from "@tgbox/shared";
 import { z } from "zod";
@@ -42,10 +42,17 @@ export const RejectOrderInput = OrderReviewInput.extend({
   reason: z.string().trim().max(200),
 });
 
-/** Approves a paid brand-ad order; `not_awaiting_review` when someone else handled it first. */
+/**
+ * Starts a paid order: approves a brand ad, or starts a pin paid while its placement was full.
+ * `not_awaiting_review` when someone else handled it first, `no_slots` while the placement is full.
+ */
 export async function approveOrder(core: CoreContext, input: { orderId: number; actor: Actor }) {
-  const order = await approveAdOrder(core, input);
-  return order ? { ok: true as const } : { ok: false as const, error: "not_awaiting_review" };
+  const result = await startPaidOrder(core, input);
+  if (result.ok) return { ok: true as const };
+  return {
+    ok: false as const,
+    error: result.error === "no_slots" ? ("no_slots" as const) : ("not_awaiting_review" as const),
+  };
 }
 
 /** Rejects a paid order; Stars payments are refunded by core, other providers by hand. */
