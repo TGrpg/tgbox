@@ -291,25 +291,45 @@ export async function rejectOrder(
     reason: input.reason ?? null,
   });
 
-  let refunded = false;
-  if (order.provider === "stars" && order.chargeId && ctx.config.BOT_TOKEN) {
-    const ok = await refundStars(ctx, { userId: order.tgUserId, chargeId: order.chargeId }).catch(
+  const refunded =
+    order.provider === "stars" && ctx.config.BOT_TOKEN
+      ? (await refundOrder(ctx, { orderId: order.id, actor: input.actor }))?.refunded === true
+      : false;
+  return { order: (await getOrder(ctx.db, order.id)) ?? order, refunded };
+}
+
+/**
+ * rejected → refunded. Stars go back through the Bot API, which is safe to retry: a charge Telegram
+ * already refunded counts as done. Other providers are refunded by hand, and an admin confirms it
+ * with `manual: true`. Null when the order isn't rejected-and-unrefunded; `refunded: false` when
+ * the Stars refund failed again (the order stays rejected, ready for another try).
+ */
+export async function refundOrder(
+  ctx: CoreContext,
+  input: { orderId: number; actor: Actor; manual?: boolean },
+) {
+  const order = await getOrder(ctx.db, input.orderId);
+  if (order?.status !== "rejected") return null;
+  if (!input.manual) {
+    if (order.provider !== "stars" || !order.chargeId || !ctx.config.BOT_TOKEN) return null;
+    const { chargeId } = order;
+    const ok = await refundStars(ctx, { userId: order.tgUserId, chargeId }).catch(
       (error: unknown) => {
         console.error("stars refund failed", error);
         return false;
       },
     );
-    if (ok) {
-      refunded = await setOrderStatus(ctx.db, { id: order.id, from: "rejected", to: "refunded" });
-      if (refunded) {
-        await audit(ctx, input.actor, "order.refund", orderTarget(order.id), {
-          provider: order.provider,
-          amount: order.amount,
-        });
-      }
-    }
+    if (!ok) return { order, refunded: false };
   }
-  return { order: (await getOrder(ctx.db, order.id)) ?? order, refunded };
+  if (!(await setOrderStatus(ctx.db, { id: order.id, from: "rejected", to: "refunded" }))) {
+    return null;
+  }
+  await audit(ctx, input.actor, "order.refund", orderTarget(order.id), {
+    provider: order.provider,
+    amount: order.amount,
+    ...(input.manual ? { manual: true } : {}),
+  });
+  return { order: (await getOrder(ctx.db, order.id)) ?? order, refunded: true };
 }
 
 const validDays = (days: number) => Number.isInteger(days) && days >= 1 && days <= MAX_DAYS;

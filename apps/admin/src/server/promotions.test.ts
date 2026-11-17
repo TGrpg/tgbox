@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 const core = vi.hoisted(() => ({
   startPaidOrder: vi.fn(),
+  refundOrder: vi.fn(),
   rejectOrder: vi.fn(),
   promotionClickTotals: vi.fn(),
 }));
@@ -14,7 +15,9 @@ const db = vi.hoisted(() => ({
 vi.mock("@tgbox/core", () => core);
 vi.mock("@tgbox/db", () => db);
 
-const { loadOrders, rejectPaidOrder, approveOrder } = await import("./promotions.ts");
+const { loadOrders, rejectPaidOrder, approveOrder, refundRejectedOrder } = await import(
+  "./promotions.ts"
+);
 
 const ctx = { now: () => Date.UTC(2026, 8, 17) } as CoreContext;
 
@@ -73,6 +76,16 @@ test("approveOrder reports orders already handled and placements still full", as
     ok: false,
     error: "no_slots",
   });
+});
+
+test("refundRejectedOrder passes the admin on and reports orders that can't be refunded", async () => {
+  core.refundOrder
+    .mockResolvedValueOnce({ order: { id: 4 }, refunded: false })
+    .mockResolvedValueOnce(null);
+  const input = { orderId: 4, manual: false, actor: "tg:900" } as const;
+  expect(await refundRejectedOrder(ctx, input)).toEqual({ ok: true, refunded: false });
+  expect(core.refundOrder).toHaveBeenCalledWith(ctx, input);
+  expect(await refundRejectedOrder(ctx, input)).toEqual({ ok: false, error: "not_refundable" });
 });
 
 test("loadOrders names products, counts clicks and keeps provider ids on the server", async () => {

@@ -22,7 +22,9 @@ import {
   PlacementSlotsInput,
   ProductInput,
   PromotionIdInput,
+  RefundOrderInput,
   RejectOrderInput,
+  refundRejectedOrder,
   rejectPaidOrder,
 } from "@/server/promotions.ts";
 
@@ -58,6 +60,13 @@ export const $rejectOrder = createServerFn({ method: "POST" })
   .inputValidator(RejectOrderInput)
   .handler(({ data, context }) =>
     rejectPaidOrder(context.core, { ...data, actor: context.auth.actor }),
+  );
+
+export const $refundOrder = createServerFn({ method: "POST" })
+  .middleware([adminMiddleware])
+  .inputValidator(RefundOrderInput)
+  .handler(({ data, context }) =>
+    refundRejectedOrder(context.core, { ...data, actor: context.auth.actor }),
   );
 
 /* -------------------------------------------------------------- promotions */

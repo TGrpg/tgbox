@@ -8,6 +8,7 @@ import {
   endPromotion,
   extendPromotion,
   markOrderPaid,
+  refundOrder,
   rejectOrder,
   runPromotionMaintenance,
   setPlacementSlots,
@@ -310,6 +311,51 @@ describe("paying", () => {
       "order.reject",
       "order.refund",
     ]);
+  });
+
+  test("a Stars refund that failed can be retried, and only once it succeeds is it refunded", async () => {
+    const { ctx } = await setup({ BOT_TOKEN: "123:bot" });
+    const created = await order(ctx, BANNER_7, { banner });
+    await markOrderPaid(ctx, starsPayment(created.id, "tg-charge"));
+    const down = {
+      ...ctx,
+      fetch: async () => Response.json({ ok: false, description: "Internal Server Error" }),
+    };
+
+    expect(await rejectOrder(down, { orderId: created.id, actor })).toMatchObject({
+      refunded: false,
+      order: { status: "rejected" },
+    });
+    expect(await refundOrder(down, { orderId: created.id, actor })).toMatchObject({
+      refunded: false,
+      order: { status: "rejected" },
+    });
+
+    expect(await refundOrder(ctx, { orderId: created.id, actor })).toMatchObject({
+      refunded: true,
+      order: { status: "refunded" },
+    });
+    expect(await refundOrder(ctx, { orderId: created.id, actor })).toBeNull();
+    expect((await auditRows()).filter((row) => row.action === "order.refund")).toHaveLength(1);
+  });
+
+  test("a USDT refund done by hand is recorded by an admin; it can't be sent as Stars", async () => {
+    const { ctx, telegram } = await setup({ BOT_TOKEN: "123:bot" });
+    const created = await order(ctx, BANNER_7, { banner });
+    await markOrderPaid(ctx, {
+      orderId: created.id,
+      provider: "usdt",
+      chargeId: "tx",
+      amount: "20.0001",
+      currency: "USDT",
+    });
+    await rejectOrder(ctx, { orderId: created.id, actor });
+    expect(await refundOrder(ctx, { orderId: created.id, actor })).toBeNull();
+    expect(await refundOrder(ctx, { orderId: created.id, actor, manual: true })).toMatchObject({
+      refunded: true,
+      order: { status: "refunded" },
+    });
+    expect(telegram).toEqual([]);
   });
 
   test("rejecting a USDT banner leaves the refund to an admin", async () => {

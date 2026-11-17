@@ -1,4 +1,10 @@
-import { type Actor, type CoreContext, rejectOrder, startPaidOrder } from "@tgbox/core";
+import {
+  type Actor,
+  type CoreContext,
+  refundOrder,
+  rejectOrder,
+  startPaidOrder,
+} from "@tgbox/core";
 import { listOrders, listProducts } from "@tgbox/db";
 import { entryProductKinds, OrderStatus, ProductKind } from "@tgbox/shared";
 import { z } from "zod";
@@ -67,6 +73,21 @@ export async function rejectPaidOrder(
   });
   if (!result) return { ok: false as const, error: "not_awaiting_review" };
   return { ok: true as const, refunded: result.refunded, provider: result.order.provider };
+}
+
+export const RefundOrderInput = OrderReviewInput.extend({ manual: z.boolean() });
+
+/**
+ * Retries the Stars refund of a rejected order, or (`manual`) records that an admin refunded it by
+ * hand. `not_refundable` when it isn't a rejected, unrefunded order (or a manual one sent as Stars).
+ */
+export async function refundRejectedOrder(
+  core: CoreContext,
+  input: { orderId: number; manual: boolean; actor: Actor },
+) {
+  const result = await refundOrder(core, input);
+  if (!result) return { ok: false as const, error: "not_refundable" };
+  return { ok: true as const, refunded: result.refunded };
 }
 
 const username = z.string().trim().min(1).max(100);

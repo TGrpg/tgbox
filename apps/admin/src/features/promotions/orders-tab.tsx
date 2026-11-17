@@ -1,8 +1,25 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { isEntryProduct, type OrderStatus } from "@tgbox/shared";
-import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, ReceiptIcon, XIcon } from "lucide-react";
+import {
+  CheckIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ReceiptIcon,
+  Undo2Icon,
+  XIcon,
+} from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
+import {
+  AlertDialog,
+  AlertDialogClose,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogPopup,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/coss/ui/alert-dialog.tsx";
 import { Badge } from "@/components/coss/ui/badge.tsx";
 import { Button } from "@/components/coss/ui/button.tsx";
 import { Card } from "@/components/coss/ui/card.tsx";
@@ -39,6 +56,7 @@ import { UserChip } from "@/components/user-chip.tsx";
 import { OptionSelect } from "@/features/entries/option-select.tsx";
 import {
   $approveOrder,
+  $refundOrder,
   $rejectOrder,
   ORDERS_PAGE_SIZE,
   type OrderRow,
@@ -65,12 +83,62 @@ export function OrdersTab() {
   const [rejecting, setRejecting] = useState<OrderRow | null>(null);
   const list = useQuery(ordersQueryOptions(status, page));
   const approve = useApproveOrder();
+  const refund = useRefundOrder();
 
   const total = list.data?.total ?? 0;
   const pages = Math.max(1, Math.ceil(total / ORDERS_PAGE_SIZE));
+  // A rejected order that wasn't refunded: Stars can be retried, anything else is refunded by
+  // hand and then recorded here.
+  const refundAction = (order: OrderRow, wide?: boolean) => {
+    const size = wide ? "default" : "sm";
+    const pending = refund.isPending && refund.variables?.orderId === order.id;
+    return (
+      <div className={wide ? "flex gap-2 *:flex-1" : "flex justify-end gap-2"}>
+        {order.provider === "stars" ? (
+          <Button
+            size={size}
+            variant="outline"
+            loading={pending}
+            onClick={() => refund.mutate({ orderId: order.id, manual: false })}
+          >
+            <Undo2Icon aria-hidden />
+            重试退款
+          </Button>
+        ) : (
+          <AlertDialog>
+            <AlertDialogTrigger render={<Button size={size} variant="outline" loading={pending} />}>
+              <Undo2Icon aria-hidden />
+              标记已退款
+            </AlertDialogTrigger>
+            <AlertDialogPopup>
+              <AlertDialogHeader>
+                <AlertDialogTitle>确认已退款订单 #{order.id}？</AlertDialogTitle>
+                <AlertDialogDescription>
+                  只做记录，不会转账。请先把 {formatAmount(order.amount, order.currency)}{" "}
+                  退给买家，再点确认。
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogClose render={<Button variant="ghost" />}>取消</AlertDialogClose>
+                <AlertDialogClose
+                  render={<Button />}
+                  onClick={() => refund.mutate({ orderId: order.id, manual: true })}
+                >
+                  已退款
+                </AlertDialogClose>
+              </AlertDialogFooter>
+            </AlertDialogPopup>
+          </AlertDialog>
+        )}
+      </div>
+    );
+  };
+
   // A paid order is either a brand ad awaiting review or a pin paid while its placement was full.
   const actions = (order: OrderRow, wide?: boolean) =>
-    order.status === "paid" ? (
+    order.status === "rejected" ? (
+      refundAction(order, wide)
+    ) : order.status === "paid" ? (
       <div className={wide ? "flex gap-2 *:flex-1" : "flex justify-end gap-2"}>
         <Button
           size={wide ? "default" : "sm"}
@@ -334,6 +402,29 @@ function useApproveOrder() {
         });
       } else {
         toastManager.add({ type: "error", title: "订单已被处理", description: "不再是待处理状态" });
+      }
+    },
+    onError: (error) =>
+      toastManager.add({ type: "error", title: "操作失败", description: error.message }),
+    onSettled: () => invalidate(queryClient, ...settleKeys),
+  });
+}
+
+function useRefundOrder() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { orderId: number; manual: boolean }) => $refundOrder({ data: input }),
+    onSuccess: (result) => {
+      if (!result.ok) {
+        toastManager.add({ type: "error", title: "订单已被处理", description: "不再是待退款状态" });
+      } else if (result.refunded) {
+        toastManager.add({ type: "success", title: "已退款" });
+      } else {
+        toastManager.add({
+          type: "error",
+          title: "Stars 退款仍然失败",
+          description: "稍后再试；一直失败就请在 Telegram 里人工处理",
+        });
       }
     },
     onError: (error) =>

@@ -69,6 +69,7 @@ export {
   MAX_SLOTS,
   markOrderPaid,
   type PromotionContentError,
+  refundOrder,
   rejectOrder,
   runPromotionMaintenance,
   setPlacementSlots,
