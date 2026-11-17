@@ -136,8 +136,8 @@ export const zhHant = {
   },
   supportChat: {
     /** /support while the relay is on. */
-    ask: "有任何問題，直接在這裡發消息就好，客服會盡快回復。",
-    sent: "✅ 已轉達客服，請稍候。",
+    ask: "有任何問題，直接在這裡發消息就好，客服會盡快回復。要提交收錄，直接發送頻道、群組或機器人鏈接即可。",
+    sent: "✅ 已轉達客服，請稍候。要提交收錄，直接發送鏈接即可。",
     unavailable: "客服暫時無法接收消息，請稍後再試。",
   },
   friendLink: {
@@ -166,8 +166,6 @@ export const zhHant = {
   sendLink: "請發送要提交的頻道、群組或機器人鏈接（https://t.me/xxx、t.me/xxx 或 @xxx）。",
   invalidLink:
     "無法識別鏈接。請發送 https://t.me/xxx、t.me/xxx 或 @xxx 格式的公開用戶名（邀請鏈接不支持）。",
-  /** Bilingual on purpose: shown before a message that looked like a link is relayed to support. */
-  maybeSubmission: "想收錄這個鏈接？請用 /submit 提交。 / To submit a link, use /submit.",
   alreadyListed: (username: string) => `@${username} 已經收錄，無需重複提交。`,
   alreadyPending: (username: string) => `@${username} 已在審核中，請耐心等待。`,
   dailyLimit: (limit: number) => `今天的提交次數已達上限（${limit} 次），請明天再試。`,

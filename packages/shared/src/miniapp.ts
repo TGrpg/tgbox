@@ -70,6 +70,8 @@ export const SubmitError = z.enum([
   "already_pending",
   "daily_limit",
   "banned",
+  /** t.me didn't answer; nothing is wrong with the link, try again. */
+  "unavailable",
 ]);
 export type SubmitError = z.infer<typeof SubmitError>;
 
@@ -101,7 +103,7 @@ export type AppPreview = z.infer<typeof AppPreview>;
 
 export const PreviewResult = z.discriminatedUnion("ok", [
   z.object({ ok: z.literal(true), preview: AppPreview }),
-  z.object({ ok: z.literal(false), error: z.enum(["invalid", "not_found"]) }),
+  z.object({ ok: z.literal(false), error: z.enum(["invalid", "not_found", "unavailable"]) }),
 ]);
 export type PreviewResult = z.infer<typeof PreviewResult>;
 

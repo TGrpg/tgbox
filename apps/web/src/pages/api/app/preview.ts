@@ -57,7 +57,12 @@ export const GET: APIRoute = async ({ request, url }) => {
     now: new Date(core.now()),
     knownKind: null,
     needCreatedAt: false,
+    retry: true,
   });
+  // t.me didn't answer: say so, rather than claim the page doesn't exist.
+  if (snap.liveness === "unknown") {
+    return appJson({ ok: false, error: "unavailable" } satisfies PreviewResult);
+  }
   const kind = entryKinds.find((entryKind) => entryKind === snap.kind);
   // A user account is a valid t.me page but not something this directory lists.
   if (snap.liveness !== "active" || !kind || !snap.profile) {

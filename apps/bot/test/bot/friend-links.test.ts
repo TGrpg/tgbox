@@ -94,6 +94,20 @@ describe("friend link applications", () => {
     expect(String(h.calls("editMessageText")[0]?.payload.text)).toContain("❌ 已拒绝");
   });
 
+  test("a Telegram link sent mid-application is a submission, not the site address", async () => {
+    await h.message(owner, "/start links");
+    await h.message(owner, "https://t.me/sample_channel");
+    // The draft left is the submission's own.
+    expect((await getBotDraft(db, owner.id, Date.now()))?.step).toBe("choosing_category");
+    expect(h.lastText()).toContain("Choose a category");
+  });
+
+  test("/start leaves an unfinished application", async () => {
+    await h.message(owner, "/start links");
+    await h.message(owner, "/start");
+    expect(await getBotDraft(db, owner.id, Date.now())).toBeUndefined();
+  });
+
   test("one open application at a time", async () => {
     await apply();
     await apply("https://other.example/");

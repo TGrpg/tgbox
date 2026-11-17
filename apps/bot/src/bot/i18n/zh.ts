@@ -135,8 +135,8 @@ export const zh = {
   },
   supportChat: {
     /** /support while the relay is on. */
-    ask: "有任何问题，直接在这里发消息就好，客服会尽快回复。",
-    sent: "✅ 已转达客服，请稍候。",
+    ask: "有任何问题，直接在这里发消息就好，客服会尽快回复。要提交收录，直接发送频道、群组或机器人链接即可。",
+    sent: "✅ 已转达客服，请稍候。要提交收录，直接发送链接即可。",
     unavailable: "客服暂时无法接收消息，请稍后再试。",
   },
   friendLink: {
@@ -165,8 +165,6 @@ export const zh = {
   sendLink: "请发送要提交的频道、群组或机器人链接（https://t.me/xxx、t.me/xxx 或 @xxx）。",
   invalidLink:
     "无法识别链接。请发送 https://t.me/xxx、t.me/xxx 或 @xxx 格式的公开用户名（邀请链接不支持）。",
-  /** Bilingual on purpose: shown before a message that looked like a link is relayed to support. */
-  maybeSubmission: "想收录这个链接？请用 /submit 提交。 / To submit a link, use /submit.",
   alreadyListed: (username: string) => `@${username} 已经收录，无需重复提交。`,
   alreadyPending: (username: string) => `@${username} 已在审核中，请耐心等待。`,
   dailyLimit: (limit: number) => `今天的提交次数已达上限（${limit} 次），请明天再试。`,

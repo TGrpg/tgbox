@@ -164,7 +164,7 @@ describe("submission flow", () => {
     h.rejectTelegram();
     const response = await h.message(owner, "https://t.me/blocked_owner_channel");
     expect(response.status).toBe(200);
-    expect((await h.message(owner, "/start")).status).toBe(200);
+    expect((await h.message(owner, "/help")).status).toBe(200);
     expect(await getBotDraft(db, owner.id, Date.now())).toMatchObject({
       step: "choosing_category",
     });
@@ -279,11 +279,10 @@ describe("submission flow", () => {
       ["a too-short username", "@ab"],
       ["a broken t.me link", "https://t.me/+AbCdEf123"],
       ["a link with a typo", "t.me/ab"],
-    ])("%s is relayed, but the buyer is pointed at /submit first", async (_label, text) => {
+    ])("%s is relayed, but the buyer is told why it wasn't submitted", async (_label, text) => {
       await h.message(owner, text);
       const replies = h.calls("sendMessage").filter((c) => c.payload.chat_id === owner.id);
-      expect(String(replies[0]?.payload.text)).toContain("/submit");
-      expect(String(replies[0]?.payload.text)).toContain("To submit a link");
+      expect(String(replies[0]?.payload.text)).toContain("无法识别链接");
       // The message still reaches support: nothing is swallowed.
       expect(h.calls("copyMessage")[0]?.payload).toMatchObject({
         chat_id: String(SUPPORT_GROUP),
@@ -294,7 +293,7 @@ describe("submission flow", () => {
     test("an ordinary question is relayed without the hint", async () => {
       await h.message(owner, "为什么我的频道被拒绝了？");
       const texts = h.calls("sendMessage").map((c) => String(c.payload.text));
-      expect(texts.some((text) => text.includes("/submit"))).toBe(false);
+      expect(texts.some((text) => text.includes("无法识别链接"))).toBe(false);
       expect(h.calls("copyMessage")).toHaveLength(1);
     });
   });
