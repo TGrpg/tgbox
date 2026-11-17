@@ -148,6 +148,13 @@
       "when": 1792041639000,
       "tag": "0021_bot_start_payload",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "6",
+      "when": 1794905342610,
+      "tag": "0022_requeue_stale_translations",
+      "breakpoints": true
     }
   ]
 }

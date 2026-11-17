@@ -195,6 +195,8 @@ export async function updateEntryCold(db: Db, id: number, fields: ColdFields, no
       : {
           descriptionZh: sql`CASE WHEN ${descriptionChanged} THEN NULL ELSE ${entries.descriptionZh} END`,
           descriptionEn: sql`CASE WHEN ${descriptionChanged} THEN NULL ELSE ${entries.descriptionEn} END`,
+          // Requeues the entry for translation; nothing else does.
+          descriptionTranslatedAt: sql`CASE WHEN ${descriptionChanged} THEN NULL ELSE ${entries.descriptionTranslatedAt} END`,
         };
   const changed = or(
     differs(entries.username, values.username),

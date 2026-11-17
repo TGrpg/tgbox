@@ -55,6 +55,7 @@ test("entries without a current translation are queued, oldest attempt first", a
 
   await setEntryTranslation(db, {
     entryId: cn,
+    description: "每天更新的资源频道",
     locale: "en",
     text: "A daily resource channel",
     now: NOW,
@@ -68,6 +69,7 @@ test("a translation stamped in the future is retried instead of freezing the ent
   const id = await listEntry("skewed", "一个频道", "zh");
   await setEntryTranslation(db, {
     entryId: id,
+    description: "一个频道",
     locale: "en",
     text: "A channel",
     now: NOW + 60_000,
@@ -78,8 +80,15 @@ test("a translation stamped in the future is retried instead of freezing the ent
 
 test("a skipped entry is stamped so it isn't retried until its description changes", async () => {
   const id = await listEntry("short", "hi", "en");
-  expect((await stampTranslationSkipped(db, id, NOW)).rowsWritten).toBeGreaterThan(0);
+  expect(
+    (await stampTranslationSkipped(db, { entryId: id, description: "hi", now: NOW })).rowsWritten,
+  ).toBeGreaterThan(0);
   expect(await usernames()).toEqual([]);
+
+  // A new avatar or title is not a new description: no candidate, so no second stamp write.
+  await updateEntryCold(db, id, { title: "Short", avatarVersion: "v2" }, NOW + 500);
+  await setEntryStatus(db, id, "approved", NOW + 600);
+  expect(await usernames(10, NOW + 700)).toEqual([]);
 
   await updateEntryCold(db, id, { description: "A much longer description now" }, NOW + 1000);
   expect(await usernames()).toEqual(["short"]);
@@ -89,12 +98,14 @@ test("a new description drops both translations, another cold field keeps them",
   const id = await listEntry("news", "每天更新的资源频道", "zh");
   await setEntryTranslation(db, {
     entryId: id,
+    description: "每天更新的资源频道",
     locale: "en",
     text: "A daily resource channel",
     now: NOW,
   });
   await setEntryTranslation(db, {
     entryId: id,
+    description: "每天更新的资源频道",
     locale: "zh",
     text: "每天更新的资源频道",
     now: NOW,
@@ -126,16 +137,72 @@ test("an entry the model keeps failing on goes behind the rest instead of blocki
   await listEntry("fresh_b", "每天更新的资源频道 B", "zh");
   expect(await usernames(1)).toEqual(["stuck"]);
 
-  await stampTranslationFailed(db, stuck, NOW);
+  await stampTranslationFailed(db, { entryId: stuck, description: "每天更新的资源频道", now: NOW });
   expect(await usernames()).toEqual(["fresh_a", "fresh_b", "stuck"]);
   expect(await usernames(1)).toEqual(["fresh_a"]);
 });
 
 test("an edit that leaves the description alone doesn't queue a translated entry again", async () => {
   const id = await listEntry("avatar_change", "每天更新的资源频道", "zh");
-  await setEntryTranslation(db, { entryId: id, locale: "en", text: "A channel", now: NOW });
+  await setEntryTranslation(db, {
+    entryId: id,
+    description: "每天更新的资源频道",
+    locale: "en",
+    text: "A channel",
+    now: NOW,
+  });
   await updateEntryCold(db, id, { title: "New title", avatarVersion: "v2" }, NOW + 1000);
   expect(await usernames()).toEqual([]);
+});
+
+test("a translation of the old text that lands after a description edit is dropped", async () => {
+  const id = await listEntry("edited", "每天更新的资源频道", "zh");
+  const [candidate] = await listEntriesNeedingTranslation(db, 1, NOW);
+  if (!candidate) throw new Error("not queued");
+  // While the model works on the old text, a refresh brings a new description.
+  await updateEntryCold(db, id, { description: "改版后的全新简介" }, NOW + 1000);
+  const outcome = { entryId: id, description: candidate.description, now: NOW + 2000 };
+  expect(
+    (await setEntryTranslation(db, { ...outcome, locale: "en", text: "Old" })).rowsWritten,
+  ).toBe(0);
+  expect((await stampTranslationFailed(db, outcome)).rowsWritten).toBe(0);
+  expect((await stampTranslationSkipped(db, outcome)).rowsWritten).toBe(0);
+
+  const [row] = await listEntriesNeedingTranslation(db, 1, NOW + 3000);
+  expect(row).toMatchObject({
+    username: "edited",
+    description: "改版后的全新简介",
+    descriptionEn: null,
+    descriptionZh: null,
+  });
+});
+
+test("the migration requeues entries whose description changed under the old rule, only those", async () => {
+  const stale = await listEntry("stale", "每天更新的资源频道", "zh");
+  const current = await listEntry("current", "每天更新的资源频道", "zh");
+  const failed = await listEntry("failed", "每天更新的资源频道", "zh");
+  const set = (id: number, sql: string) =>
+    env.DB.prepare(`UPDATE entries SET ${sql} WHERE id = ?`).bind(id).run();
+  // Old rule: the description changed after the attempt, both translations were dropped.
+  await set(stale, `description_translated_at = ${NOW}, updated_at = ${NOW + 1000}`);
+  await set(
+    current,
+    `description_translated_at = ${NOW}, description_en = 'x', updated_at = ${NOW + 1000}`,
+  );
+  await set(failed, `description_translated_at = ${-NOW}, updated_at = ${NOW + 1000}`);
+
+  const migration = env.TEST_MIGRATIONS.find((m) => m.name.startsWith("0022_requeue"));
+  if (!migration) throw new Error("migration missing");
+  await env.DB.batch(migration.queries.map((query) => env.DB.prepare(query)));
+
+  const { results } = await env.DB.prepare(
+    "SELECT username, description_translated_at AS at FROM entries ORDER BY id",
+  ).all();
+  expect(results).toEqual([
+    { username: "stale", at: null },
+    { username: "current", at: NOW },
+    { username: "failed", at: -NOW },
+  ]);
 });
 
 test("only approved entries are translated", async () => {

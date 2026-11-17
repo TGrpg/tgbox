@@ -69,7 +69,11 @@ async function translateDescriptions(
     if (text.length < MIN_DESCRIPTION || text.length > MAX_DESCRIPTION) {
       // Stamped, so an unusable description isn't offered again until it changes.
       console.log("translation skipped", entry.username, text.length);
-      await stampTranslationSkipped(app.db, entry.id, now);
+      await stampTranslationSkipped(app.db, {
+        entryId: entry.id,
+        description: entry.description,
+        now,
+      });
       tally.skipped++;
       continue;
     }
@@ -85,16 +89,31 @@ async function translateDescriptions(
       if (!translated) {
         // An empty answer is the model's problem, not the entry's: retry it, after the others.
         console.error("translation returned nothing", entry.username);
-        await stampTranslationFailed(app.db, entry.id, now);
+        await stampTranslationFailed(app.db, {
+          entryId: entry.id,
+          description: entry.description,
+          now,
+        });
         tally.failed++;
         continue;
       }
-      await setEntryTranslation(app.db, { entryId: entry.id, locale, text: translated, now });
-      tally.translated++;
+      const { rowsWritten } = await setEntryTranslation(app.db, {
+        entryId: entry.id,
+        description: entry.description,
+        locale,
+        text: translated,
+        now,
+      });
+      // Zero when the description changed while the model was busy: nothing new to publish.
+      if (rowsWritten > 0) tally.translated++;
     } catch (error) {
       // One bad entry must not cost the rest of the batch, nor hold the head of the next one.
       console.error("translating failed", entry.username, error);
-      await stampTranslationFailed(app.db, entry.id, now).catch(() => {});
+      await stampTranslationFailed(app.db, {
+        entryId: entry.id,
+        description: entry.description,
+        now,
+      }).catch(() => {});
       tally.failed++;
     }
   }

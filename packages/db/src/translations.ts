@@ -14,12 +14,12 @@ export type TranslationCandidate = {
 };
 
 /**
- * Approved entries whose description has no current translation: never attempted, last attempt
- * failed (a negative stamp), the description changed since (`updateEntryCold` drops both
- * translations then, so any other edit — a new title or avatar — keeps the entry out), or stamped
- * in the future (a clock skew would otherwise freeze the entry forever). Ordered by when the entry
- * was last tried, never-tried first, so an entry that keeps failing goes to the back instead of
- * holding the head of every batch.
+ * Approved entries whose description has no current translation: never attempted (a description
+ * change resets the stamp, in `updateEntryCold`), last attempt failed (a negative stamp), or
+ * stamped in the future (a clock skew would otherwise freeze the entry forever). Other edits — a
+ * new title or avatar — leave the stamp alone, so they never queue an entry, skipped ones
+ * included. Ordered by when the entry was last tried, never-tried first, so an entry that keeps
+ * failing goes to the back instead of holding the head of every batch.
  */
 export function listEntriesNeedingTranslation(
   db: Db,
@@ -45,11 +45,6 @@ export function listEntriesNeedingTranslation(
         or(
           isNull(entries.descriptionTranslatedAt),
           lt(entries.descriptionTranslatedAt, 0),
-          and(
-            sql`${entries.descriptionTranslatedAt} < ${entries.updatedAt}`,
-            isNull(entries.descriptionZh),
-            isNull(entries.descriptionEn),
-          ),
           sql`${entries.descriptionTranslatedAt} > ${now}`,
         ),
       ),
@@ -59,18 +54,27 @@ export function listEntriesNeedingTranslation(
 }
 
 /**
+ * Every outcome below is written only while the entry still has the description that was sent to
+ * the model: an edit that landed meanwhile already reset the stamp and dropped the translations,
+ * and a late result for the old text must not undo that.
+ */
+const sameSource = (entryId: number, description: string) =>
+  and(eq(entries.id, entryId), eq(entries.description, description));
+
+/**
  * Stores one direction of a description translation and stamps the attempt. The stamp always
- * changes, so this always costs a row — that is what keeps the entry out of the next batch.
+ * changes, so this costs a row — that is what keeps the entry out of the next batch. Writes
+ * nothing (`rowsWritten: 0`) when the description changed in the meantime.
  */
 export async function setEntryTranslation(
   db: Db,
-  input: { entryId: number; locale: Locale; text: string; now: number },
+  input: { entryId: number; description: string; locale: Locale; text: string; now: number },
 ) {
   const column = input.locale === "en" ? "descriptionEn" : "descriptionZh";
   const result = await db
     .update(entries)
     .set({ [column]: input.text, descriptionTranslatedAt: input.now })
-    .where(eq(entries.id, input.entryId))
+    .where(sameSource(input.entryId, input.description))
     .run();
   return { rowsWritten: result.meta.rows_written };
 }
@@ -79,25 +83,31 @@ export async function setEntryTranslation(
  * Records a model failure as a negative stamp: the entry stays queued, behind everything tried
  * longer ago, so a description the model keeps failing on can't block the rest of the queue.
  */
-export async function stampTranslationFailed(db: Db, entryId: number, now: number) {
+export async function stampTranslationFailed(
+  db: Db,
+  input: { entryId: number; description: string; now: number },
+) {
   const result = await db
     .update(entries)
-    .set({ descriptionTranslatedAt: -now })
-    .where(eq(entries.id, entryId))
+    .set({ descriptionTranslatedAt: -input.now })
+    .where(sameSource(input.entryId, input.description))
     .run();
   return { rowsWritten: result.meta.rows_written };
 }
 
 /**
  * Records a translation attempt that produced nothing (description too short or too long), so the
- * entry isn't retried on every run. `updated_at` is untouched, so
- * the next real description change puts it back in the queue.
+ * entry isn't retried on every run. The next description change resets the stamp and puts it back
+ * in the queue.
  */
-export async function stampTranslationSkipped(db: Db, entryId: number, now: number) {
+export async function stampTranslationSkipped(
+  db: Db,
+  input: { entryId: number; description: string; now: number },
+) {
   const result = await db
     .update(entries)
-    .set({ descriptionTranslatedAt: now })
-    .where(eq(entries.id, entryId))
+    .set({ descriptionTranslatedAt: input.now })
+    .where(sameSource(input.entryId, input.description))
     .run();
   return { rowsWritten: result.meta.rows_written };
 }
