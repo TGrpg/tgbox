@@ -5,7 +5,12 @@ import {
   upsertProduct,
   watchUsdtPayments,
 } from "@tgbox/core";
-import { createUsdtPayment, getUsdtPayment, insertApprovedEntry } from "@tgbox/db";
+import {
+  createUsdtPayment,
+  expireUsdtPayments,
+  getUsdtPayment,
+  insertApprovedEntry,
+} from "@tgbox/db";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { actor, auditRows, db, NOW, setup } from "./fake.ts";
 
@@ -124,6 +129,27 @@ describe("quoting an order", () => {
     expect(await createUsdtPayment(db, { ...row, orderId: 101 })).toBeUndefined();
     expect((await getUsdtPayment(db, 100))?.amountMicro).toBe(row.amountMicro);
   });
+
+  test.each([false, true])(
+    "an expired quote must be replaced by a new order (swept: %s)",
+    async (swept) => {
+      const { order, product } = await withOrder(harness);
+      const first = await quoteUsdtOrder(harness.ctx, { orderId: order.id, productId: product.id });
+      if (!first.ok) throw new Error("quote failed");
+      if (swept) await expireUsdtPayments(db, NOW + 31 * MINUTE);
+      const before = await getUsdtPayment(db, order.id);
+      expect(
+        await quoteUsdtOrder(
+          { ...harness.ctx, now: () => NOW + 31 * MINUTE },
+          {
+            orderId: order.id,
+            productId: product.id,
+          },
+        ),
+      ).toEqual({ ok: false, error: "order_expired" });
+      expect(await getUsdtPayment(db, order.id)).toEqual(before);
+    },
+  );
 
   test("refuses when the method is off, rather than quoting an address nobody watches", async () => {
     const { order, product } = await withOrder(harness);

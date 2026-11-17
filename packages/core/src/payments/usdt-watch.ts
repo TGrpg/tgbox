@@ -33,7 +33,12 @@ export type UsdtQuote = {
   expiresAt: number;
 };
 
-export type UsdtQuoteError = "disabled" | "not_configured" | "product_unavailable" | "no_amount";
+export type UsdtQuoteError =
+  | "disabled"
+  | "not_configured"
+  | "product_unavailable"
+  | "no_amount"
+  | "order_expired";
 
 /**
  * Quotes an order in USDT: the receiving address plus an amount unique to this order, which is how
@@ -49,7 +54,10 @@ export async function quoteUsdtOrder(
   if (payments.usdtAddress === "") return { ok: false, error: "not_configured" };
 
   const existing = await getUsdtPayment(ctx.db, input.orderId);
-  if (existing?.status === "pending") {
+  if (existing) {
+    if (existing.status !== "pending" || existing.expiresAt <= ctx.now()) {
+      return { ok: false, error: "order_expired" };
+    }
     return {
       ok: true,
       quote: {
@@ -83,6 +91,9 @@ export async function quoteUsdtOrder(
       expiresAt: now + payments.usdtExpiryMinutes * MINUTE_MS,
     });
     if (stored) {
+      if (stored.status !== "pending" || stored.expiresAt <= ctx.now()) {
+        return { ok: false, error: "order_expired" };
+      }
       return {
         ok: true,
         quote: {
