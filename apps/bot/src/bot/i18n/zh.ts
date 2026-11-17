@@ -305,6 +305,7 @@ export const zh = {
     reject: "❌ 拒绝",
     back: "« 返回",
     approvedBy: (name: string) => `✅ 已通过（${name}）`,
+    listingFailed: "⚠️ 收录失败，已退回待审。请再点一次通过。",
     rejectedBy: (name: string, reason: string) => `❌ 已拒绝（${name}）：${reason}`,
     reasons: {
       content: "内容违规",

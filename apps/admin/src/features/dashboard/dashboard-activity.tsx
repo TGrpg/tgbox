@@ -17,6 +17,7 @@ import { invalidate } from "@/lib/query-keys.ts";
 const auditLabels: Record<string, string> = {
   "submission.approve": "通过提交",
   "submission.reject": "拒绝提交",
+  "submission.reopen": "退回待审",
   "entry.list": "手动收录",
   "entry.status": "修改状态",
   "entry.category": "修改分类",

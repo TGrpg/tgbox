@@ -249,6 +249,7 @@ export const en: typeof zh = {
     reject: "❌ Reject",
     back: "« Back",
     approvedBy: (name: string) => `✅ Approved (${name})`,
+    listingFailed: "⚠️ Listing failed; the submission is back in the queue. Tap approve again.",
     rejectedBy: (name: string, reason: string) => `❌ Rejected (${name}): ${reason}`,
     reasons: {
       content: "Content violation",

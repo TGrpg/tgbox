@@ -70,7 +70,7 @@ describe("reviewing submissions", () => {
     expect(await approveSubmission(ctx, { id, actor })).toBeNull();
     if (!approved) throw new Error("not approved");
 
-    const listed = await listApprovedSubmission(ctx, approved);
+    const listed = await listApprovedSubmission(ctx, approved, actor);
     expect(listed.created).toBe(true);
     expect(await getEntryByUsername(db, "review_me")).toMatchObject({
       id: listed.entryId,

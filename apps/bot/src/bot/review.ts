@@ -42,10 +42,15 @@ export function review(app: App) {
     await ctx.answerCallbackQuery({ text: (await app.m(ctx)).noPermission, show_alert: true });
   });
 
-  async function closeReview(ctx: Context, status: string) {
-    const original = ctx.callbackQuery?.message?.text ?? "";
+  async function closeReview(ctx: Context, status: string, keyboard?: InlineKeyboard) {
+    // A retry after a failed listing drops the earlier warning.
+    const original = (ctx.callbackQuery?.message?.text ?? "").replace(
+      `\n\n${admin.listingFailed}`,
+      "",
+    );
     await ctx.editMessageText(`${original}\n\n${status}`, {
       link_preview_options: { is_disabled: true },
+      ...(keyboard ? { reply_markup: keyboard } : {}),
     });
   }
 
@@ -68,10 +73,8 @@ export function review(app: App) {
   }
 
   composer.callbackQuery(/^ra:(\d+)$/, async (ctx) => {
-    const submission = await approveSubmission(app.core, {
-      id: Number(ctx.match[1]),
-      actor: tgActor(ctx.from.id),
-    });
+    const actor = tgActor(ctx.from.id);
+    const submission = await approveSubmission(app.core, { id: Number(ctx.match[1]), actor });
     if (!submission) {
       await answerAlreadyHandled(app, ctx);
       return;
@@ -81,7 +84,16 @@ export function review(app: App) {
     // answer (query too old) must not leave it without an entry.
     await app.background(async () => {
       // Also announces a new entry in the publish channel (see core).
-      await listApprovedSubmission(app.core, submission);
+      try {
+        await listApprovedSubmission(app.core, submission, actor);
+      } catch (error) {
+        // Core put it back to pending; the buttons are still on the message, so say to retry.
+        console.error("listing an approved submission failed", error);
+        await closeReview(ctx, admin.listingFailed, reviewKeyboard(submission.id)).catch(
+          (editError: unknown) => console.error("reporting the failed listing failed", editError),
+        );
+        return;
+      }
       await closeReview(ctx, admin.approvedBy(reviewerName(ctx))).catch((error: unknown) =>
         console.error("closing review failed", error),
       );

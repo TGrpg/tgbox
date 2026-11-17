@@ -10,6 +10,7 @@ import {
   listCategories,
   listTags,
   rejectSubmission as rejectSubmissionRow,
+  reopenSubmission as reopenSubmissionRow,
   type Submission,
 } from "@tgbox/db";
 import { entryKinds, MAX_TAGS, parseTelegramRef, type SubmitError } from "@tgbox/shared";
@@ -129,7 +130,8 @@ const reviewerIdOf = (actor: Actor) => (actor.startsWith("tg:") ? Number(actor.s
 
 /**
  * Pending → approved state transition. Returns the submission, or null if it was already handled.
- * The entry is listed by `listApprovedSubmission`, which the bot runs after answering Telegram.
+ * The entry is listed by `listApprovedSubmission`, which the bot runs after answering Telegram;
+ * transitioning first is what tells a second admin tapping at the same moment it's handled.
  */
 export async function approveSubmission(ctx: CoreContext, input: { id: number; actor: Actor }) {
   const submission = await getSubmission(ctx.db, input.id);
@@ -155,9 +157,27 @@ export async function markApproved(ctx: CoreContext, submission: Submission, act
 /**
  * Fetches the t.me profile and lists an approved submission; marks the site dirty. A newly created
  * entry is announced in the publish channel in the background (bot and admin approvals alike).
+ *
+ * If the entry can't be inserted, the submission goes back to pending and the error is rethrown:
+ * left approved with no entry, nothing would ever list it, and approving it again would only say
+ * it was handled.
  */
-export async function listApprovedSubmission(ctx: CoreContext, submission: Submission) {
-  const listed = await insertSubmissionEntry(ctx, submission);
+export async function listApprovedSubmission(
+  ctx: CoreContext,
+  submission: Submission,
+  actor: Actor,
+) {
+  let listed: Awaited<ReturnType<typeof insertSubmissionEntry>>;
+  try {
+    listed = await insertSubmissionEntry(ctx, submission);
+  } catch (error) {
+    if (await reopenSubmissionRow(ctx.db, submission.id)) {
+      await audit(ctx, actor, "submission.reopen", `submission:${submission.id}`, {
+        username: submission.username,
+      });
+    }
+    throw error;
+  }
   await announceListing(ctx, submission, listed.created);
   return listed;
 }

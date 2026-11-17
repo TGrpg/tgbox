@@ -480,6 +480,16 @@ export async function approveSubmission(
   return result.meta.changes > 0;
 }
 
+/** Approved → pending again, for an approval whose entry couldn't be listed. */
+export async function reopenSubmission(db: Db, id: number) {
+  const result = await db
+    .update(submissions)
+    .set({ status: "pending", reviewerId: null, reviewedAt: null })
+    .where(and(eq(submissions.id, id), eq(submissions.status, "approved")))
+    .run();
+  return result.meta.changes > 0;
+}
+
 export async function rejectSubmission(
   db: Db,
   id: number,

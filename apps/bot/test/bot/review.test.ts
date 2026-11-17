@@ -1,3 +1,4 @@
+import { env } from "cloudflare:workers";
 import {
   createSubmission,
   getEntryByUsername,
@@ -78,6 +79,43 @@ describe("reviewing submissions", () => {
     h.reset();
     await h.inline(ADMIN, "Telegram News");
     expect(h.calls("answerInlineQuery")[0]?.payload.results).toHaveLength(1);
+  });
+
+  test("an approval whose entry can't be listed goes back to pending and can be approved again", async () => {
+    await env.DB.prepare(
+      "CREATE TRIGGER fail_listing BEFORE INSERT ON entries BEGIN SELECT RAISE(ABORT, 'injected'); END",
+    ).run();
+    try {
+      await h.callback(ADMIN, `ra:${submissionId}`, adminMessage);
+    } finally {
+      await env.DB.prepare("DROP TRIGGER fail_listing").run();
+    }
+    expect(await getSubmission(db, submissionId)).toMatchObject({
+      status: "pending",
+      reviewerId: null,
+    });
+    expect(await getEntryByUsername(db, "review_me")).toBeUndefined();
+    const warning = h.calls("editMessageText")[0]?.payload;
+    expect(warning?.text).toContain("收录失败");
+    expect(JSON.stringify(warning?.reply_markup)).toContain(`ra:${submissionId}`);
+    expect(h.calls("sendMessage").filter((c) => c.payload.chat_id === submitter)).toEqual([]);
+    const { results } = await env.DB.prepare(
+      "SELECT action FROM audit_log WHERE target = ? ORDER BY id DESC LIMIT 2",
+    )
+      .bind(`submission:${submissionId}`)
+      .all();
+    expect(results.map((row) => row.action)).toEqual(["submission.reopen", "submission.approve"]);
+
+    h.reset();
+    await h.callback(ADMIN, `ra:${submissionId}`, {
+      ...adminMessage,
+      text: String(warning?.text),
+    });
+    expect(await getSubmission(db, submissionId)).toMatchObject({ status: "approved" });
+    expect(await getEntryByUsername(db, "review_me")).toMatchObject({ status: "approved" });
+    const closed = String(h.calls("editMessageText")[0]?.payload.text);
+    expect(closed).toContain("已通过（@alice_admin）");
+    expect(closed).not.toContain("收录失败");
   });
 
   test("a second approval (another admin, same moment) only sees 'already handled'", async () => {
