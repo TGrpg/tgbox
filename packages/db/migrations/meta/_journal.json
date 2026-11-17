@@ -148,6 +148,13 @@
       "when": 1792041639000,
       "tag": "0021_bot_start_payload",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "6",
+      "when": 1794883851506,
+      "tag": "0022_usdt_unique_amount",
+      "breakpoints": true
     }
   ]
 }

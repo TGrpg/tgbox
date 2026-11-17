@@ -5,7 +5,7 @@ import {
   upsertProduct,
   watchUsdtPayments,
 } from "@tgbox/core";
-import { getUsdtPayment, insertApprovedEntry } from "@tgbox/db";
+import { createUsdtPayment, getUsdtPayment, insertApprovedEntry } from "@tgbox/db";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { actor, auditRows, db, NOW, setup } from "./fake.ts";
 
@@ -87,6 +87,42 @@ describe("quoting an order", () => {
     expect(first.ok && second.ok).toBe(true);
     if (!(first.ok && second.ok)) return;
     expect(second.quote.amountMicro).toBe(first.quote.amountMicro);
+  });
+
+  test("concurrent quotes cannot reserve the same amount", async () => {
+    const { order, product } = await withOrder(harness);
+    const other = await createOrder(harness.ctx, {
+      tgUserId: 43,
+      productId: product.id,
+      targetUsername: "target",
+    });
+    if (!other.ok) throw new Error("order failed");
+    const random = vi.spyOn(Math, "random").mockReturnValue(0);
+    try {
+      const quotes = await Promise.all(
+        [order, other.order].map((row) =>
+          quoteUsdtOrder(harness.ctx, { orderId: row.id, productId: product.id }),
+        ),
+      );
+      expect(quotes.every((quote) => quote.ok)).toBe(true);
+      const amounts = quotes.flatMap((quote) => (quote.ok ? [quote.quote.amountMicro] : []));
+      expect(new Set(amounts).size).toBe(2);
+    } finally {
+      random.mockRestore();
+    }
+  });
+
+  test("the database refuses a duplicate pending amount without replacing either quote", async () => {
+    const row = {
+      orderId: 100,
+      amountMicro: 10_000_100,
+      address: ADDRESS,
+      createdAt: NOW,
+      expiresAt: NOW + 30 * MINUTE,
+    };
+    expect(await createUsdtPayment(db, row)).toMatchObject({ orderId: 100 });
+    expect(await createUsdtPayment(db, { ...row, orderId: 101 })).toBeUndefined();
+    expect((await getUsdtPayment(db, 100))?.amountMicro).toBe(row.amountMicro);
   });
 
   test("refuses when the method is off, rather than quoting an address nobody watches", async () => {

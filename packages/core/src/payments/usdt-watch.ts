@@ -68,31 +68,35 @@ export async function quoteUsdtOrder(
   if (baseMicro === 0) return { ok: false, error: "product_unavailable" };
 
   const taken = new Set((await listPendingUsdtPayments(ctx.db)).map((row) => row.amountMicro));
-  const amountMicro = pickUniqueMicro(baseMicro, taken);
-  // Every tail for this price is spoken for. Quoting a duplicate would make one transfer pay an
-  // arbitrary one of the two orders, so refuse and let the buyer retry.
-  if (amountMicro === null) return { ok: false, error: "no_amount" };
-
   const now = ctx.now();
-  const stored = await createUsdtPayment(ctx.db, {
-    orderId: input.orderId,
-    chain: "trc20",
-    amountMicro,
-    address: payments.usdtAddress,
-    status: "pending",
-    createdAt: now,
-    expiresAt: now + payments.usdtExpiryMinutes * MINUTE_MS,
-  });
-  if (!stored) return { ok: false, error: "no_amount" };
-  return {
-    ok: true,
-    quote: {
-      address: stored.address,
-      amount: microToUsdt(stored.amountMicro),
-      amountMicro: stored.amountMicro,
-      expiresAt: stored.expiresAt,
-    },
-  };
+  // A concurrent quote may win after our read. The unique index arbitrates; retry a bounded
+  // number of tails so contention cannot exhaust the request's D1 budget.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const amountMicro = pickUniqueMicro(baseMicro, taken);
+    if (amountMicro === null) break;
+    const stored = await createUsdtPayment(ctx.db, {
+      orderId: input.orderId,
+      chain: "trc20",
+      amountMicro,
+      address: payments.usdtAddress,
+      status: "pending",
+      createdAt: now,
+      expiresAt: now + payments.usdtExpiryMinutes * MINUTE_MS,
+    });
+    if (stored) {
+      return {
+        ok: true,
+        quote: {
+          address: stored.address,
+          amount: microToUsdt(stored.amountMicro),
+          amountMicro: stored.amountMicro,
+          expiresAt: stored.expiresAt,
+        },
+      };
+    }
+    taken.add(amountMicro);
+  }
+  return { ok: false, error: "no_amount" };
 }
 
 /** The shape of a TRC20 transfer in TronGrid's account-transactions response. */
