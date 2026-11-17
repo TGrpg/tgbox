@@ -20,6 +20,7 @@ import {
   insertApprovedEntry,
   listActivePromotions,
   listProducts,
+  markOrdersReminded,
   setEntryStatus,
 } from "@tgbox/db";
 import { describe, expect, onTestFinished, test } from "vitest";
@@ -451,6 +452,28 @@ describe("running promotions", () => {
     expect(await listActivePromotions(db, NOW)).toEqual([]);
   });
 
+  test("maintenance ends and reminds no more than one hour's notices, ended ones first", async () => {
+    const { ctx } = await setup();
+    await listed("pin_me");
+    const paid = [];
+    for (let i = 0; i < 4; i++) {
+      const created = await order(ctx, PIN_7, { targetUsername: "pin_me" });
+      await markOrderPaid({ ...ctx, now: () => NOW + i * DAY }, starsPayment(created.id));
+      paid.push(created.id);
+    }
+    // At NOW + 8.5 days the first two have ended and the other two end within a day.
+    const run = await runPromotionMaintenance(ctx, NOW + 8.5 * DAY, { maxNotices: 3 });
+    expect(run.expired.map((row) => row.id)).toEqual(paid.slice(0, 2));
+    expect(run.expiringSoon.map((row) => row.id)).toEqual([paid[2]]);
+
+    const capped = await runPromotionMaintenance(ctx, NOW + 9.6 * DAY, { maxNotices: 1 });
+    expect(capped.expired.map((row) => row.id)).toEqual([paid[2]]);
+    expect(capped.expiringSoon).toEqual([]);
+    // The one left over ends on the next run instead of being skipped.
+    const next = await runPromotionMaintenance(ctx, NOW + 11 * DAY, { maxNotices: 1 });
+    expect(next.expired.map((row) => row.id)).toEqual([paid[3]]);
+  });
+
   test("maintenance expires, reminds once, and deletes stale unpaid orders", async () => {
     const { ctx, dispatches } = await setup();
     await listed("pin_me");
@@ -467,6 +490,9 @@ describe("running promotions", () => {
     expect(soon.expiringSoon.map((row) => [row.id, row.tgUserId])).toEqual([[created.id, BUYER]]);
     expect(soon.deletedPending).toBe(1);
     expect(await getOrder(db, stale.id)).toBeUndefined();
+    // Not delivered yet: offered again until the caller marks it sent.
+    expect((await runPromotionMaintenance(ctx, NOW + 6.55 * DAY)).expiringSoon).toHaveLength(1);
+    expect(await markOrdersReminded(db, [created.id], NOW + 6.55 * DAY)).toBe(1);
     expect((await runPromotionMaintenance(ctx, NOW + 6.6 * DAY)).expiringSoon).toEqual([]);
 
     const dispatchesBefore = dispatches.length;

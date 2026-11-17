@@ -4,12 +4,16 @@ import { createApp, createBot } from "./bot/index.ts";
 import { handleCryptoPayWebhook } from "./cryptopay.ts";
 import { DIGEST_UTC_HOUR, runDailyDigest } from "./digest.ts";
 import { runHourlyMaintenance } from "./maintenance.ts";
+import { countSubrequests } from "./subrequests.ts";
 import { runUsdtWatch } from "./usdt-watch.ts";
 
 /** Second cron trigger in wrangler.jsonc; a separate invocation with its own subrequest budget. */
 const HOURLY_CRON = "0 * * * *";
 
-/** Broadcast messages the 5-minute tick may send, leaving the rest of its budget to refresh. */
+/**
+ * What USDT and broadcast may use together on the 5-minute tick: broadcast sends at most this
+ * minus what USDT already spent, leaving the rest of the budget to refresh.
+ */
 const BROADCAST_BUDGET = 25;
 
 // Wrapped: workerd throws "Illegal invocation" when fetch is called as a method of another object.
@@ -37,23 +41,29 @@ export default {
   },
 
   async scheduled(controller, env, ctx) {
+    // Every job of an invocation shares one counted binding and fetch, and runs without
+    // `waitUntil` so its background sends are finished (and counted) before the next job sizes
+    // itself on what is left.
+    const counter = countSubrequests(env.DB, (input, init) => fetch(input, init));
+    const app = createApp(
+      { ...env, DB: counter.db },
+      {
+        fetch: counter.fetch,
+        now: () => controller.scheduledTime,
+      },
+    );
     if (controller.cron === HOURLY_CRON) {
-      const app = createApp(
-        env,
-        deps(ctx, () => controller.scheduledTime),
-      );
       ctx.waitUntil(
-        runHourlyMaintenance(app, controller.scheduledTime).then((result) =>
-          console.log("maintenance", JSON.stringify(result)),
-        ),
+        (async () => {
+          if (new Date(controller.scheduledTime).getUTCHours() === DIGEST_UTC_HOUR) {
+            await runDailyDigest(app, controller.scheduledTime)
+              .then((result) => console.log("digest", JSON.stringify(result)))
+              .catch((error: unknown) => console.error("daily digest failed", error));
+          }
+          const result = await runHourlyMaintenance(app, controller.scheduledTime, counter.used);
+          console.log("maintenance", JSON.stringify({ ...result, subrequests: counter.used() }));
+        })(),
       );
-      if (new Date(controller.scheduledTime).getUTCHours() === DIGEST_UTC_HOUR) {
-        ctx.waitUntil(
-          runDailyDigest(app, controller.scheduledTime)
-            .then((result) => console.log("digest", JSON.stringify(result)))
-            .catch((error: unknown) => console.error("daily digest failed", error)),
-        );
-      }
       return;
     }
     // The 5-minute tick carries three jobs sharing one 50-subrequest budget. USDT first: it is a
@@ -62,26 +72,15 @@ export default {
     // refresh batch, which processes fewer entries instead of overrunning.
     ctx.waitUntil(
       (async () => {
-        const app = createApp(
-          env,
-          deps(ctx, () => controller.scheduledTime),
-        );
-        const spent = await runUsdtWatch(app).catch((error: unknown) => {
+        await runUsdtWatch(app).catch((error: unknown) => {
           console.error("usdt watch failed", error);
-          return 0;
         });
-        const broadcast = await runDueBroadcasts(app.core, BROADCAST_BUDGET).catch(
+        await runDueBroadcasts(app.core, BROADCAST_BUDGET - counter.used()).catch(
           (error: unknown) => {
             console.error("broadcast failed", error);
-            return 0;
           },
         );
-        const result = await runRefresh(
-          env,
-          controller.scheduledTime,
-          undefined,
-          spent + broadcast,
-        );
+        const result = await runRefresh(env, controller.scheduledTime, undefined, counter.used());
         // One line per run in Workers Logs: the only record of what the cron did.
         console.log("refresh", JSON.stringify(result));
       })(),

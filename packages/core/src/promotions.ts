@@ -16,7 +16,6 @@ import {
   listOrdersToRemind,
   listProducts,
   markOrderPaidRow,
-  markOrderReminded,
   type Order,
   type Promotion,
   setOrderStatus,
@@ -437,11 +436,18 @@ export async function upsertProduct(
 }
 
 /**
- * Hourly job: ends expired promotions, picks orders due a renewal reminder (marked reminded here,
- * so each is returned once), and deletes stale unpaid orders. The caller sends the messages.
+ * Hourly job: ends expired promotions, picks orders due a renewal reminder, and deletes stale
+ * unpaid orders. At most `maxNotices` promotions end and reminders are picked, ended ones first:
+ * the caller sends one message for each, so the rest wait for the next hour instead of being
+ * dropped (a promotion ending an hour late costs less than a buyer never told). Reminders are not
+ * marked here; the caller marks the ones it delivered with `markOrdersReminded`.
  */
-export async function runPromotionMaintenance(ctx: CoreContext, now: number) {
-  const expiredIds = (await listExpiredPromotions(ctx.db, now)).map((row) => row.id);
+export async function runPromotionMaintenance(
+  ctx: CoreContext,
+  now: number,
+  { maxNotices = 100 }: { maxNotices?: number } = {},
+) {
+  const expiredIds = (await listExpiredPromotions(ctx.db, now, maxNotices)).map((row) => row.id);
   const ended = await endPromotionRows(ctx.db, expiredIds);
   if (ended.promotions.length > 0) {
     await audit(ctx, "system", "promotion.expire", "promotions", {
@@ -451,10 +457,9 @@ export async function runPromotionMaintenance(ctx: CoreContext, now: number) {
     await markDirtyAndDispatch(ctx);
   }
 
-  const expiringSoon: Order[] = [];
-  for (const order of await listOrdersToRemind(ctx.db, now, now + REMIND_BEFORE_MS)) {
-    if (await markOrderReminded(ctx.db, order.id, now)) expiringSoon.push(order);
-  }
+  const reminders = maxNotices - ended.orders.length;
+  const expiringSoon =
+    reminders > 0 ? await listOrdersToRemind(ctx.db, now, now + REMIND_BEFORE_MS, reminders) : [];
 
   const deletedPending = await deleteStalePendingOrders(ctx.db, now - PENDING_TTL_MS);
   if (deletedPending > 0) {

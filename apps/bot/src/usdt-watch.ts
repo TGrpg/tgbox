@@ -7,15 +7,8 @@ import { recordPayment } from "./bot/payments.ts";
  * Settles USDT transfers that arrived since the last tick. Rides the refresh cron rather than
  * taking a trigger of its own: every scheduled invocation costs a request, and with no unpaid
  * orders this costs a single D1 read and returns.
- *
- * Returns the subrequests it spent, so the caller can hand the running total to the refresh batch
- * and let its existing budget guard process one entry fewer instead of overrunning the invocation.
  */
-export async function runUsdtWatch(app: App): Promise<number> {
-  const apiKey = app.env.SETTINGS_KEY
-    ? await getCredential(app.core, "trongrid_key").catch(() => null)
-    : null;
-
+export async function runUsdtWatch(app: App) {
   const result = await watchUsdtPayments(
     app.core,
     async ({ orderId, txHash, amount }) => {
@@ -35,11 +28,22 @@ export async function runUsdtWatch(app: App): Promise<number> {
         locale: null,
       });
     },
-    { apiKey },
+    {
+      // Read only when an order is waiting, so an idle tick stays one D1 read.
+      apiKey: async () =>
+        app.env.SETTINGS_KEY
+          ? await getCredential(app.core, "trongrid_key").catch(() => null)
+          : null,
+    },
   );
 
-  if (result.matched.length > 0 || result.unmatched > 0 || result.expired > 0) {
+  if (
+    result.matched.length > 0 ||
+    result.unmatched > 0 ||
+    result.expired > 0 ||
+    result.incomplete.length > 0
+  ) {
     console.log("usdt", JSON.stringify(result));
   }
-  return result.subrequests;
+  return result;
 }

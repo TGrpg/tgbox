@@ -1,3 +1,4 @@
+import { env } from "cloudflare:workers";
 import {
   createOrder,
   quoteUsdtOrder,
@@ -136,7 +137,7 @@ describe("quoting an order", () => {
       const { order, product } = await withOrder(harness);
       const first = await quoteUsdtOrder(harness.ctx, { orderId: order.id, productId: product.id });
       if (!first.ok) throw new Error("quote failed");
-      if (swept) await expireUsdtPayments(db, NOW + 31 * MINUTE);
+      if (swept) await expireUsdtPayments(db, NOW + 31 * MINUTE, [ADDRESS]);
       const before = await getUsdtPayment(db, order.id);
       expect(
         await quoteUsdtOrder(
@@ -343,6 +344,129 @@ describe("settling transfers", () => {
 
     await expect(watchUsdtPayments(harness.ctx, vi.fn())).resolves.toMatchObject({ matched: [] });
     expect((await getUsdtPayment(db, order.id))?.status).toBe("pending");
+  });
+
+  test("watches each saved address even after new quotes are turned off", async () => {
+    await withOrder(harness);
+    const otherAddress = `T${"A".repeat(33)}`;
+    for (const [orderId, address] of [
+      [101, ADDRESS],
+      [102, otherAddress],
+    ] as const) {
+      await createUsdtPayment(db, {
+        orderId,
+        address,
+        amountMicro: 10_000_000 + orderId,
+        createdAt: NOW,
+        expiresAt: NOW + 30 * MINUTE,
+      });
+    }
+    await updateSettings(harness.ctx, {
+      key: "payments",
+      actor,
+      value: {
+        starsEnabled: false,
+        cryptoPayEnabled: false,
+        cryptoPayNetwork: "mainnet",
+        usdtSelfEnabled: false,
+        usdtAddress: "",
+        usdtExpiryMinutes: 30,
+      },
+    });
+    const fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const address = new URL(String(input)).pathname.split("/")[3];
+      const orderId = address === ADDRESS ? 101 : 102;
+      return Response.json({
+        data: [{ ...transfer(10_000_000 + orderId, NOW + MINUTE, `tx-${orderId}`), to: address }],
+      });
+    });
+    const settle = vi.fn();
+    await watchUsdtPayments({ ...harness.ctx, fetch }, settle);
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(settle.mock.calls.map(([payment]) => payment.orderId).sort()).toEqual([101, 102]);
+  });
+
+  test("follows a second page and ignores a transfer addressed elsewhere", async () => {
+    const { order, product } = await withOrder(harness);
+    const quote = await quoteUsdtOrder(harness.ctx, { orderId: order.id, productId: product.id });
+    if (!quote.ok) throw new Error("quote failed");
+    const fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      if (url.searchParams.get("fingerprint") === "page-2") {
+        return Response.json({
+          data: [{ ...transfer(quote.quote.amountMicro, NOW + MINUTE), to: ADDRESS }],
+        });
+      }
+      url.searchParams.set("fingerprint", "page-2");
+      return Response.json({
+        data: Array.from({ length: 50 }, (_, i) => ({
+          ...transfer(quote.quote.amountMicro, NOW + MINUTE, `wrong-${i}`),
+          to: "another-address",
+        })),
+        meta: { links: { next: url.href } },
+      });
+    });
+    const settle = vi.fn();
+    const result = await watchUsdtPayments({ ...harness.ctx, fetch }, settle);
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(settle).toHaveBeenCalledExactlyOnceWith({
+      orderId: order.id,
+      txHash: "tx-1",
+      amount: quote.quote.amount,
+    });
+    expect(result.unmatched).toBe(0);
+  });
+
+  test("a scan cut short by the page cap doesn't expire the windows it didn't finish", async () => {
+    const { order, product } = await withOrder(harness);
+    await quoteUsdtOrder(harness.ctx, { orderId: order.id, productId: product.id });
+    const fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      url.searchParams.set("fingerprint", "next");
+      return Response.json({
+        data: Array.from({ length: 50 }, (_, i) => transfer(1, NOW + MINUTE, `noise-${i}`)),
+        meta: { links: { next: url.href } },
+      });
+    });
+    const late = { ...harness.ctx, now: () => NOW + 60 * MINUTE, fetch };
+    const result = await watchUsdtPayments(late, vi.fn(), { maxPages: 1 });
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(result.incomplete).toEqual([ADDRESS]);
+    expect((await getUsdtPayment(db, order.id))?.status).toBe("pending");
+  });
+
+  test("a wrong transfer is recorded once, and a transfer that paid is never recorded", async () => {
+    const { order, product } = await withOrder(harness);
+    const quote = await quoteUsdtOrder(harness.ctx, { orderId: order.id, productId: product.id });
+    if (!quote.ok) throw new Error("quote failed");
+    harness.tron.transfers = [
+      transfer(10_000_000, NOW + MINUTE, "wrong"),
+      transfer(quote.quote.amountMicro, NOW + 2 * MINUTE, "right"),
+    ];
+    const unmatched = async () =>
+      (await auditRows()).filter((row) => row.action === "usdt.unmatched").map((r) => r.target);
+
+    expect((await watchUsdtPayments(harness.ctx, vi.fn())).unmatched).toBe(1);
+    // A second order keeps the watcher reading the same transfers on the next ticks.
+    const other = await createOrder(harness.ctx, {
+      tgUserId: 43,
+      productId: product.id,
+      targetUsername: "target",
+    });
+    if (!other.ok) throw new Error("order failed");
+    await quoteUsdtOrder(harness.ctx, { orderId: other.order.id, productId: product.id });
+    expect((await watchUsdtPayments(harness.ctx, vi.fn())).unmatched).toBe(0);
+    expect((await watchUsdtPayments(harness.ctx, vi.fn())).unmatched).toBe(0);
+    expect(await unmatched()).toEqual(["tx:wrong"]);
+  });
+
+  test("the unmatched lookup uses its partial index, not a scan of the audit log", async () => {
+    const plan = await env.DB.prepare(
+      "EXPLAIN QUERY PLAN SELECT target FROM audit_log WHERE action = 'usdt.unmatched' AND target IN (?, ?)",
+    )
+      .bind("tx:a", "tx:b")
+      .all<{ detail: string }>();
+    expect(plan.results.map((row) => row.detail).join("\n")).toContain("audit_usdt_unmatched");
   });
 
   test("only confirmed transfers to the address are requested", async () => {

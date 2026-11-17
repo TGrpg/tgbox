@@ -216,8 +216,8 @@ export async function countPaidOrders(db: Db, scope: SlotScope) {
   return row?.value ?? 0;
 }
 
-/** Active orders ending in (now, until] that were not reminded yet. */
-export function listOrdersToRemind(db: Db, now: number, until: number) {
+/** Active orders ending in (now, until] that were not reminded yet, soonest first. */
+export function listOrdersToRemind(db: Db, now: number, until: number, limit = 100) {
   return db
     .select()
     .from(orders)
@@ -229,7 +229,19 @@ export function listOrdersToRemind(db: Db, now: number, until: number) {
         isNull(orders.remindedAt),
       ),
     )
-    .orderBy(asc(orders.endsAt));
+    .orderBy(asc(orders.endsAt))
+    .limit(limit);
+}
+
+/** Marks reminders as sent, in one statement. Returns how many were marked. */
+export async function markOrdersReminded(db: Db, ids: number[], now: number) {
+  if (ids.length === 0) return 0;
+  const result = await db
+    .update(orders)
+    .set({ remindedAt: now })
+    .where(and(inArray(orders.id, ids), isNull(orders.remindedAt)))
+    .run();
+  return result.meta.changes;
 }
 
 /** Returns true the first time only. */
@@ -306,9 +318,14 @@ export async function earliestPromotionEnd(db: Db, scope: SlotScope, now: number
   return row?.value ?? null;
 }
 
-/** Promotions whose end has passed (ends_at <= now). */
-export function listExpiredPromotions(db: Db, now: number) {
-  return db.select().from(promotions).where(lte(promotions.endsAt, now));
+/** Promotions whose end has passed (ends_at <= now), the longest-ended first. */
+export function listExpiredPromotions(db: Db, now: number, limit = 100) {
+  return db
+    .select()
+    .from(promotions)
+    .where(lte(promotions.endsAt, now))
+    .orderBy(asc(promotions.endsAt), asc(promotions.id))
+    .limit(limit);
 }
 
 /**
