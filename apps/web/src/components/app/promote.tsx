@@ -30,6 +30,7 @@ import {
   useBackHandler,
   useWebApp,
 } from "./shell.tsx";
+import { forgetMe } from "./use-me.ts";
 import { useStaticJson } from "./use-static.ts";
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -173,7 +174,10 @@ export function PromoteScreen({ locale }: { locale: Locale }) {
   }, []);
   useBackHandler(stage.name === "details" ? toProducts : null);
 
-  const onPaid = useCallback(() => setStage({ name: "paid" }), []);
+  const onPaid = useCallback(() => {
+    forgetMe();
+    setStage({ name: "paid" });
+  }, []);
 
   if (catalogue.status === "loading") return <LoadingScreen label={strings.common.loading} />;
   if (catalogue.status === "error") {
@@ -236,6 +240,7 @@ export function PromoteScreen({ locale }: { locale: Locale }) {
     }
 
     const orderId = created.data.orderId;
+    forgetMe();
     // Only the home banner carries an image; the announcement bar is text.
     if (image && product.kind === "banner") {
       const form = new FormData();
