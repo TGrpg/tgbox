@@ -226,18 +226,7 @@ export function payments(app: App) {
       await answerAlreadyHandled(app, ctx);
       return;
     }
-    const { order } = result;
-    const endsAt = order.endsAt ?? app.now();
-    await app.background(() =>
-      app.api.sendMessage(
-        order.tgUserId,
-        localized(null, (m) =>
-          isEntryProduct(order.kind)
-            ? m.promote.entryStarted(orderTarget(order), endsAt)
-            : m.promote.adApproved(orderTarget(order), endsAt),
-        ),
-      ),
-    );
+    // Core tells the buyer.
     await ctx.answerCallbackQuery();
     await closeReview(ctx, messages("zh").admin.approvedBy(reviewer(ctx)));
   });
@@ -251,23 +240,8 @@ export function payments(app: App) {
       await answerAlreadyHandled(app, ctx);
       return;
     }
+    // Core tells the buyer.
     const { order, refunded } = result;
-    const support = (await app.settings()).bot.supportUsername;
-    await app.background(() =>
-      app.api.sendMessage(
-        order.tgUserId,
-        localized(null, (m) => {
-          if (isEntryProduct(order.kind)) {
-            return refunded
-              ? m.promote.slotRefunded
-              : m.promote.slotRefundManual(order.id, support);
-          }
-          return refunded
-            ? m.promote.adRejectedRefunded
-            : m.promote.adRejectedManual(order.id, support);
-        }),
-      ),
-    );
     await ctx.answerCallbackQuery();
     await closeReview(
       ctx,

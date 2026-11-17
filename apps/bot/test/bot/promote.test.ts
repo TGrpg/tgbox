@@ -657,7 +657,11 @@ describe("hourly promotion maintenance", () => {
     h.reset();
     await h.scheduled(endsAt + 60 * 60 * 1000, HOURLY);
     expect(await getOrder(db, pin.id)).toMatchObject({ status: "expired" });
-    expect(await listActivePromotions(db, endsAt - DAY, "pin")).toEqual([]);
+    // Ended, and its row kept for the order's clicks.
+    expect(await listActivePromotions(db, endsAt + 60 * 60 * 1000, "pin")).toEqual([]);
+    expect((await listActivePromotions(db, endsAt - DAY, "pin"))[0]?.endedAt).toBe(
+      endsAt + 60 * 60 * 1000,
+    );
     const ended = h.calls("sendMessage").filter((c) => c.payload.chat_id === buyer.id);
     expect(ended).toHaveLength(1);
     expect(ended[0]?.payload.text).toContain("已到期下架");

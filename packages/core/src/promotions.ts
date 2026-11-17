@@ -34,6 +34,7 @@ import {
 import { audit } from "./audit.ts";
 import { markDirtyAndDispatch } from "./build.ts";
 import { type Actor, type CoreContext, tgActor } from "./context.ts";
+import { notifyBuyer } from "./order-notices.ts";
 import { refundStars } from "./payments/stars.ts";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -257,7 +258,7 @@ export async function markOrderPaid(
 
 /**
  * Admin starts a paid order: approves a brand ad, or starts an entry promotion that was paid while
- * its placement was full. `not_paid` when someone else handled it first.
+ * its placement was full, and the buyer is told. `not_paid` when someone else handled it first.
  */
 export async function startPaidOrder(
   ctx: CoreContext,
@@ -267,12 +268,15 @@ export async function startPaidOrder(
   if (order?.status !== "paid") return { ok: false, error: "not_paid" };
   const activation = await activateOrder(ctx, order, input.actor);
   if (activation !== "started") return { ok: false, error: activation };
-  return { ok: true, order: (await getOrder(ctx.db, order.id)) ?? order };
+  const started = (await getOrder(ctx.db, order.id)) ?? order;
+  await notifyBuyer(ctx, started, { type: "started" });
+  return { ok: true, order: started };
 }
 
 /**
- * Admin rejects a paid order. Stars payments are refunded automatically when BOT_TOKEN is set;
- * other providers are refunded by hand (`refunded: false`). Null if the order was not paid.
+ * Admin rejects a paid order and the buyer is told. Stars payments are refunded automatically when
+ * BOT_TOKEN is set; other providers are refunded by hand (`refunded: false`). Null if the order
+ * was not paid.
  */
 export async function rejectOrder(
   ctx: CoreContext,
@@ -293,18 +297,31 @@ export async function rejectOrder(
 
   const refunded =
     order.provider === "stars" && ctx.config.BOT_TOKEN
-      ? (await refundOrder(ctx, { orderId: order.id, actor: input.actor }))?.refunded === true
+      ? (await refund(ctx, { orderId: order.id, actor: input.actor }))?.refunded === true
       : false;
-  return { order: (await getOrder(ctx.db, order.id)) ?? order, refunded };
+  const after = (await getOrder(ctx.db, order.id)) ?? order;
+  await notifyBuyer(ctx, after, { type: "rejected", refunded });
+  return { order: after, refunded };
 }
 
 /**
  * rejected → refunded. Stars go back through the Bot API, which is safe to retry: a charge Telegram
  * already refunded counts as done. Other providers are refunded by hand, and an admin confirms it
- * with `manual: true`. Null when the order isn't rejected-and-unrefunded; `refunded: false` when
- * the Stars refund failed again (the order stays rejected, ready for another try).
+ * with `manual: true`. The buyer is told once it went through. Null when the order isn't
+ * rejected-and-unrefunded; `refunded: false` when the Stars refund failed again (the order stays
+ * rejected, ready for another try).
  */
 export async function refundOrder(
+  ctx: CoreContext,
+  input: { orderId: number; actor: Actor; manual?: boolean },
+) {
+  const result = await refund(ctx, input);
+  if (result?.refunded) await notifyBuyer(ctx, result.order, { type: "refunded" });
+  return result;
+}
+
+/** `refundOrder` without the buyer notice (a rejection sends its own). */
+async function refund(
   ctx: CoreContext,
   input: { orderId: number; actor: Actor; manual?: boolean },
 ) {

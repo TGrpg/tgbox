@@ -280,16 +280,6 @@ export const zh = {
     paidAd: "✅ 支付成功！广告已提交审核，通过后会通知你。",
     paidWaiting: (t: PromotionTarget) =>
       `✅ 支付成功！不过 ${zhTarget(t)} 的名额刚好被占满了。名额一空出就为你上线并通知你；不想等可以联系客服退款。`,
-    entryStarted: (t: PromotionTarget, endsAt: number) =>
-      `🎉 你的推广（${zhTarget(t)}）已上线，展示至 ${utcTime(endsAt)}。网站几分钟后更新。`,
-    slotRefunded: "很抱歉，你的推广没能上线，Stars 已原路退回。",
-    slotRefundManual: (orderId: number, support: string | null) =>
-      `很抱歉，你的推广没能上线。请联系客服${support ? ` @${support}` : ""}办理退款（订单 #${orderId}）。`,
-    adApproved: (t: PromotionTarget, endsAt: number) =>
-      `🎉 你的广告（${zhTarget(t)}）已通过审核并上线，展示至 ${utcTime(endsAt)}。`,
-    adRejectedRefunded: "很抱歉，你的广告未通过审核，Stars 已原路退回。",
-    adRejectedManual: (orderId: number, support: string | null) =>
-      `很抱歉，你的广告未通过审核。请联系客服${support ? ` @${support}` : ""}办理退款（订单 #${orderId}）。`,
     orphanRefunded: "该订单已失效，本次支付的 Stars 已原路退回。",
     expired: (t: PromotionTarget) =>
       `你的推广（${zhTarget(t)}）已到期下架。发送 /promote 可以再次购买。`,

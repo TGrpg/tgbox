@@ -25,6 +25,7 @@ import {
   listPromotionsOfOrders,
   markOrdersReminded,
   setEntryStatus,
+  setUserLocale,
 } from "@tgbox/db";
 import { describe, expect, onTestFinished, test } from "vitest";
 import { actor, auditRows, db, NOW, setup } from "./fake.ts";
@@ -304,6 +305,13 @@ describe("paying", () => {
         method: "refundStarPayment",
         body: { user_id: BUYER, telegram_payment_charge_id: "tg-charge" },
       },
+      {
+        method: "sendMessage",
+        body: {
+          chat_id: BUYER,
+          text: "很抱歉，你的广告未通过审核，Stars 已原路退回。\n\nSorry, your ad was not approved. Your Stars were refunded.",
+        },
+      },
     ]);
     expect(await rejectOrder(ctx, { orderId: created.id, actor })).toBeNull();
     expect((await auditRows()).map((row) => row.action)).toEqual([
@@ -356,7 +364,10 @@ describe("paying", () => {
       refunded: true,
       order: { status: "refunded" },
     });
-    expect(telegram).toEqual([]);
+    // Told to contact support when rejected, then that the refund is done; nothing goes to Stars.
+    expect(telegram.map((call) => call.method)).toEqual(["sendMessage", "sendMessage"]);
+    expect(JSON.stringify(telegram[0]?.body)).toContain(`办理退款（订单 #${created.id}）`);
+    expect(JSON.stringify(telegram[1]?.body)).toContain(`订单 #${created.id} 的款项已退回给你`);
   });
 
   test("rejecting a USDT banner leaves the refund to an admin", async () => {
@@ -374,7 +385,18 @@ describe("paying", () => {
       refunded: false,
       order: { status: "rejected" },
     });
-    expect(telegram).toEqual([]);
+    expect(telegram.map((call) => call.method)).toEqual(["sendMessage"]);
+  });
+
+  test("a buyer who chose a bot language is told in it alone", async () => {
+    const { ctx, telegram } = await setup({ BOT_TOKEN: "123:bot" });
+    await setUserLocale(db, BUYER, "zh-hant", NOW);
+    const created = await order(ctx, BANNER_7, { banner });
+    await markOrderPaid(ctx, starsPayment(created.id));
+    await startPaidOrder(ctx, { orderId: created.id, actor });
+    expect(telegram.map((call) => (call.body as { text: string }).text)).toEqual([
+      `🎉 你的廣告（首頁橫幅「新频道」）已通過審核並上線，展示至 ${new Date(NOW + 7 * DAY).toISOString().slice(0, 16).replace("T", " ")} UTC。`,
+    ]);
   });
 });
 

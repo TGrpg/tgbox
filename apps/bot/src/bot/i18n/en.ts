@@ -225,16 +225,6 @@ export const en: typeof zh = {
     paidAd: "✅ Payment received! Your ad is awaiting review; you'll be notified of the result.",
     paidWaiting: (t: PromotionTarget) =>
       `✅ Payment received! But the slots for your ${enTarget(t)} filled up just now. It goes live as soon as one frees up, and you'll be told; if you'd rather not wait, contact support for a refund.`,
-    entryStarted: (t: PromotionTarget, endsAt: number) =>
-      `🎉 Your promotion (${enTarget(t)}) is live until ${utcTime(endsAt)}. The site updates in a few minutes.`,
-    slotRefunded: "Sorry, your promotion couldn't go live. Your Stars were refunded.",
-    slotRefundManual: (orderId: number, support: string | null) =>
-      `Sorry, your promotion couldn't go live. Please contact support${support ? ` @${support}` : ""} for a refund (order #${orderId}).`,
-    adApproved: (t: PromotionTarget, endsAt: number) =>
-      `🎉 Your ad (${enTarget(t)}) was approved and is live until ${utcTime(endsAt)}.`,
-    adRejectedRefunded: "Sorry, your ad was not approved. Your Stars were refunded.",
-    adRejectedManual: (orderId: number, support: string | null) =>
-      `Sorry, your ad was not approved. Please contact support${support ? ` @${support}` : ""} for a refund (order #${orderId}).`,
     orphanRefunded: "This order is no longer valid, so your Stars were refunded.",
     expired: (t: PromotionTarget) =>
       `Your promotion (${enTarget(t)}) has ended. Send /promote to buy again.`,

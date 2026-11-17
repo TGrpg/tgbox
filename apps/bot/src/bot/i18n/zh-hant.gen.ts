@@ -281,16 +281,6 @@ export const zhHant = {
     paidAd: "✅ 支付成功！廣告已提交審核，通過後會通知你。",
     paidWaiting: (t: PromotionTarget) =>
       `✅ 支付成功！不過 ${zhTarget(t)} 的名額剛好被佔滿了。名額一空出就為你上線並通知你；不想等可以聯繫客服退款。`,
-    entryStarted: (t: PromotionTarget, endsAt: number) =>
-      `🎉 你的推廣（${zhTarget(t)}）已上線，展示至 ${utcTime(endsAt)}。網站幾分鐘後更新。`,
-    slotRefunded: "很抱歉，你的推廣沒能上線，Stars 已原路退回。",
-    slotRefundManual: (orderId: number, support: string | null) =>
-      `很抱歉，你的推廣沒能上線。請聯繫客服${support ? ` @${support}` : ""}辦理退款（訂單 #${orderId}）。`,
-    adApproved: (t: PromotionTarget, endsAt: number) =>
-      `🎉 你的廣告（${zhTarget(t)}）已通過審核並上線，展示至 ${utcTime(endsAt)}。`,
-    adRejectedRefunded: "很抱歉，你的廣告未通過審核，Stars 已原路退回。",
-    adRejectedManual: (orderId: number, support: string | null) =>
-      `很抱歉，你的廣告未通過審核。請聯繫客服${support ? ` @${support}` : ""}辦理退款（訂單 #${orderId}）。`,
     orphanRefunded: "該訂單已失效，本次支付的 Stars 已原路退回。",
     expired: (t: PromotionTarget) =>
       `你的推廣（${zhTarget(t)}）已到期下架。發送 /promote 可以再次購買。`,
