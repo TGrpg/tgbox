@@ -1,25 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { type FriendLink, FriendLink as FriendLinkSchema, MAX_FRIEND_LINKS } from "@tgbox/shared";
+import { type FriendLink, MAX_FRIEND_LINKS } from "@tgbox/shared";
 import {
-  ArrowDownIcon,
-  ArrowUpIcon,
   CheckIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   ExternalLinkIcon,
   HandshakeIcon,
-  PlusIcon,
-  SaveIcon,
-  Trash2Icon,
   XIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Badge } from "@/components/coss/ui/badge.tsx";
 import { Button } from "@/components/coss/ui/button.tsx";
 import { Card } from "@/components/coss/ui/card.tsx";
-import { Input } from "@/components/coss/ui/input.tsx";
 import { Skeleton } from "@/components/coss/ui/skeleton.tsx";
 import { toastManager } from "@/components/coss/ui/toast.tsx";
+import { LinkListEditor } from "@/components/link-list-editor.tsx";
 import { UserChip } from "@/components/user-chip.tsx";
 import {
   $reviewFriendLink,
@@ -187,17 +182,9 @@ function RequestCard({
 
 /* ------------------------------------------------------------------ editor */
 
-const blank: FriendLink = { name: "", url: "https://", descZh: "", descEn: "" };
-
 function LinksEditor() {
   const queryClient = useQueryClient();
   const saved = useQuery(friendLinksQueryOptions());
-  const [links, setLinks] = useState<FriendLink[] | null>(null);
-  // Follow the server until the admin starts editing (an approval adds rows underneath).
-  useEffect(() => {
-    if (saved.data && links === null) setLinks(saved.data);
-  }, [saved.data, links]);
-
   const save = useMutation({
     mutationFn: (next: FriendLink[]) => $saveFriendLinks({ data: { links: next } }),
     onSuccess: ({ changed }) =>
@@ -207,141 +194,23 @@ function LinksEditor() {
       }),
     onError: (error) =>
       toastManager.add({ type: "error", title: "保存失败", description: error.message }),
-    onSettled: async () => {
-      await invalidate(queryClient, "friendLinks", "audit", "dashboardActivity");
-      setLinks(null);
-    },
+    onSettled: () => invalidate(queryClient, "friendLinks", "audit", "dashboardActivity"),
   });
 
-  if (saved.isPending || links === null) return <Skeleton className="h-64 rounded-2xl" />;
+  if (saved.isPending) return <Skeleton className="h-64 rounded-2xl" />;
   if (saved.isError) {
     return <p className="text-destructive-foreground text-sm">加载失败：{saved.error.message}</p>;
   }
-
-  const cleaned = links.map((link) => ({
-    name: link.name.trim(),
-    url: link.url.trim(),
-    descZh: link.descZh.trim(),
-    descEn: link.descEn.trim(),
-  }));
-  const invalid = cleaned.map((link) => !FriendLinkSchema.safeParse(link).success);
-  const dirty = JSON.stringify(cleaned) !== JSON.stringify(saved.data);
-  const update = (index: number, patch: Partial<FriendLink>) =>
-    setLinks(links.map((link, i) => (i === index ? { ...link, ...patch } : link)));
-  const move = (index: number, by: -1 | 1) => {
-    const next = [...links];
-    const [item] = next.splice(index, 1);
-    if (item) next.splice(index + by, 0, item);
-    setLinks(next);
-  };
-
   return (
-    <section className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <h2 className="font-semibold text-base">
-          友情链接
-          <span className="ms-2 font-normal text-muted-foreground text-sm tabular-nums">
-            {links.length} / {MAX_FRIEND_LINKS}
-          </span>
-        </h2>
-        <p className="basis-full text-muted-foreground text-sm sm:order-last">
-          按顺序显示：页脚展示前 12 个，/links/ 页展示全部。简介留空则只显示名称。
-        </p>
-        <div className="ms-auto flex gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={links.length >= MAX_FRIEND_LINKS}
-            onClick={() => setLinks([...links, blank])}
-          >
-            <PlusIcon aria-hidden />
-            添加
-          </Button>
-          <Button
-            size="sm"
-            disabled={!dirty || invalid.some(Boolean)}
-            loading={save.isPending}
-            onClick={() => save.mutate(cleaned)}
-          >
-            <SaveIcon aria-hidden />
-            保存
-          </Button>
-        </div>
-      </div>
-      {links.length === 0 ? (
-        <Card className="items-center p-10 text-center text-muted-foreground text-sm">
-          还没有友情链接。
-        </Card>
-      ) : (
-        <div className="flex flex-col gap-2">
-          {links.map((link, index) => (
-            <Card
-              // biome-ignore lint/suspicious/noArrayIndexKey: rows have no id; order is the data.
-              key={index}
-              className="grid gap-2 p-3 sm:grid-cols-[1fr_1.4fr_auto]"
-              data-invalid={invalid[index] || undefined}
-            >
-              <Input
-                aria-label="名称"
-                placeholder="名称"
-                maxLength={40}
-                value={link.name}
-                onChange={(event) => update(index, { name: event.target.value })}
-              />
-              <Input
-                aria-label="网址"
-                placeholder="https://"
-                maxLength={200}
-                value={link.url}
-                aria-invalid={invalid[index] && !link.url.startsWith("https://") ? true : undefined}
-                onChange={(event) => update(index, { url: event.target.value })}
-              />
-              <div className="row-span-2 flex items-start justify-end gap-1 sm:flex-col">
-                <Button
-                  size="icon-sm"
-                  variant="ghost"
-                  aria-label="上移"
-                  disabled={index === 0}
-                  onClick={() => move(index, -1)}
-                >
-                  <ArrowUpIcon />
-                </Button>
-                <Button
-                  size="icon-sm"
-                  variant="ghost"
-                  aria-label="下移"
-                  disabled={index === links.length - 1}
-                  onClick={() => move(index, 1)}
-                >
-                  <ArrowDownIcon />
-                </Button>
-                <Button
-                  size="icon-sm"
-                  variant="ghost"
-                  aria-label={`删除 ${link.name}`}
-                  onClick={() => setLinks(links.filter((_, i) => i !== index))}
-                >
-                  <Trash2Icon />
-                </Button>
-              </div>
-              <Input
-                aria-label="中文简介"
-                placeholder="中文简介（可选）"
-                maxLength={120}
-                value={link.descZh}
-                onChange={(event) => update(index, { descZh: event.target.value })}
-              />
-              <Input
-                aria-label="英文简介"
-                placeholder="English description (optional)"
-                maxLength={120}
-                value={link.descEn}
-                onChange={(event) => update(index, { descEn: event.target.value })}
-              />
-            </Card>
-          ))}
-        </div>
-      )}
-    </section>
+    <LinkListEditor
+      key={JSON.stringify(saved.data)}
+      initial={saved.data}
+      title="友情链接"
+      hint="按顺序显示：页脚展示前 12 个，/links/ 页展示全部。简介留空则只显示名称。"
+      emptyText="还没有友情链接。"
+      maxLinks={MAX_FRIEND_LINKS}
+      saving={save.isPending}
+      onSave={(links) => save.mutate(links)}
+    />
   );
 }

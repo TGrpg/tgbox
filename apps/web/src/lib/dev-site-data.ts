@@ -178,6 +178,7 @@ export const devSiteData: SiteData = {
   promos: [],
   sponsoredAnnouncements: [],
   showAdSlots: true,
+  featured: [],
   friendLinks: [
     {
       name: "Telegram",

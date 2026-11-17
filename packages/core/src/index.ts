@@ -86,6 +86,7 @@ export {
   SettingsKeyMissingError,
   type SettingsUpdate,
   setCredential,
+  setFeatured,
   settingsFromRows,
   updateSettings,
 } from "./settings.ts";

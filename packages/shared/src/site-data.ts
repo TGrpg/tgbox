@@ -194,5 +194,7 @@ export const SiteData = z.object({
   products: z.array(ProductView).default([]),
   /** Admin setting, in display order. */
   friendLinks: z.array(FriendLink).default([]),
+  /** Explicit curation for open-data mirrors, in admin order. */
+  featured: z.array(FriendLink).default([]),
 });
 export type SiteData = z.infer<typeof SiteData>;

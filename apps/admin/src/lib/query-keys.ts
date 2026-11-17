@@ -25,6 +25,7 @@ export const queryKeys = {
   products: ["products"],
   users: ["users"],
   friendLinks: ["friend-links"],
+  featured: ["featured"],
   friendLinkRequests: ["friend-link-requests"],
 } as const;
 

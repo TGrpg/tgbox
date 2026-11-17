@@ -338,6 +338,7 @@ export async function buildSiteData(options: BuildSiteDataOptions): Promise<Site
       inventory,
       showAdSlots: site.showAdSlots,
       friendLinks: site.friendLinks,
+      featured: site.featured,
       payments: paymentMethods(),
       products: productRows.map((row) => ({
         id: int(row.id),

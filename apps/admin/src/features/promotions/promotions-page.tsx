@@ -4,11 +4,12 @@ import { Tabs, TabsList, TabsTab } from "@/components/coss/ui/tabs.tsx";
 import { PageHeader } from "@/components/shell/page-header.tsx";
 import { promotionCountsQueryOptions } from "@/functions/promotions.ts";
 import { ActiveTab } from "./active-tab.tsx";
+import { FeaturedTab } from "./featured-tab.tsx";
 import { ManualTab } from "./manual-tab.tsx";
 import { OrdersTab } from "./orders-tab.tsx";
 import { ProductsTab } from "./products-tab.tsx";
 
-export const promotionTabs = ["orders", "active", "new", "products"] as const;
+export const promotionTabs = ["orders", "active", "new", "products", "featured"] as const;
 export type PromotionTab = (typeof promotionTabs)[number];
 
 const tabLabels: Record<PromotionTab, string> = {
@@ -16,6 +17,7 @@ const tabLabels: Record<PromotionTab, string> = {
   active: "投放中",
   new: "新建",
   products: "档位价格",
+  featured: "Awesome 推荐",
 };
 
 export function PromotionsPage({
@@ -49,7 +51,7 @@ export function PromotionsPage({
           if (next) onTabChange(next);
         }}
       >
-        <TabsList className="mb-4">
+        <TabsList className="mb-4 max-w-full overflow-x-auto">
           {promotionTabs.map((item) => (
             <TabsTab key={item} value={item}>
               {tabLabels[item]}
@@ -62,6 +64,7 @@ export function PromotionsPage({
       {tab === "active" && <ActiveTab />}
       {tab === "new" && <ManualTab onCreated={() => onTabChange("active")} />}
       {tab === "products" && <ProductsTab />}
+      {tab === "featured" && <FeaturedTab />}
     </>
   );
 }

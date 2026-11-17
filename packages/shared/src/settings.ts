@@ -52,6 +52,7 @@ export const FriendLink = z.object({
 export type FriendLink = z.infer<typeof FriendLink>;
 
 export const MAX_FRIEND_LINKS = 30;
+export const MAX_FEATURED = 20;
 
 /** Most substrings the post blocklist may hold; the snapshot scans every post against all of them. */
 export const MAX_POST_BLOCKLIST = 100;
@@ -75,6 +76,8 @@ export const SiteSettings = z.object({
   showAdSlots: z.boolean(),
   /** In display order; the footer shows the first few, /links/ all of them. */
   friendLinks: z.array(FriendLink).max(MAX_FRIEND_LINKS),
+  /** Admin picks for the awesome-telegram README, in display order. */
+  featured: z.array(FriendLink).max(MAX_FEATURED),
 });
 export type SiteSettings = z.infer<typeof SiteSettings>;
 
@@ -119,6 +122,7 @@ export const settingsDefaults: Settings = {
     hidePostMedia: false,
     showAdSlots: false,
     friendLinks: [],
+    featured: [],
   },
   payments: {
     starsEnabled: true,
