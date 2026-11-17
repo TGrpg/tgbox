@@ -30,6 +30,17 @@ describe("settings", () => {
     });
   });
 
+  test("a payment switch is published like a site edit, since the site lists payment methods", async () => {
+    const { ctx, dispatches } = await setup();
+    const payments = {
+      ...settingsDefaults.payments,
+      starsEnabled: !settingsDefaults.payments.starsEnabled,
+    };
+    await updateSettings(ctx, { key: "payments", value: payments, actor });
+    expect(await getSiteState(db, "dirty_since")).toBe(String(NOW));
+    expect(dispatches).toHaveLength(1);
+  });
+
   test("updates validate, audit only real changes, and the site key triggers a rebuild", async () => {
     const { ctx, dispatches } = await setup();
     const bot = { ...settingsDefaults.bot, submitDailyLimit: 10, reviewChatId: "-100123" };

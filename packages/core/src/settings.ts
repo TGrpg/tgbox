@@ -94,7 +94,8 @@ export async function updateSettings(
   const changed = rowsWritten > 0;
   if (changed) {
     await audit(ctx, input.actor, "settings.update", `settings:${input.key}`, parsed.data);
-    if (input.key === "site") await markDirtyAndDispatch(ctx);
+    // The site lists the payment methods buyers can pick; bot settings never reach it.
+    if (input.key !== "bot") await markDirtyAndDispatch(ctx);
   }
   return { ok: true, changed };
 }
