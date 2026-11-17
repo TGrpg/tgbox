@@ -1,10 +1,11 @@
 import { applyForFriendLink, approveFriendLink, rejectFriendLink, tgActor } from "@tgbox/core";
 import { deleteBotDraft, getBotDraft, putBotDraft } from "@tgbox/db";
-import { FriendLink, type SiteLocale } from "@tgbox/shared";
+import { FriendLink, parseTelegramRef, type SiteLocale } from "@tgbox/shared";
 import { Composer, type Context, InlineKeyboard } from "grammy";
 import type { App } from "./app.ts";
 import { messages } from "./i18n/index.ts";
 import { answerAlreadyHandled } from "./review.ts";
+import { looksLikeSubmission } from "./submit.ts";
 
 const linkSteps = ["link_url", "link_name", "link_description"] as const;
 type LinkStep = (typeof linkSteps)[number];
@@ -64,6 +65,12 @@ export function friendLinks(app: App) {
     const row = await getBotDraft(app.db, userId, app.now());
     const current = row ? parseLinkDraft(row.step, row.payload) : null;
     if (!current) return next();
+    // A friend link is a website; a Telegram link sent mid-application (often a day after the
+    // footer button was tapped and forgotten) is a submission. Abandon the application for it.
+    if (parseTelegramRef(text) && looksLikeSubmission(text)) {
+      await deleteBotDraft(app.db, userId);
+      return next();
+    }
 
     const locale = await app.locale(ctx);
     const m = messages(locale).friendLink;

@@ -41,6 +41,8 @@ export function startHelp(app: App) {
     if (ctx.match === "promote" || ctx.match === "links") return next();
     if (ctx.match === "submit") return askForLink(ctx);
     if (ctx.match === "support") return support(ctx);
+    // Starting over leaves any half-finished flow, whose steps would otherwise keep taking input.
+    await deleteBotDraft(app.db, ctx.from.id);
     const m = messages(locale);
     const custom = (await app.settings()).bot.welcome[textLocale(locale)];
     const appUrl = miniAppUrl(app.env.SITE_URL, locale);
@@ -56,6 +58,8 @@ export function startHelp(app: App) {
   composer.command("help", async (ctx) => ctx.reply((await app.m(ctx)).help));
 
   async function support(ctx: Context) {
+    // A question must reach the staff, not answer the step of a flow the user walked away from.
+    if (ctx.from) await deleteBotDraft(app.db, ctx.from.id);
     const m = await app.m(ctx);
     const bot = (await app.settings()).bot;
     await ctx.reply(relayEnabled(bot) ? m.supportChat.ask : m.support(bot.supportUsername));

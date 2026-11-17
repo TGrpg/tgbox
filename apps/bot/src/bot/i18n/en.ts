@@ -74,8 +74,8 @@ export const en: typeof zh = {
     savedAuto: "✅ The bot now follows your Telegram client language.",
   },
   supportChat: {
-    ask: "Just send your question here and the team will get back to you.",
-    sent: "✅ Sent to support. Hang tight.",
+    ask: "Just send your question here and the team will get back to you. To submit a channel, group or bot, send its link instead.",
+    sent: "✅ Sent to support. Hang tight. To submit a channel, group or bot, just send its link.",
     unavailable: "Support can't take messages right now. Please try again later.",
   },
   friendLink: {
@@ -105,7 +105,6 @@ export const en: typeof zh = {
     "Send the link of the channel, group or bot to submit (https://t.me/xxx, t.me/xxx or @xxx).",
   invalidLink:
     "That link wasn't recognized. Send a public username as https://t.me/xxx, t.me/xxx or @xxx (invite links aren't supported).",
-  maybeSubmission: "想收录这个链接？请用 /submit 提交。 / To submit a link, use /submit.",
   alreadyListed: (username: string) => `@${username} is already listed.`,
   alreadyPending: (username: string) => `@${username} is already awaiting review.`,
   dailyLimit: (limit: number) =>

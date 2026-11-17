@@ -1,5 +1,6 @@
 import { addBlacklist } from "@tgbox/core";
-import { getBlacklistEntry, getSupportThread } from "@tgbox/db";
+import { getBlacklistEntry, getBotDraft, getSupportThread, supportThreads } from "@tgbox/db";
+import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, test } from "vitest";
 import {
   ADMIN,
@@ -60,6 +61,20 @@ describe("support relay", () => {
     expect(h.calls("sendMessage")).toEqual([]);
     // No D1 write: the thread row is refreshed at most once an hour.
     expect(await getSupportThread(db, user.id)).toEqual(before);
+  });
+
+  test("a user coming back after a pause is acknowledged again", async () => {
+    await h.message(user, "Hi");
+    const twoHoursAgo = Date.now() - 2 * 60 * 60 * 1000;
+    await db
+      .update(supportThreads)
+      .set({ updatedAt: twoHoursAgo })
+      .where(eq(supportThreads.tgUserId, user.id));
+    h.reset();
+    await h.message(user, "Still there?");
+    expect(h.calls("copyMessage")).toHaveLength(1);
+    expect(h.lastText()).toContain("Sent to support");
+    expect((await getSupportThread(db, user.id))?.updatedAt).toBeGreaterThan(twoHoursAgo);
   });
 
   test("photos and stickers are relayed too", async () => {
@@ -200,6 +215,15 @@ describe("support relay", () => {
   test("links still start a submission while the relay is on", async () => {
     await h.message(user, "https://t.me/sample_channel");
     expect(h.calls("createForumTopic")).toEqual([]);
+    expect(h.lastText()).toContain("Choose a category");
+  });
+
+  test("/support leaves an unfinished flow so links and questions aren't taken as its answers", async () => {
+    await h.message(user, "/start links");
+    expect(await getBotDraft(db, user.id, Date.now())).toBeDefined();
+    await h.message(user, "/start support");
+    expect(await getBotDraft(db, user.id, Date.now())).toBeUndefined();
+    await h.message(user, "https://t.me/sample_channel");
     expect(h.lastText()).toContain("Choose a category");
   });
 

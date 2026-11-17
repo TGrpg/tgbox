@@ -79,15 +79,17 @@ export function supportRelay(app: App) {
     const userId = ctx.from.id;
     const existing = await getSupportThread(app.db, userId);
     const now = app.now();
+    // A session is a run of messages without an hour's pause (the row's touch granularity). Only
+    // its first message is acknowledged: a reply is coming from a human, and a user returning days
+    // later must not be met with silence.
+    const newSession = !existing || now - existing.updatedAt > TOUCH_AFTER_MS;
     try {
       const topicId = existing ? existing.topicId : await openTopic(ctx, groupId, userId);
       await copyToTopic(ctx, groupId, topicId);
       if (existing) {
         await touchSupportThread(app.db, { tgUserId: userId, now, maxAgeMs: TOUCH_AFTER_MS });
-      } else {
-        // Only the first message of a session is acknowledged; a reply is coming from a human.
-        await ctx.reply((await app.m(ctx)).supportChat.sent);
       }
+      if (newSession) await ctx.reply((await app.m(ctx)).supportChat.sent);
     } catch (error) {
       await report(error);
       await ctx.reply((await app.m(ctx)).supportChat.unavailable).catch(() => {});
