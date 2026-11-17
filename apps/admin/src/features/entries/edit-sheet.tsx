@@ -2,7 +2,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Button } from "@/components/coss/ui/button.tsx";
 import { Checkbox } from "@/components/coss/ui/checkbox.tsx";
-import { Input } from "@/components/coss/ui/input.tsx";
 import { Label } from "@/components/coss/ui/label.tsx";
 import {
   Sheet,
@@ -22,6 +21,7 @@ import { checkStartPayloadEdit } from "./edit.ts";
 import { kindLabel } from "./labels.ts";
 import { useEditEntry, useSetEntryStartPayload } from "./mutations.ts";
 import { OptionSelect } from "./option-select.tsx";
+import { StartPayloadField } from "./start-payload-field.tsx";
 import { TagPicker } from "./tag-picker.tsx";
 
 /** Edit drawer: taxonomy, promotion and admin-curated bot payload. */
@@ -92,25 +92,12 @@ function EditForm({ entry, onClose }: { entry: EntryRow; onClose: () => void }) 
               />
             </div>
             {entry.kind === "bot" && (
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="start-payload">Start 参数</Label>
-                <Input
-                  id="start-payload"
-                  value={startPayload}
-                  aria-invalid={payloadError !== null}
-                  aria-describedby="start-payload-help start-payload-error"
-                  onChange={(event) => setStartPayload(event.target.value)}
-                />
-                <p id="start-payload-help" className="text-xs text-muted-foreground">
-                  仅在 bot
-                  主人要求时填写。会附加到全站所有打开链接：t.me/&lt;username&gt;?start=…；留空即清除。
-                </p>
-                {payloadError && (
-                  <p id="start-payload-error" role="alert" className="text-xs text-destructive">
-                    {payloadError}
-                  </p>
-                )}
-              </div>
+              <StartPayloadField
+                username={entry.username}
+                value={startPayload}
+                error={payloadError}
+                onChange={setStartPayload}
+              />
             )}
             <Label className="flex items-center gap-2">
               <Checkbox

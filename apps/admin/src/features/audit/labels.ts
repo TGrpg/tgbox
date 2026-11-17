@@ -3,6 +3,7 @@ import type { AuditAction } from "@tgbox/core";
 export const auditActionLabels: Record<AuditAction, string> = {
   "submission.approve": "通过投稿",
   "submission.reject": "拒绝投稿",
+  "submission.reopen": "退回待审",
   "entry.list": "收录条目",
   "entry.status": "修改状态",
   "entry.category": "修改分类",

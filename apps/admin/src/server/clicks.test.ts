@@ -2,7 +2,7 @@ import type { CoreContext } from "@tgbox/core";
 import { beforeEach, expect, test, vi } from "vitest";
 
 const core = vi.hoisted(() => ({ promotionClickTotals: vi.fn(), promotionClickHistory: vi.fn() }));
-const db = vi.hoisted(() => ({ listActivePromotions: vi.fn() }));
+const db = vi.hoisted(() => ({ listActivePromotions: vi.fn(), listPromotionsOfOrders: vi.fn() }));
 vi.mock("@tgbox/core", () => core);
 vi.mock("@tgbox/db", () => db);
 
@@ -31,21 +31,17 @@ test("every live promotion carries a click count, zero included", async () => {
   ]);
 });
 
-test("orders are matched to the promotion they produced", async () => {
-  db.listActivePromotions.mockResolvedValue([
-    promotion(1, 10),
-    promotion(2, 99), // another page's order
-    promotion(3, null), // created by hand, belongs to no order
-  ]);
+test("orders are matched to the promotion they produced, ended or not", async () => {
+  db.listPromotionsOfOrders.mockResolvedValue([promotion(1, 10)]);
   core.promotionClickTotals.mockResolvedValue({ 1: { total: 5, recent: 5 } });
 
   expect(await clicksByOrder(ctx, [10, 11])).toEqual({ 10: { total: 5, recent: 5 } });
-  // Only the promotions of the requested orders are counted.
+  expect(db.listPromotionsOfOrders).toHaveBeenCalledWith(undefined, [10, 11]);
   expect(core.promotionClickTotals).toHaveBeenCalledWith(ctx, [1]);
 });
 
-test("an order whose promotion already ended reports nothing rather than zero", async () => {
-  db.listActivePromotions.mockResolvedValue([]);
+test("an order that never went live reports nothing rather than zero", async () => {
+  db.listPromotionsOfOrders.mockResolvedValue([]);
   core.promotionClickTotals.mockResolvedValue({});
 
   expect(await clicksByOrder(ctx, [10])).toEqual({});
@@ -53,7 +49,7 @@ test("an order whose promotion already ended reports nothing rather than zero", 
 
 test("no orders means no queries at all", async () => {
   expect(await clicksByOrder(ctx, [])).toEqual({});
-  expect(db.listActivePromotions).not.toHaveBeenCalled();
+  expect(db.listPromotionsOfOrders).not.toHaveBeenCalled();
   expect(core.promotionClickTotals).not.toHaveBeenCalled();
 });
 

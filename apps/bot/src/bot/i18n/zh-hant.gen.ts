@@ -197,10 +197,6 @@ export const zhHant = {
   submitted: "已提交，等待審核。審核結果會私信通知你。",
   noPermission: "沒有權限。",
   alreadyHandled: "已被處理。",
-  approvedNotice: (username: string) =>
-    `🎉 你提交的 @${username} 已通過審核並收錄，網站幾分鐘後更新。`,
-  rejectedNotice: (username: string, reason: string) =>
-    `很抱歉，你提交的 @${username} 未通過審核。原因：${reason}`,
   openTelegram: "打開 Telegram",
   openSite: "網站詳情",
   promote: {
@@ -240,6 +236,7 @@ export const zhHant = {
         ? `名額已滿，最早 ${utcDate(nextFreeAt)} 有空位，屆時再來吧。`
         : "名額已滿，請稍後再試。",
     productUnavailable: "該商品已下架，請發送 /promote 重新選擇。",
+    tooManyPending: "你有好幾筆未付款的訂單了。請先付掉其中一筆，或等它們兩天後自動失效再下單。",
     order: (o: OrderSummary) =>
       [
         `訂單 #${o.id}`,
@@ -278,11 +275,8 @@ export const zhHant = {
     paidEntry: (t: PromotionTarget, days: number) =>
       `✅ 支付成功！${zhTarget(t)} 已上線 ${days} 天，網站幾分鐘後更新。`,
     paidAd: "✅ 支付成功！廣告已提交審核，通過後會通知你。",
-    adApproved: (t: PromotionTarget, endsAt: number) =>
-      `🎉 你的廣告（${zhTarget(t)}）已通過審核並上線，展示至 ${utcTime(endsAt)}。`,
-    adRejectedRefunded: "很抱歉，你的廣告未通過審核，Stars 已原路退回。",
-    adRejectedManual: (orderId: number, support: string | null) =>
-      `很抱歉，你的廣告未通過審核。請聯繫客服${support ? ` @${support}` : ""}辦理退款（訂單 #${orderId}）。`,
+    paidWaiting: (t: PromotionTarget) =>
+      `✅ 支付成功！不過 ${zhTarget(t)} 的名額剛好被佔滿了。名額一空出就為你上線並通知你；不想等可以聯繫客服退款。`,
     orphanRefunded: "該訂單已失效，本次支付的 Stars 已原路退回。",
     expired: (t: PromotionTarget) =>
       `你的推廣（${zhTarget(t)}）已到期下架。發送 /promote 可以再次購買。`,
@@ -306,6 +300,7 @@ export const zhHant = {
     reject: "❌ 拒絕",
     back: "« 返回",
     approvedBy: (name: string) => `✅ 已通過（${name}）`,
+    listingFailed: "⚠️ 收錄失敗，已退回待審。請再點一次通過。",
     rejectedBy: (name: string, reason: string) => `❌ 已拒絕（${name}）：${reason}`,
     reasons: {
       content: "內容違規",
@@ -359,6 +354,18 @@ export const zhHant = {
       `❌ 已拒絕（${name}）${refunded ? "，已自動退款" : `，需人工退款 ${amount}`}`,
     orphanPayment: (orderId: number, provider: string, chargeId: string, amount: string) =>
       `⚠️ 收到無效訂單 #${orderId} 的付款（${provider} ${chargeId}，${amount}），請人工核對並退款。`,
+    slotWaiting: (o: PromotionTarget & { id: number; amount: string; buyerId: number }) =>
+      [
+        "⏳ 已付款，但名額已滿",
+        `訂單 #${o.id}：${zhTarget(o)}`,
+        `支付：${o.amount}`,
+        `買家：${o.buyerId}`,
+        "",
+        "名額空出後點「上線」；不想讓買家等就點「退款」。",
+      ].join("\n"),
+    startNow: "▶️ 上線",
+    refund: "↩️ 退款",
+    stillFull: "名額仍然是滿的，等有空位再點上線。",
     banUsage: "用法：/ban <用戶ID|@用戶名> [原因]",
     unbanUsage: "用法：/unban <用戶ID|@用戶名>",
     banned: (target: string) => `已拉黑 ${target}`,

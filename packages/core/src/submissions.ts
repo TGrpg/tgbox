@@ -10,6 +10,7 @@ import {
   listCategories,
   listTags,
   rejectSubmission as rejectSubmissionRow,
+  reopenSubmission as reopenSubmissionRow,
   type Submission,
 } from "@tgbox/db";
 import { entryKinds, MAX_TAGS, parseTelegramRef, type SubmitError } from "@tgbox/shared";
@@ -20,6 +21,7 @@ import { type Actor, background, type CoreContext } from "./context.ts";
 import { publishEntryToChannel } from "./publish.ts";
 import { notifyNewSubmission } from "./review-notify.ts";
 import { getSettings } from "./settings.ts";
+import { notifySubmitter } from "./submission-notices.ts";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -129,24 +131,25 @@ const reviewerIdOf = (actor: Actor) => (actor.startsWith("tg:") ? Number(actor.s
 
 /**
  * Pending → approved state transition. Returns the submission, or null if it was already handled.
- * The entry is listed by `listApprovedSubmission`, which the bot runs after answering Telegram.
+ * The entry is listed by `listApprovedSubmission`, which the bot runs after answering Telegram;
+ * transitioning first is what tells a second admin tapping at the same moment it's handled.
  */
 export async function approveSubmission(ctx: CoreContext, input: { id: number; actor: Actor }) {
   const submission = await getSubmission(ctx.db, input.id);
+  return submission ? markApproved(ctx, submission, input.actor) : null;
+}
+
+/** The transition and its audit row, for a submission already read. Null if it was handled. */
+export async function markApproved(ctx: CoreContext, submission: Submission, actor: Actor) {
   const now = ctx.now();
-  if (
-    !submission ||
-    !(await approveSubmissionRow(ctx.db, input.id, reviewerIdOf(input.actor), now))
-  ) {
-    return null;
-  }
-  await audit(ctx, input.actor, "submission.approve", `submission:${input.id}`, {
+  if (!(await approveSubmissionRow(ctx.db, submission.id, reviewerIdOf(actor), now))) return null;
+  await audit(ctx, actor, "submission.approve", `submission:${submission.id}`, {
     username: submission.username,
   });
   const approved: Submission = {
     ...submission,
     status: "approved",
-    reviewerId: reviewerIdOf(input.actor),
+    reviewerId: reviewerIdOf(actor),
     reviewedAt: now,
   };
   return approved;
@@ -155,8 +158,48 @@ export async function approveSubmission(ctx: CoreContext, input: { id: number; a
 /**
  * Fetches the t.me profile and lists an approved submission; marks the site dirty. A newly created
  * entry is announced in the publish channel in the background (bot and admin approvals alike).
+ *
+ * If the entry can't be inserted, the submission goes back to pending and the error is rethrown:
+ * left approved with no entry, nothing would ever list it, and approving it again would only say
+ * it was handled.
  */
-export async function listApprovedSubmission(ctx: CoreContext, submission: Submission) {
+export async function listApprovedSubmission(
+  ctx: CoreContext,
+  submission: Submission,
+  actor: Actor,
+) {
+  let listed: Awaited<ReturnType<typeof insertSubmissionEntry>>;
+  try {
+    listed = await insertSubmissionEntry(ctx, submission);
+  } catch (error) {
+    if (await reopenSubmissionRow(ctx.db, submission.id)) {
+      await audit(ctx, actor, "submission.reopen", `submission:${submission.id}`, {
+        username: submission.username,
+      });
+    }
+    throw error;
+  }
+  await announceListing(ctx, submission, listed.created);
+  return listed;
+}
+
+/**
+ * After an approval: marks the site dirty, tells the submitter and, for an entry this approval
+ * created, posts it to the publish channel.
+ */
+export async function announceListing(ctx: CoreContext, submission: Submission, created: boolean) {
+  await markDirtyAndDispatch(ctx);
+  await notifySubmitter(ctx, submission, { type: "approved" });
+  if (created) {
+    await background(ctx, () => publishEntryToChannel(ctx, { username: submission.username }));
+  }
+}
+
+/**
+ * Fetches the t.me profile and inserts the submission's entry, unless an entry with its username
+ * already exists. Writes nothing else: no dirty flag, no channel post.
+ */
+export async function insertSubmissionEntry(ctx: CoreContext, submission: Submission) {
   const now = ctx.now();
   const snap = await fetchEntrySnapshot(submission.username, {
     fetch: ctx.fetch,
@@ -192,14 +235,10 @@ export async function listApprovedSubmission(ctx: CoreContext, submission: Submi
       now,
     }));
   }
-  await markDirtyAndDispatch(ctx);
-  if (!existing) {
-    await background(ctx, () => publishEntryToChannel(ctx, { username: submission.username }));
-  }
   return { entryId, created: !existing };
 }
 
-/** Pending → rejected. Returns the submission, or null if it was already handled. */
+/** Pending → rejected, and the submitter is told. Returns the submission, or null if it was handled. */
 export async function rejectSubmission(
   ctx: CoreContext,
   input: { id: number; reason: RejectReason; actor: Actor },
@@ -216,6 +255,7 @@ export async function rejectSubmission(
     username: submission.username,
     reason: input.reason,
   });
+  await notifySubmitter(ctx, submission, { type: "rejected", reason: input.reason });
   const rejected: Submission = {
     ...submission,
     status: "rejected",

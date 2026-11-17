@@ -22,3 +22,19 @@ export function meCounts(me: { submissions: AppSubmission[]; orders: AppOrder[] 
  */
 export const daysLeft = (endsAt: number, now: number) =>
   Math.max(0, Math.ceil((endsAt - now) / DAY_MS));
+
+/** How long a cached `/api/app/me` is used as is; an older copy is shown while it is fetched again. */
+export const ME_FRESH_MS = 60 * 1000;
+
+/**
+ * What a screen does with the cached `/me`: "fresh" uses it, "stale" shows it while fetching again,
+ * "none" ignores it — nothing cached, or it belongs to another Telegram account on this device.
+ */
+export function meCacheUse(
+  cached: { userId: number | null; at: number } | null,
+  userId: number | null,
+  now: number,
+): "fresh" | "stale" | "none" {
+  if (cached === null || cached.userId !== userId) return "none";
+  return now - cached.at < ME_FRESH_MS ? "fresh" : "stale";
+}

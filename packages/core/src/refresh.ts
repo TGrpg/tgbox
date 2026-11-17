@@ -170,16 +170,23 @@ export async function runRefresh(
   const tick = Math.floor(scheduledTime / REFRESH_INTERVAL_MS);
   const slot = tick % batches;
   // One cycle = one full pass over all slots; low-activity channels are refreshed every other pass.
-  const oddCycle = Math.floor(tick / batches) % 2 === 1;
+  const cycle = Math.floor(tick / batches);
+  const oddCycle = cycle % 2 === 1;
   result.from = slot * batchSize + 1;
   result.to = result.from + batchSize - 1;
 
   const rows = await getEntriesByIdRange(db, result.from, result.to);
   result.subrequests++;
+  // The budget or a 429 cuts a batch short, so start one entry later every two cycles: a fixed
+  // start would keep refreshing the head of the slice while its tail never got a turn. Two, not
+  // one, because low-activity channels only run on even cycles; moving every cycle would give
+  // them their turn at the front only on the odd cycles that skip them.
+  const start = rows.length > 0 ? Math.floor(cycle / 2) % rows.length : 0;
+  const ordered = [...rows.slice(start), ...rows.slice(0, start)];
 
   const pending: Pending[] = [];
   let rateLimited = false;
-  for (const { entry, stats } of rows) {
+  for (const { entry, stats } of ordered) {
     if (entry.status === "removed" || entry.status === "hidden_by_admin") continue;
     if (oddCycle && (stats?.activityTier === 0 || stats?.activityTier === 1)) continue;
     if (rateLimited || result.subrequests + ENTRY_WORST_CASE + FINAL_RESERVE > SUBREQUEST_BUDGET) {

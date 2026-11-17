@@ -1,6 +1,6 @@
 import type { AppOrder, AppSubmission } from "@tgbox/shared";
 import { describe, expect, test } from "vitest";
-import { daysLeft, meCounts } from "./app-me.ts";
+import { daysLeft, ME_FRESH_MS, meCacheUse, meCounts } from "./app-me.ts";
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -57,5 +57,25 @@ describe("daysLeft", () => {
   test("is zero once the end has passed", () => {
     expect(daysLeft(DAY, DAY)).toBe(0);
     expect(daysLeft(DAY, DAY * 2)).toBe(0);
+  });
+});
+
+describe("meCacheUse", () => {
+  const now = 1_000_000;
+
+  test("uses a copy cached moments ago by the same user", () => {
+    expect(meCacheUse({ userId: 7, at: now - 1_000 }, 7, now)).toBe("fresh");
+  });
+
+  test("fetches again once the copy is older than the fresh window", () => {
+    expect(meCacheUse({ userId: 7, at: now - ME_FRESH_MS }, 7, now)).toBe("stale");
+  });
+
+  test("never shows another account's copy", () => {
+    expect(meCacheUse({ userId: 7, at: now }, 8, now)).toBe("none");
+  });
+
+  test("has nothing to use when nothing is cached", () => {
+    expect(meCacheUse(null, 7, now)).toBe("none");
   });
 });

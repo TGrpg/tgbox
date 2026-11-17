@@ -347,4 +347,36 @@ describe("blacklist, drafts, site state", () => {
     expect(await clearDirty(db, NOW + 10)).toBe(true);
     expect(await markDirty(db, NOW + 20)).toBe(true);
   });
+
+  test("a change made while a build runs survives that build's clean-up", async () => {
+    await markDirty(db, NOW);
+    // The workflow records its start, exports D1 and builds; meanwhile another change lands.
+    await setSiteState(db, "build_started_at", String(NOW + 100));
+    expect(await markDirty(db, NOW + 300)).toBe(true);
+    // Later changes in the same build cost nothing more.
+    expect(await markDirty(db, NOW + 400)).toBe(false);
+    expect(await clearDirty(db, NOW + 100)).toBe(false);
+    expect(await getSiteState(db, "dirty_since")).toBe(String(NOW + 300));
+  });
+
+  test.each([
+    ["an older flag", true],
+    ["no flag", false],
+  ])(
+    "a cron change timed before the build but written after its export survives (%s)",
+    async (_label, flagged) => {
+      // Site state persists between tests in this file.
+      await clearDirty(db, Number.MAX_SAFE_INTEGER);
+      await setSiteState(db, "build_started_at", String(NOW - 100));
+      if (flagged) await markDirty(db, NOW);
+      // The cron was scheduled at NOW + 50; the workflow fenced and exported at NOW + 100; the
+      // cron's write lands afterwards, still stamped with its scheduled time.
+      await setSiteState(db, "build_started_at", String(NOW + 100));
+      expect(await markDirty(db, NOW + 50)).toBe(true);
+      expect(await markDirty(db, NOW + 60)).toBe(false);
+      expect(await clearDirty(db, NOW + 100)).toBe(false);
+      expect(await getSiteState(db, "dirty_since")).toBe(String(NOW + 100));
+      await clearDirty(db, NOW + 101);
+    },
+  );
 });

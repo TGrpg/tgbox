@@ -12,6 +12,24 @@ export type TelegramTarget = {
   startPayload?: string | null;
 };
 
+/**
+ * The `start` payload of a pasted t.me link, or null when there is none (or it isn't valid). Only
+ * for links an admin pastes: a submitter's `?start=` is never kept, since nobody can tell whether
+ * it belongs to the bot's owner.
+ */
+export function startPayloadOf(link: string): string | null {
+  const value = link.trim();
+  let url: URL;
+  try {
+    url = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(value) ? value : `https://${value}`);
+  } catch {
+    return null;
+  }
+  if (!HOSTS.has(url.hostname.toLowerCase().replace(/^www\./, ""))) return null;
+  const start = url.searchParams.get("start");
+  return isStartPayload(start) ? start : null;
+}
+
 /** Only an explicitly reviewed bot payload is retained; no other query survives. */
 export function telegramLinks(target: TelegramTarget) {
   if (parseTelegramRef(`@${target.username}`) !== target.username)

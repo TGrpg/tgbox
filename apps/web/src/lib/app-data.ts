@@ -111,3 +111,13 @@ export type AppProducts = { products: ProductView[]; payments: SiteData["payment
 export function appProducts(data: SiteData): AppProducts {
   return { products: data.products, payments: data.payments };
 }
+
+export type PayMethod = "stars" | "usdt";
+
+/**
+ * The methods a buyer can pay with, in button order. Prices, the buy entry and the pay buttons all
+ * read this one list, so a method the operator switched off disappears from all three at once.
+ */
+export function payMethods(payments: AppProducts["payments"]): PayMethod[] {
+  return (["stars", "usdt"] as const).filter((method) => payments[method]);
+}

@@ -8,6 +8,13 @@ import { type Actor, background, type CoreContext } from "./context.ts";
  */
 const DEFAULT_MIN_INTERVAL_MS = 3 * 60_000;
 
+/**
+ * Contexts that already sent a dispatch. A context lives for one request or cron invocation, and
+ * `build_dispatched_at` is only written once GitHub answers, so without this a bulk action changing
+ * many rows faster than GitHub replies sent one dispatch per row, all against the same budget.
+ */
+const dispatched = new WeakSet<CoreContext>();
+
 /** Nothing may stay unpublished longer than an hour, so the hourly net acts on half that. */
 const STALE_DISPATCH_MS = 30 * 60_000;
 
@@ -67,12 +74,18 @@ export async function markDirtyAndDispatch(
   const { minIntervalMs = DEFAULT_MIN_INTERVAL_MS, onTransition = true } = options;
   const now = ctx.now();
   const transitioned = await markDirty(ctx.db, now);
+  // The build that dispatch starts exports D1 later, so it carries this change too.
+  if (dispatched.has(ctx)) return;
   if (!(transitioned && onTransition)) {
     const last = Number(await getSiteState(ctx.db, "build_dispatched_at"));
     // Still dirty, so the change isn't lost: the next eligible dispatch or the hourly net takes it.
     if (Number.isFinite(last) && now - last < minIntervalMs) return;
   }
-  await background(ctx, () => dispatchBuild(ctx));
+  dispatched.add(ctx);
+  await background(ctx, async () => {
+    // A refused dispatch leaves the next change free to try again.
+    if (!(await dispatchBuild(ctx))) dispatched.delete(ctx);
+  });
 }
 
 /**

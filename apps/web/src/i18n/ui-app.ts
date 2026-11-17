@@ -191,6 +191,8 @@ const zh = {
     usdtWaiting: "正在等待到账，确认后这里会自动更新。",
     usdtExpires: "请在 {time} 前完成转账。",
     usdtExpired: "这笔订单的支付时间已过，请重新下单。",
+    usdtStopped: "已停止自动检查。如果你已经转账，可以再查一次。",
+    usdtCheck: "检查是否到账",
     paidTitle: "支付成功",
     paidLead:
       "条目推广已经上线，网站几分钟内更新；品牌广告会在审核通过后开始投放。进度可以在“我的”里查看。",
@@ -209,6 +211,7 @@ const zh = {
       target_not_listed: "这个用户名还没有被收录。",
       invalid_banner: "横幅内容不符合要求：标题 ≤ 20 字、副标题 ≤ 40 字、链接以 https:// 开头。",
       no_slots: "推广位已经满了，最早 {date} 空出来。",
+      too_many_pending: "你有好几笔未付款的订单了，请先付掉其中一笔，或等两天后它们自动失效。",
       image_too_large: "图片超过 5 MB。",
       image_type: "只支持 JPEG、PNG 和 WebP。",
       generic: "下单失败，请稍后再试。",
@@ -402,6 +405,8 @@ const en: typeof zh = {
     usdtWaiting: "Waiting for the transfer; this updates by itself once it arrives.",
     usdtExpires: "Please send it before {time}.",
     usdtExpired: "This order's payment window has closed. Please order again.",
+    usdtStopped: "Stopped checking automatically. If you already sent it, check again.",
+    usdtCheck: "Check for payment",
     paidTitle: "Payment received",
     paidLead:
       "Listing promotions are live and the site updates within minutes; brand ads start once approved. Follow it under “Mine”.",
@@ -421,6 +426,8 @@ const en: typeof zh = {
       invalid_banner:
         "The banner doesn't fit: title ≤ 20 characters, subtitle ≤ 40, link starting with https://.",
       no_slots: "Every slot is taken; the first one frees up on {date}.",
+      too_many_pending:
+        "You already have several unpaid orders. Pay one, or wait for them to lapse after two days.",
       image_too_large: "The image is larger than 5 MB.",
       image_type: "Only JPEG, PNG and WebP are supported.",
       generic: "The order could not be created. Please try again.",

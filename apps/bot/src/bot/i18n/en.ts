@@ -137,10 +137,6 @@ export const en: typeof zh = {
   submitted: "Submitted and awaiting review. You'll get a private message with the result.",
   noPermission: "Not allowed.",
   alreadyHandled: "Already handled.",
-  approvedNotice: (username: string) =>
-    `🎉 Your submission @${username} was approved and listed. The site updates in a few minutes.`,
-  rejectedNotice: (username: string, reason: string) =>
-    `Sorry, your submission @${username} was not approved. Reason: ${reason}`,
   openTelegram: "Open in Telegram",
   openSite: "Details",
   promote: {
@@ -182,6 +178,8 @@ export const en: typeof zh = {
         ? `All slots are taken. The next one frees up on ${new Date(nextFreeAt).toISOString().slice(0, 10)}.`
         : "All slots are taken. Please try again later.",
     productUnavailable: "That product is no longer available. Send /promote to choose again.",
+    tooManyPending:
+      "You already have several unpaid orders. Pay one of them, or wait for them to lapse after two days, before ordering again.",
     order: (o: OrderSummary) =>
       [
         `Order #${o.id}`,
@@ -221,11 +219,8 @@ export const en: typeof zh = {
     paidEntry: (t: PromotionTarget, days: number) =>
       `✅ Payment received! Your ${enTarget(t)} is live for ${days} days. The site updates in a few minutes.`,
     paidAd: "✅ Payment received! Your ad is awaiting review; you'll be notified of the result.",
-    adApproved: (t: PromotionTarget, endsAt: number) =>
-      `🎉 Your ad (${enTarget(t)}) was approved and is live until ${utcTime(endsAt)}.`,
-    adRejectedRefunded: "Sorry, your ad was not approved. Your Stars were refunded.",
-    adRejectedManual: (orderId: number, support: string | null) =>
-      `Sorry, your ad was not approved. Please contact support${support ? ` @${support}` : ""} for a refund (order #${orderId}).`,
+    paidWaiting: (t: PromotionTarget) =>
+      `✅ Payment received! But the slots for your ${enTarget(t)} filled up just now. It goes live as soon as one frees up, and you'll be told; if you'd rather not wait, contact support for a refund.`,
     orphanRefunded: "This order is no longer valid, so your Stars were refunded.",
     expired: (t: PromotionTarget) =>
       `Your promotion (${enTarget(t)}) has ended. Send /promote to buy again.`,
@@ -249,6 +244,7 @@ export const en: typeof zh = {
     reject: "❌ Reject",
     back: "« Back",
     approvedBy: (name: string) => `✅ Approved (${name})`,
+    listingFailed: "⚠️ Listing failed; the submission is back in the queue. Tap approve again.",
     rejectedBy: (name: string, reason: string) => `❌ Rejected (${name}): ${reason}`,
     reasons: {
       content: "Content violation",
@@ -302,6 +298,18 @@ export const en: typeof zh = {
       `❌ Rejected (${name})${refunded ? ", refunded automatically" : `, refund ${amount} by hand`}`,
     orphanPayment: (orderId: number, provider: string, chargeId: string, amount: string) =>
       `⚠️ Payment for invalid order #${orderId} (${provider} ${chargeId}, ${amount}). Check and refund by hand.`,
+    slotWaiting: (o: PromotionTarget & { id: number; amount: string; buyerId: number }) =>
+      [
+        "⏳ Paid, but every slot is taken",
+        `Order #${o.id}: ${enTarget(o)}`,
+        `Paid: ${o.amount}`,
+        `Buyer: ${o.buyerId}`,
+        "",
+        "Tap Start once a slot frees up, or Refund rather than keep the buyer waiting.",
+      ].join("\n"),
+    startNow: "▶️ Start",
+    refund: "↩️ Refund",
+    stillFull: "Still no free slot. Start it once one frees up.",
     banUsage: "Usage: /ban <userId|@username> [reason]",
     unbanUsage: "Usage: /unban <userId|@username>",
     banned: (target: string) => `Banned ${target}`,
