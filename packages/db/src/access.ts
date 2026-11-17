@@ -595,15 +595,23 @@ export async function setSiteState(db: Db, key: string, value: string) {
  * exports D1) is moved to `now`: that build has already exported, and without the bump its
  * clean-up step would clear this change along with the ones it did publish. Costs one write per
  * build, not per change, and counts as a transition since the running build won't carry it.
+ *
+ * The value written is never below that `build_started_at`: cron callers pass their scheduled
+ * time, which can predate a build that exported before their write landed. Equal to the fence
+ * still survives the clean-up, which only removes flags strictly older.
  */
 export async function markDirty(db: Db, now: number) {
+  const fence = sql`(SELECT CAST(value AS INTEGER) FROM site_state WHERE key = 'build_started_at')`;
   const result = await db
     .insert(siteState)
-    .values({ key: "dirty_since", value: String(now) })
+    .values({
+      key: "dirty_since",
+      value: sql`CAST(MAX(CAST(${now} AS INTEGER), COALESCE(${fence}, 0)) AS TEXT)`,
+    })
     .onConflictDoUpdate({
       target: siteState.key,
       set: { value: sql`excluded.value` },
-      setWhere: sql`CAST(${siteState.value} AS INTEGER) < (SELECT CAST(value AS INTEGER) FROM site_state WHERE key = 'build_started_at')`,
+      setWhere: sql`CAST(${siteState.value} AS INTEGER) < ${fence}`,
     })
     .run();
   return result.meta.changes > 0;
