@@ -211,6 +211,7 @@ const zh = {
       target_not_listed: "这个用户名还没有被收录。",
       invalid_banner: "横幅内容不符合要求：标题 ≤ 20 字、副标题 ≤ 40 字、链接以 https:// 开头。",
       no_slots: "推广位已经满了，最早 {date} 空出来。",
+      too_many_pending: "你有好几笔未付款的订单了，请先付掉其中一笔，或等两天后它们自动失效。",
       image_too_large: "图片超过 5 MB。",
       image_type: "只支持 JPEG、PNG 和 WebP。",
       generic: "下单失败，请稍后再试。",
@@ -425,6 +426,8 @@ const en: typeof zh = {
       invalid_banner:
         "The banner doesn't fit: title ≤ 20 characters, subtitle ≤ 40, link starting with https://.",
       no_slots: "Every slot is taken; the first one frees up on {date}.",
+      too_many_pending:
+        "You already have several unpaid orders. Pay one, or wait for them to lapse after two days.",
       image_too_large: "The image is larger than 5 MB.",
       image_type: "Only JPEG, PNG and WebP are supported.",
       generic: "The order could not be created. Please try again.",

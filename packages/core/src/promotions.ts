@@ -1,4 +1,5 @@
 import {
+  activateOrderRow,
   countActivePromotions,
   countPaidOrders,
   createPendingOrder,
@@ -13,9 +14,9 @@ import {
   insertPromotion,
   listExpiredPromotions,
   listOrdersToRemind,
+  listPendingOrdersOf,
   listProducts,
   markOrderPaidRow,
-  markOrderReminded,
   type Order,
   type Promotion,
   setOrderStatus,
@@ -33,12 +34,15 @@ import {
 import { audit } from "./audit.ts";
 import { markDirtyAndDispatch } from "./build.ts";
 import { type Actor, type CoreContext, tgActor } from "./context.ts";
+import { notifyBuyer } from "./order-notices.ts";
 import { refundStars } from "./payments/stars.ts";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MAX_DAYS = 365;
 /** Unpaid orders older than this are deleted. */
 const PENDING_TTL_MS = 2 * DAY_MS;
+/** Unpaid orders one buyer may hold at once; asking again for the same pin reuses one. */
+const MAX_PENDING_PER_USER = 5;
 /** Renewal reminder window before a promotion ends. */
 const REMIND_BEFORE_MS = DAY_MS;
 
@@ -114,7 +118,12 @@ export async function checkOrderSlots(
   return checkSlots(ctx, order.kind, entry?.categoryId);
 }
 
-/** A buyer starts a purchase in the bot. Payment is attached later by `markOrderPaid`. */
+/**
+ * A buyer starts a purchase in the bot or the Mini App. Payment is attached later by
+ * `markOrderPaid`. Ordering the same entry promotion again returns the unpaid order already open
+ * for it, unless its USDT quote ran out (that order can't be paid any more); a buyer can hold
+ * `MAX_PENDING_PER_USER` unpaid orders, so nobody fills the table (or the USDT amounts) by tapping.
+ */
 export async function createOrder(
   ctx: CoreContext,
   input: {
@@ -127,7 +136,7 @@ export async function createOrder(
   },
 ): Promise<
   | { ok: true; order: Order }
-  | { ok: false; error: PromotionContentError | "product_unavailable" }
+  | { ok: false; error: PromotionContentError | "product_unavailable" | "too_many_pending" }
   | { ok: false; error: "no_slots"; nextFreeAt: number | null }
 > {
   const product = await getProduct(ctx.db, input.productId);
@@ -137,6 +146,18 @@ export async function createOrder(
   const slots = await checkSlots(ctx, product.kind, content.categoryId);
   if (slots.available === 0) return { ok: false, error: "no_slots", nextFreeAt: slots.nextFreeAt };
 
+  const now = ctx.now();
+  const open = await listPendingOrdersOf(ctx.db, input.tgUserId, MAX_PENDING_PER_USER);
+  const same = open.find(
+    (row) =>
+      content.targetUsername !== null &&
+      row.order.productId === product.id &&
+      row.order.targetUsername === content.targetUsername &&
+      (row.usdtStatus === null || (row.usdtStatus === "pending" && (row.usdtExpiresAt ?? 0) > now)),
+  );
+  if (same) return { ok: true, order: same.order };
+  if (open.length >= MAX_PENDING_PER_USER) return { ok: false, error: "too_many_pending" };
+
   const order = await createPendingOrder(ctx.db, {
     tgUserId: input.tgUserId,
     productId: product.id,
@@ -144,7 +165,7 @@ export async function createOrder(
     days: product.days,
     targetUsername: content.targetUsername,
     banner: content.banner,
-    createdAt: ctx.now(),
+    createdAt: now,
   });
   await audit(ctx, tgActor(input.tgUserId), "order.create", orderTarget(order.id), {
     productId: product.id,
@@ -152,38 +173,44 @@ export async function createOrder(
   return { ok: true, order };
 }
 
-/** paid → active: starts the promotion now for the order's days and rebuilds the site. */
-async function activateOrder(ctx: CoreContext, order: Order, actor: Actor) {
+/**
+ * paid → active: starts the promotion now for the order's days and rebuilds the site. `no_slots`
+ * when its placement is full; the order stays `paid` (holding its place) for an admin to start
+ * once a slot frees, or to refund.
+ */
+async function activateOrder(
+  ctx: CoreContext,
+  order: Order,
+  actor: Actor,
+): Promise<"started" | "no_slots" | "not_paid"> {
   const now = ctx.now();
   const endsAt = now + order.days * DAY_MS;
-  const applied = await setOrderStatus(ctx.db, {
-    id: order.id,
-    from: "paid",
-    to: "active",
-    fields: { startsAt: now, endsAt },
-  });
-  if (!applied) return false;
-  const promotion = await insertPromotion(ctx.db, {
-    kind: order.kind,
-    orderId: order.id,
-    entryUsername: order.targetUsername,
-    banner: order.banner,
-    startsAt: now,
-    endsAt,
-    createdAt: now,
-  });
-  await audit(ctx, actor, "promotion.start", promotionTarget(promotion.id), {
-    orderId: order.id,
-    kind: order.kind,
-    endsAt,
-  });
+  const promotionId = await activateOrderRow(ctx.db, { id: order.id, startsAt: now, endsAt });
+  if (promotionId === null) {
+    return (await getOrder(ctx.db, order.id))?.status === "paid" ? "no_slots" : "not_paid";
+  }
+  // The site is marked first: a lost audit row costs less than a live promotion nobody sees.
   await markDirtyAndDispatch(ctx);
-  return true;
+  await audit(ctx, actor, "promotion.start", promotionTarget(promotionId), {
+    orderId: order.id,
+    kind: order.kind,
+    endsAt,
+  });
+  return "started";
 }
 
 /**
  * Records a payment (idempotent: retried callbacks return `changed: false`). Entry promotions go
  * live immediately; brand ads stay `paid` until reviewed. Returns null for an unknown order.
+ *
+ * Nothing holds a slot between quoting and paying, so two buyers can pay for the last one. The
+ * later entry promotion then stays `paid` with `waiting: true`: its buyer is told it goes live when
+ * a slot frees, and an admin starts it then (`startPaidOrder`) or refunds it.
+ *
+ * Re-entrant: when an earlier attempt for the same charge stopped after recording the payment, a
+ * retry finishes starting the promotion (and reports `changed`) instead of stopping at "already
+ * paid". Callers make sure a failure is retried: Telegram and Crypto Pay redeliver on a 500, the
+ * USDT watcher keeps the transfer pending.
  */
 export async function markOrderPaid(
   ctx: CoreContext,
@@ -207,29 +234,49 @@ export async function markOrderPaid(
     currency: input.currency,
     paidAt: ctx.now(),
   });
+  const actor = input.actor ?? tgActor(order.tgUserId);
   if (changed) {
-    const actor = input.actor ?? tgActor(order.tgUserId);
     await audit(ctx, actor, "order.paid", orderTarget(order.id), {
       provider: input.provider,
       amount: input.amount,
       currency: input.currency,
     });
-    if (isEntryProduct(order.kind)) await activateOrder(ctx, order, actor);
   }
-  return { order: (await getOrder(ctx.db, order.id)) ?? order, changed };
-}
-
-/** Admin approves a paid brand ad. Returns the updated order, or null if it was not awaiting review. */
-export async function approveAdOrder(ctx: CoreContext, input: { orderId: number; actor: Actor }) {
-  const order = await getOrder(ctx.db, input.orderId);
-  if (!order || isEntryProduct(order.kind) || order.status !== "paid") return null;
-  if (!(await activateOrder(ctx, order, input.actor))) return null;
-  return (await getOrder(ctx.db, order.id)) ?? null;
+  const ours =
+    changed ||
+    (order.status === "paid" &&
+      order.provider === input.provider &&
+      order.chargeId === input.chargeId);
+  const activation =
+    ours && isEntryProduct(order.kind) ? await activateOrder(ctx, order, actor) : null;
+  return {
+    order: (await getOrder(ctx.db, order.id)) ?? order,
+    changed: changed || activation === "started",
+    waiting: activation === "no_slots",
+  };
 }
 
 /**
- * Admin rejects a paid order. Stars payments are refunded automatically when BOT_TOKEN is set;
- * other providers are refunded by hand (`refunded: false`). Null if the order was not paid.
+ * Admin starts a paid order: approves a brand ad, or starts an entry promotion that was paid while
+ * its placement was full, and the buyer is told. `not_paid` when someone else handled it first.
+ */
+export async function startPaidOrder(
+  ctx: CoreContext,
+  input: { orderId: number; actor: Actor },
+): Promise<{ ok: true; order: Order } | { ok: false; error: "not_paid" | "no_slots" }> {
+  const order = await getOrder(ctx.db, input.orderId);
+  if (order?.status !== "paid") return { ok: false, error: "not_paid" };
+  const activation = await activateOrder(ctx, order, input.actor);
+  if (activation !== "started") return { ok: false, error: activation };
+  const started = (await getOrder(ctx.db, order.id)) ?? order;
+  await notifyBuyer(ctx, started, { type: "started" });
+  return { ok: true, order: started };
+}
+
+/**
+ * Admin rejects a paid order and the buyer is told. Stars payments are refunded automatically when
+ * BOT_TOKEN is set; other providers are refunded by hand (`refunded: false`). Null if the order
+ * was not paid.
  */
 export async function rejectOrder(
   ctx: CoreContext,
@@ -248,25 +295,58 @@ export async function rejectOrder(
     reason: input.reason ?? null,
   });
 
-  let refunded = false;
-  if (order.provider === "stars" && order.chargeId && ctx.config.BOT_TOKEN) {
-    const ok = await refundStars(ctx, { userId: order.tgUserId, chargeId: order.chargeId }).catch(
+  const refunded =
+    order.provider === "stars" && ctx.config.BOT_TOKEN
+      ? (await refund(ctx, { orderId: order.id, actor: input.actor }))?.refunded === true
+      : false;
+  const after = (await getOrder(ctx.db, order.id)) ?? order;
+  await notifyBuyer(ctx, after, { type: "rejected", refunded });
+  return { order: after, refunded };
+}
+
+/**
+ * rejected → refunded. Stars go back through the Bot API, which is safe to retry: a charge Telegram
+ * already refunded counts as done. Other providers are refunded by hand, and an admin confirms it
+ * with `manual: true`. The buyer is told once it went through. Null when the order isn't
+ * rejected-and-unrefunded; `refunded: false` when the Stars refund failed again (the order stays
+ * rejected, ready for another try).
+ */
+export async function refundOrder(
+  ctx: CoreContext,
+  input: { orderId: number; actor: Actor; manual?: boolean },
+) {
+  const result = await refund(ctx, input);
+  if (result?.refunded) await notifyBuyer(ctx, result.order, { type: "refunded" });
+  return result;
+}
+
+/** `refundOrder` without the buyer notice (a rejection sends its own). */
+async function refund(
+  ctx: CoreContext,
+  input: { orderId: number; actor: Actor; manual?: boolean },
+) {
+  const order = await getOrder(ctx.db, input.orderId);
+  if (order?.status !== "rejected") return null;
+  if (!input.manual) {
+    if (order.provider !== "stars" || !order.chargeId || !ctx.config.BOT_TOKEN) return null;
+    const { chargeId } = order;
+    const ok = await refundStars(ctx, { userId: order.tgUserId, chargeId }).catch(
       (error: unknown) => {
         console.error("stars refund failed", error);
         return false;
       },
     );
-    if (ok) {
-      refunded = await setOrderStatus(ctx.db, { id: order.id, from: "rejected", to: "refunded" });
-      if (refunded) {
-        await audit(ctx, input.actor, "order.refund", orderTarget(order.id), {
-          provider: order.provider,
-          amount: order.amount,
-        });
-      }
-    }
+    if (!ok) return { order, refunded: false };
   }
-  return { order: (await getOrder(ctx.db, order.id)) ?? order, refunded };
+  if (!(await setOrderStatus(ctx.db, { id: order.id, from: "rejected", to: "refunded" }))) {
+    return null;
+  }
+  await audit(ctx, input.actor, "order.refund", orderTarget(order.id), {
+    provider: order.provider,
+    amount: order.amount,
+    ...(input.manual ? { manual: true } : {}),
+  });
+  return { order: (await getOrder(ctx.db, order.id)) ?? order, refunded: true };
 }
 
 const validDays = (days: number) => Number.isInteger(days) && days >= 1 && days <= MAX_DAYS;
@@ -308,7 +388,7 @@ export async function createManualPromotion(
 
 /** Ends a promotion early; its order (if any) becomes expired. Returns false if it doesn't exist. */
 export async function endPromotion(ctx: CoreContext, input: { promotionId: number; actor: Actor }) {
-  const ended = await endPromotionRows(ctx.db, [input.promotionId]);
+  const ended = await endPromotionRows(ctx.db, [input.promotionId], ctx.now());
   if (ended.promotions.length === 0) return false;
   await audit(ctx, input.actor, "promotion.end", promotionTarget(input.promotionId), {
     orderIds: ended.orders.map((order) => order.id),
@@ -415,12 +495,19 @@ export async function upsertProduct(
 }
 
 /**
- * Hourly job: ends expired promotions, picks orders due a renewal reminder (marked reminded here,
- * so each is returned once), and deletes stale unpaid orders. The caller sends the messages.
+ * Hourly job: ends expired promotions, picks orders due a renewal reminder, and deletes stale
+ * unpaid orders. At most `maxNotices` promotions end and reminders are picked, ended ones first:
+ * the caller sends one message for each, so the rest wait for the next hour instead of being
+ * dropped (a promotion ending an hour late costs less than a buyer never told). Reminders are not
+ * marked here; the caller marks the ones it delivered with `markOrdersReminded`.
  */
-export async function runPromotionMaintenance(ctx: CoreContext, now: number) {
-  const expiredIds = (await listExpiredPromotions(ctx.db, now)).map((row) => row.id);
-  const ended = await endPromotionRows(ctx.db, expiredIds);
+export async function runPromotionMaintenance(
+  ctx: CoreContext,
+  now: number,
+  { maxNotices = 100 }: { maxNotices?: number } = {},
+) {
+  const expiredIds = (await listExpiredPromotions(ctx.db, now, maxNotices)).map((row) => row.id);
+  const ended = await endPromotionRows(ctx.db, expiredIds, now);
   if (ended.promotions.length > 0) {
     await audit(ctx, "system", "promotion.expire", "promotions", {
       promotionIds: ended.promotions.map((row) => row.id),
@@ -429,10 +516,9 @@ export async function runPromotionMaintenance(ctx: CoreContext, now: number) {
     await markDirtyAndDispatch(ctx);
   }
 
-  const expiringSoon: Order[] = [];
-  for (const order of await listOrdersToRemind(ctx.db, now, now + REMIND_BEFORE_MS)) {
-    if (await markOrderReminded(ctx.db, order.id, now)) expiringSoon.push(order);
-  }
+  const reminders = maxNotices - ended.orders.length;
+  const expiringSoon =
+    reminders > 0 ? await listOrdersToRemind(ctx.db, now, now + REMIND_BEFORE_MS, reminders) : [];
 
   const deletedPending = await deleteStalePendingOrders(ctx.db, now - PENDING_TTL_MS);
   if (deletedPending > 0) {

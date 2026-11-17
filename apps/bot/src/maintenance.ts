@@ -1,25 +1,31 @@
 import { dispatchStaleBuild, markDirtyAndDispatch, runPromotionMaintenance } from "@tgbox/core";
 import {
   listEntriesNeedingTranslation,
+  markOrdersReminded,
   setEntryTranslation,
   stampTranslationFailed,
   stampTranslationSkipped,
 } from "@tgbox/db";
 import type { Locale } from "@tgbox/shared";
+import { GrammyError } from "grammy";
 import { messages } from "./bot/i18n/index.ts";
 import type { App } from "./bot/index.ts";
 import { orderTarget } from "./bot/promote.ts";
 
 // Free plan: 50 subrequests per invocation. The hourly run spends them on promotion maintenance,
 // buyer notices and description translations, in that order of priority — translations take
-// whatever is left, so a busy hour costs fewer translations instead of a dropped notice.
+// whatever is left (counted, not estimated), so a busy hour costs fewer translations.
 const SUBREQUEST_BUDGET = 46;
-// Lowered from 18 to leave the AI calls room in the worst hour (15 slots all expiring at once).
+/** Buyer messages per hour; the rest wait for the next hour (see `runPromotionMaintenance`). */
 const MAX_NOTICES = 14;
 /** One AI call + one D1 write per entry. */
 const TRANSLATION_COST = 2;
 /** The candidate query, the dirty/dispatch handling and the stale-build net at the end. */
 const TRANSLATION_RESERVE = 7;
+
+/** Telegram won't ever deliver this one (blocked, chat gone): retrying every hour is pointless. */
+const undeliverable = (error: unknown) =>
+  error instanceof GrammyError && (error.error_code === 400 || error.error_code === 403);
 /** Per run, so the free Workers AI allocation lasts and the invocation stays inside its budget. */
 const MAX_TRANSLATIONS = 8;
 
@@ -120,34 +126,45 @@ async function translateDescriptions(
   return tally;
 }
 
-/** Hourly: ends expired promotions, reminds buyers a day before the end, drops stale orders. */
-export async function runHourlyMaintenance(app: App, scheduledTime: number) {
-  const result = await runPromotionMaintenance(app.core, scheduledTime);
-  const notices = [
-    ...result.expired.map((order) => ({
-      userId: order.tgUserId,
-      text: bilingual((m) => m.promote.expired(orderTarget(order))),
-    })),
-    ...result.expiringSoon.map((order) => ({
-      userId: order.tgUserId,
-      text: bilingual((m) =>
-        m.promote.expiringSoon(orderTarget(order), order.endsAt ?? scheduledTime),
+/**
+ * Hourly: ends expired promotions, reminds buyers a day before the end, drops stale orders.
+ * `spent` reports what this cron invocation has used so far, this run included.
+ */
+export async function runHourlyMaintenance(
+  app: App,
+  scheduledTime: number,
+  spent: () => number = () => 0,
+) {
+  const result = await runPromotionMaintenance(app.core, scheduledTime, {
+    maxNotices: MAX_NOTICES,
+  });
+  const ended = await Promise.allSettled(
+    result.expired.map((order) =>
+      app.api.sendMessage(
+        order.tgUserId,
+        bilingual((m) => m.promote.expired(orderTarget(order))),
       ),
-    })),
-  ];
-  // Notices over the cap are dropped: the promotion state is already recorded either way.
-  const sent = await Promise.allSettled(
-    notices.slice(0, MAX_NOTICES).map((notice) => app.api.sendMessage(notice.userId, notice.text)),
+    ),
+  );
+  const reminded = await Promise.allSettled(
+    result.expiringSoon.map((order) =>
+      app.api.sendMessage(
+        order.tgUserId,
+        bilingual((m) => m.promote.expiringSoon(orderTarget(order), order.endsAt ?? scheduledTime)),
+      ),
+    ),
+  );
+  // A reminder that failed for a reason that may pass (rate limit, network) is sent next hour.
+  await markOrdersReminded(
+    app.db,
+    result.expiringSoon.flatMap((order, index) => {
+      const outcome = reminded[index];
+      return outcome?.status === "fulfilled" || undeliverable(outcome?.reason) ? [order.id] : [];
+    }),
+    scheduledTime,
   );
 
-  // What runPromotionMaintenance actually spent: four queries, plus the audit + dispatch when
-  // something expired, one write per reminder and one audit for the stale-order cleanup.
-  const promotionCost =
-    4 +
-    (result.expired.length > 0 ? 5 : 0) +
-    result.expiringSoon.length +
-    (result.deletedPending > 0 ? 1 : 0);
-  const left = SUBREQUEST_BUDGET - promotionCost - Math.min(notices.length, MAX_NOTICES);
+  const left = SUBREQUEST_BUDGET - spent();
   const translations = await translateDescriptions(
     app,
     scheduledTime,
@@ -167,8 +184,7 @@ export async function runHourlyMaintenance(app: App, scheduledTime: number) {
     expired: result.expired.length,
     expiringSoon: result.expiringSoon.length,
     deletedPending: result.deletedPending,
-    notified: sent.filter((item) => item.status === "fulfilled").length,
-    dropped: Math.max(0, notices.length - MAX_NOTICES),
+    notified: [...ended, ...reminded].filter((item) => item.status === "fulfilled").length,
     translated: translations.translated,
     translationsSkipped: translations.skipped,
     translationsFailed: translations.failed,

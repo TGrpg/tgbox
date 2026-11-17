@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
-import { createOrder, markOrderPaid } from "@tgbox/core";
+import { createOrder, endPromotion, markOrderPaid } from "@tgbox/core";
 import {
+  createUsdtPayment,
   getBotDraft,
   getOrder,
   getSiteState,
@@ -144,6 +145,22 @@ describe("prices follow the enabled payment methods", () => {
     await h.callback(buyer, "pp:1");
     await h.message(buyer, "@pin_me");
     expect(said()).not.toContain("⭐");
+  });
+});
+
+describe("paying with USDT", () => {
+  test("an order whose quote ran out is sent to order again, not told USDT is off", async () => {
+    await setPaymentSettings({ starsEnabled: false, usdtSelfEnabled: true, usdtAddress: ADDRESS });
+    const pin = await order({ productId: 1, targetUsername: "@pin_me" });
+    await createUsdtPayment(db, {
+      orderId: pin.id,
+      amountMicro: 10_000_100,
+      address: ADDRESS,
+      createdAt: Date.now() - 60 * 60_000,
+      expiresAt: Date.now() - 30 * 60_000,
+    });
+    await h.callback(buyer, `pv:${pin.id}`);
+    expect(h.calls("answerCallbackQuery").at(-1)?.payload.text).toContain("重新下单");
   });
 });
 
@@ -386,6 +403,25 @@ describe("buying a pin with Stars", () => {
     expect(h.calls("answerPreCheckoutQuery")[0]?.payload).toMatchObject({ ok: false });
   });
 
+  test("a Stars payment that failed to record is not acknowledged, and the redelivery finishes it", async () => {
+    const pin = await order({ productId: 1, targetUsername: "@pin_me" });
+    await env.DB.prepare(
+      "CREATE TRIGGER fail_promotion BEFORE INSERT ON promotions BEGIN SELECT RAISE(ABORT, 'injected'); END",
+    ).run();
+    try {
+      // The Worker throws, which the runtime answers with a 500 that Telegram redelivers.
+      await expect(successfulPayment(pin.id, "charge_1")).rejects.toThrow("injected");
+    } finally {
+      await env.DB.prepare("DROP TRIGGER fail_promotion").run();
+    }
+    expect((await successfulPayment(pin.id, "charge_1")).status).toBe(200);
+
+    expect(await getOrder(db, pin.id)).toMatchObject({ status: "active", chargeId: "charge_1" });
+    expect(await listActivePromotions(db, Date.now(), "pin")).toMatchObject([{ orderId: pin.id }]);
+    const notices = h.calls("sendMessage").filter((c) => c.payload.chat_id === buyer.id);
+    expect(notices).toHaveLength(1);
+  });
+
   test("a successful payment activates the pin once and tells the buyer", async () => {
     const pin = await order({ productId: 1, targetUsername: "@pin_me" });
     await successfulPayment(pin.id, "charge_1");
@@ -413,6 +449,71 @@ describe("buying a pin with Stars", () => {
     expect(h.calls("refundStarPayment").map((c) => c.payload)).toEqual([
       { user_id: buyer.id, telegram_payment_charge_id: "charge_2" },
     ]);
+  });
+});
+
+describe("a pin paid after its placement filled up", () => {
+  /** A pin quoted while slots were free, paid by Stars once all ten are taken. */
+  async function paidWhileFull() {
+    const late = await order({ productId: 1, targetUsername: "@pin_me" });
+    for (let i = 0; i < 10; i++) {
+      // Other buyers: the same buyer ordering the same pin again would get `late` back.
+      const created = await createOrder(core, {
+        tgUserId: 9000 + i,
+        productId: 1,
+        targetUsername: "@pin_me",
+      });
+      if (!created.ok) throw new Error(created.error);
+      const other = created.order;
+      await markOrderPaid(core, {
+        orderId: other.id,
+        provider: "manual",
+        chargeId: `m${i}`,
+        amount: "0",
+        currency: "XTR",
+      });
+    }
+    await successfulPayment(late.id, "late_charge");
+    return late.id;
+  }
+
+  test("stays paid, tells the buyer and asks admins to start or refund it", async () => {
+    const id = await paidWhileFull();
+    expect(await getOrder(db, id)).toMatchObject({ status: "paid", chargeId: "late_charge" });
+    const notice = h.calls("sendMessage").find((c) => c.payload.chat_id === buyer.id);
+    expect(notice?.payload.text).toContain("名额刚好被占满");
+    const review = h
+      .calls("sendMessage")
+      .find((c) => String(c.payload.chat_id) === String(ADMIN_CHAT_ID));
+    expect(review?.payload.text).toContain(`订单 #${id}`);
+    expect(JSON.stringify(review?.payload.reply_markup)).toContain(`ba:${id}`);
+    expect(JSON.stringify(review?.payload.reply_markup)).toContain(`bj:${id}`);
+
+    h.reset();
+    await h.callback(ADMIN, `ba:${id}`, reviewMessage);
+    expect(h.calls("answerCallbackQuery")[0]?.payload).toMatchObject({
+      text: "名额仍然是满的，等有空位再点上线。",
+      show_alert: true,
+    });
+    expect(await getOrder(db, id)).toMatchObject({ status: "paid" });
+
+    const [live] = await listActivePromotions(db, Date.now(), "pin");
+    await endPromotion(core, { promotionId: live?.id ?? 0, actor: "system" });
+    await h.callback(ADMIN, `ba:${id}`, reviewMessage);
+    expect(await getOrder(db, id)).toMatchObject({ status: "active" });
+    const started = h.calls("sendMessage").find((c) => c.payload.chat_id === buyer.id);
+    expect(started?.payload.text).toContain("你的推广（全站置顶 @pin_me）已上线");
+  });
+
+  test("refunding it returns the Stars and tells the buyer it couldn't go live", async () => {
+    const id = await paidWhileFull();
+    h.reset();
+    await h.callback(ADMIN, `bj:${id}`, reviewMessage);
+    expect(h.calls("refundStarPayment").map((c) => c.payload)).toEqual([
+      { user_id: buyer.id, telegram_payment_charge_id: "late_charge" },
+    ]);
+    const notice = h.calls("sendMessage").find((c) => c.payload.chat_id === buyer.id);
+    expect(notice?.payload.text).toContain("你的推广没能上线，Stars 已原路退回");
   });
 });
 
@@ -556,7 +657,11 @@ describe("hourly promotion maintenance", () => {
     h.reset();
     await h.scheduled(endsAt + 60 * 60 * 1000, HOURLY);
     expect(await getOrder(db, pin.id)).toMatchObject({ status: "expired" });
-    expect(await listActivePromotions(db, endsAt - DAY, "pin")).toEqual([]);
+    // Ended, and its row kept for the order's clicks.
+    expect(await listActivePromotions(db, endsAt + 60 * 60 * 1000, "pin")).toEqual([]);
+    expect((await listActivePromotions(db, endsAt - DAY, "pin"))[0]?.endedAt).toBe(
+      endsAt + 60 * 60 * 1000,
+    );
     const ended = h.calls("sendMessage").filter((c) => c.payload.chat_id === buyer.id);
     expect(ended).toHaveLength(1);
     expect(ended[0]?.payload.text).toContain("已到期下架");

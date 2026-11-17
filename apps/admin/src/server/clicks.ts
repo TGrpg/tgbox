@@ -4,7 +4,7 @@ import {
   promotionClickHistory,
   promotionClickTotals,
 } from "@tgbox/core";
-import { listActivePromotions } from "@tgbox/db";
+import { listActivePromotions, listPromotionsOfOrders } from "@tgbox/db";
 import { z } from "zod";
 
 const noClicks: PromotionClicks = { total: 0, recent: 0 };
@@ -33,18 +33,13 @@ export function loadClickHistory(core: CoreContext, input: z.infer<typeof ClickH
 }
 
 /**
- * Click totals keyed by order id, for the orders one page of the admin is showing. Promotions are
- * deleted when they expire, so an order whose promotion is over has no entry: the tab then shows a
- * dash rather than a zero it would have to explain.
+ * Click totals keyed by order id, for the orders one page of the admin is showing, finished
+ * promotions included. An order that never went live (or whose promotion predates keeping ended
+ * rows) has no entry: the tab then shows a dash rather than a zero it would have to explain.
  */
 export async function clicksByOrder(core: CoreContext, orderIds: number[]) {
   if (orderIds.length === 0) return {};
-  const wanted = new Set(orderIds);
-  // `promotions` has no index on `order_id`, and only a handful are ever live: scan and filter.
-  const live = await listActivePromotions(core.db, core.now());
-  const promotions = live.filter(
-    (promotion) => promotion.orderId !== null && wanted.has(promotion.orderId),
-  );
+  const promotions = await listPromotionsOfOrders(core.db, orderIds);
   const clicks = await promotionClickTotals(
     core,
     promotions.map((promotion) => promotion.id),

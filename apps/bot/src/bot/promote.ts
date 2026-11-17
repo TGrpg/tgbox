@@ -283,7 +283,9 @@ export function promote(app: App) {
             ? m.noSlots(created.nextFreeAt)
             : created.error === "product_unavailable"
               ? m.productUnavailable
-              : m.invalidHref,
+              : created.error === "too_many_pending"
+                ? m.tooManyPending
+                : m.invalidHref,
         );
         return;
       }
@@ -352,10 +354,18 @@ export function promote(app: App) {
       targetUsername: text,
     });
     if (!result.ok) {
-      if (result.error === "no_slots" || result.error === "product_unavailable") {
+      if (
+        result.error === "no_slots" ||
+        result.error === "product_unavailable" ||
+        result.error === "too_many_pending"
+      ) {
         await deleteBotDraft(app.db, userId);
         await ctx.reply(
-          result.error === "no_slots" ? m.noSlots(result.nextFreeAt) : m.productUnavailable,
+          result.error === "no_slots"
+            ? m.noSlots(result.nextFreeAt)
+            : result.error === "too_many_pending"
+              ? m.tooManyPending
+              : m.productUnavailable,
         );
         return;
       }
@@ -444,9 +454,15 @@ export function promote(app: App) {
       productId: order.productId,
     });
     if (!quote.ok) {
-      // "no_amount" is transient (every tail for this price is reserved); the rest mean the
-      // operator turned the method off between the button being drawn and this tap.
-      const text = quote.error === "no_amount" ? m.usdtNoAmount : m.noPaymentMethod;
+      // "no_amount" is transient (every tail for this price is reserved); an expired quote can't be
+      // reopened, so the buyer orders again; the rest mean the operator turned the method off
+      // between the button being drawn and this tap.
+      const text =
+        quote.error === "no_amount"
+          ? m.usdtNoAmount
+          : quote.error === "order_expired"
+            ? m.orderExpired
+            : m.noPaymentMethod;
       await ctx.answerCallbackQuery({ text, show_alert: true });
       return;
     }

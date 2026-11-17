@@ -29,6 +29,7 @@ const db = vi.hoisted(() => ({
   countPaidOrders: vi.fn(),
   earliestPromotionEnd: vi.fn(),
   createPendingOrder: vi.fn(),
+  listPendingOrdersOf: vi.fn(),
   getOrder: vi.fn(),
   setOrderBanner: vi.fn(),
   setUserLocale: vi.fn(),
@@ -188,6 +189,7 @@ beforeEach(() => {
   db.countPaidOrders.mockResolvedValue(0);
   db.earliestPromotionEnd.mockResolvedValue(null);
   db.createPendingOrder.mockResolvedValue({ ...pendingOrder });
+  db.listPendingOrdersOf.mockResolvedValue([]);
   db.getOrder.mockResolvedValue({ ...pendingOrder });
   db.getUserLocale.mockResolvedValue("en");
   db.getUsdtPayment.mockResolvedValue(undefined);
@@ -576,13 +578,14 @@ describe("POST /api/app/orders/:id/pay", () => {
   ];
 
   test("quotes USDT with an amount unique to the order", async () => {
+    const expiresAt = Date.now() + 30 * 60_000;
     db.listSettingsRows.mockResolvedValue(usdtSettings);
     db.getUsdtPayment.mockResolvedValue(undefined);
     db.createUsdtPayment.mockResolvedValue({
       orderId: 77,
       address: "TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE",
       amountMicro: 10_000_137,
-      expiresAt: 1_800_000,
+      expiresAt,
       status: "pending",
     });
 
@@ -596,7 +599,7 @@ describe("POST /api/app/orders/:id/pay", () => {
       method: "usdt",
       address: "TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE",
       amount: "10.000137",
-      expiresAt: 1_800_000,
+      expiresAt,
     });
   });
 

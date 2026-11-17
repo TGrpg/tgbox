@@ -164,15 +164,23 @@ export const siteState = sqliteTable("site_state", {
 });
 
 // Append-only admin/bot action log. Only the primary key: every extra index costs a row per write.
-export const auditLog = sqliteTable("audit_log", {
-  id: integer().primaryKey(),
-  /** `tg:<user id>`, `email:<address>` or `system` */
-  actor: text().notNull(),
-  action: text().notNull(),
-  target: text(),
-  payload: text({ mode: "json" }).$type<unknown>(),
-  createdAt: integer("created_at").notNull(),
-});
+export const auditLog = sqliteTable(
+  "audit_log",
+  {
+    id: integer().primaryKey(),
+    /** `tg:<user id>`, `email:<address>` or `system` */
+    actor: text().notNull(),
+    action: text().notNull(),
+    target: text(),
+    payload: text({ mode: "json" }).$type<unknown>(),
+    createdAt: integer("created_at").notNull(),
+  },
+  (t) => [
+    // The USDT watcher checks which transfers it already recorded as unmatched on every tick that
+    // has an order waiting; partial, so no other audit row pays for it.
+    index("audit_usdt_unmatched").on(t.target).where(sql`action = 'usdt.unmatched'`),
+  ],
+);
 
 // One row per top-level settings key; `value` is JSON validated by the zod schemas in @tgbox/shared.
 export const settings = sqliteTable("settings", {
@@ -215,10 +223,13 @@ export const products = sqliteTable("products", {
 });
 
 // Private (user ids): never exported to the site build.
+// AUTOINCREMENT (migration 0023): an id is never handed out twice, even after its row is deleted.
+// Invoice payloads (`order:<id>`), USDT quotes, the banner image `promos/<id>.jpg` and the audit
+// trail all outlive a deleted unpaid order, and a reused id would hand them to a new one.
 export const orders = sqliteTable(
   "orders",
   {
-    id: integer().primaryKey(),
+    id: integer().primaryKey({ autoIncrement: true }),
     tgUserId: integer("tg_user_id").notNull(),
     productId: integer("product_id").notNull(),
     kind: text().$type<ProductKind>().notNull(),
@@ -249,18 +260,32 @@ export const orders = sqliteTable(
   ],
 );
 
-// Public: exported to the site build. Rows are deleted when they expire.
-export const promotions = sqliteTable("promotions", {
-  id: integer().primaryKey(),
-  kind: text().$type<ProductKind>().notNull(),
-  /** null for promotions created manually in the admin */
-  orderId: integer("order_id"),
-  entryUsername: text("entry_username"),
-  banner: text({ mode: "json" }).$type<BannerContent>(),
-  startsAt: integer("starts_at").notNull(),
-  endsAt: integer("ends_at").notNull(),
-  createdAt: integer("created_at").notNull(),
-});
+/**
+ * Public: exported to the site build, which shows the live ones (`ends_at > now`). An ended
+ * promotion keeps its row with `ended_at` set, so its clicks stay tied to the order that bought
+ * them and its id (in `/r/<id>` links and `promotion_clicks`) is never reused.
+ */
+export const promotions = sqliteTable(
+  "promotions",
+  {
+    id: integer().primaryKey({ autoIncrement: true }),
+    kind: text().$type<ProductKind>().notNull(),
+    /** null for promotions created manually in the admin */
+    orderId: integer("order_id"),
+    entryUsername: text("entry_username"),
+    banner: text({ mode: "json" }).$type<BannerContent>(),
+    startsAt: integer("starts_at").notNull(),
+    /** When it stops showing; an early end moves it back to that moment. */
+    endsAt: integer("ends_at").notNull(),
+    createdAt: integer("created_at").notNull(),
+    /** Set once maintenance or an admin ended it; its order is expired at the same time. */
+    endedAt: integer("ended_at"),
+  },
+  (t) => [
+    // Orders find their promotion (and its clicks) in the admin and the Mini App's "Mine".
+    index("promotions_order").on(t.orderId).where(sql`order_id IS NOT NULL`),
+  ],
+);
 
 /**
  * One order awaiting an on-chain USDT transfer. `amount_micro` is the order's fingerprint: the
@@ -318,8 +343,8 @@ export const hiddenPosts = sqliteTable(
 /**
  * Clicks on paid promotions, aggregated per UTC day. The public redirect route (`/r/:id`) upserts
  * `clicks = clicks + 1`, so a click costs exactly one row written; the primary key is the only
- * index, so there is no second row per write. Rows outlive the promotion they belong to: a
- * promotion is deleted when it expires, but the advertiser's report must survive it.
+ * index, so there is no second row per write. Ended promotions keep their row, so a finished
+ * campaign's clicks still lead back to the order that paid for them.
  *
  * Migration 0008 creates the table `WITHOUT ROWID` (drizzle-kit can't express that): the
  * primary key is then the table itself, so a click costs one row written instead of two.

@@ -127,6 +127,7 @@ export async function startHarness() {
       "credentials",
       "bot_chats",
       "orders",
+      "usdt_payments",
       "promotions",
       "user_prefs",
       "support_threads",

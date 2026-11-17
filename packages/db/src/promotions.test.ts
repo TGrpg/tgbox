@@ -18,6 +18,7 @@ import {
   listOrders,
   listOrdersToRemind,
   listProducts,
+  listPromotionsOfOrders,
   markOrderPaidRow,
   markOrderReminded,
   setOrderInvoice,
@@ -194,7 +195,7 @@ describe("promotions", () => {
 
     expect(await extendPromotionRow(db, pinB.id, 3 * DAY)).toBe(true);
     expect((await getPromotion(db, pinB.id))?.endsAt).toBe(NOW + 4 * DAY);
-    expect((await endPromotionRows(db, [expired.id, pinA.id])).promotions).toHaveLength(2);
+    expect((await endPromotionRows(db, [expired.id, pinA.id], NOW)).promotions).toHaveLength(2);
     expect(await countActivePromotions(db, { kind: "pin" }, NOW)).toBe(1);
   });
 
@@ -265,9 +266,76 @@ describe("promotions", () => {
       createdAt: NOW,
     });
 
-    const ended = await endPromotionRows(db, [id]);
+    // Ended early, half a day in: it stops showing then, and keeps its row and its order.
+    const at = NOW + DAY / 2;
+    const ended = await endPromotionRows(db, [id], at);
     expect(ended.orders).toMatchObject([{ id: order.id, status: "expired", tgUserId: 7 }]);
-    expect(await getPromotion(db, id)).toBeUndefined();
-    expect(await endPromotionRows(db, [id])).toEqual({ promotions: [], orders: [] });
+    expect(await getPromotion(db, id)).toMatchObject({
+      orderId: order.id,
+      endsAt: at,
+      endedAt: at,
+    });
+    expect(await listActivePromotions(db, at)).toEqual([]);
+    expect(await listExpiredPromotions(db, NOW + 2 * DAY)).toEqual([]);
+    expect(await listPromotionsOfOrders(db, [order.id])).toMatchObject([{ id }]);
+    // An ended promotion can't be revived by extending it, or ended twice.
+    expect(await extendPromotionRow(db, id, 3 * DAY)).toBe(false);
+    expect(await endPromotionRows(db, [id], NOW + DAY)).toEqual({ promotions: [], orders: [] });
+  });
+
+  test("an order or promotion id is never handed out again after its row is deleted", async () => {
+    const first = await pinOrder();
+    await env.DB.prepare("DELETE FROM orders WHERE id = ?").bind(first.id).run();
+    expect((await pinOrder()).id).toBeGreaterThan(first.id);
+
+    const promo = {
+      kind: "pin" as const,
+      orderId: null,
+      startsAt: NOW,
+      endsAt: NOW,
+      createdAt: NOW,
+    };
+    const gone = await insertPromotion(db, promo);
+    await env.DB.prepare("DELETE FROM promotions WHERE id = ?").bind(gone.id).run();
+    expect((await insertPromotion(db, promo)).id).toBeGreaterThan(gone.id);
+  });
+
+  test("the migration starts the id sequences above every id the audit trail and clicks name", async () => {
+    const migration = env.TEST_MIGRATIONS.find((m) => m.name.startsWith("0024_order_ids"));
+    if (!migration) throw new Error("migration missing");
+    // As before the migration: plain rowid tables, the highest ids already deleted.
+    await env.DB.batch(
+      [
+        "DROP TABLE orders",
+        "DROP TABLE promotions",
+        "DROP INDEX audit_usdt_unmatched",
+        "CREATE TABLE orders (id integer PRIMARY KEY NOT NULL, tg_user_id integer NOT NULL, product_id integer NOT NULL, kind text NOT NULL, days integer NOT NULL, target_username text, banner text, status text DEFAULT 'pending' NOT NULL, provider text, amount text, currency text, invoice_id text, charge_id text, note text, created_at integer NOT NULL, paid_at integer, starts_at integer, ends_at integer, reminded_at integer)",
+        "CREATE UNIQUE INDEX orders_provider_charge_unique ON orders (provider, charge_id) WHERE charge_id IS NOT NULL",
+        "CREATE INDEX orders_user ON orders (tg_user_id, id)",
+        "CREATE TABLE promotions (id integer PRIMARY KEY NOT NULL, kind text NOT NULL, order_id integer, entry_username text, banner text, starts_at integer NOT NULL, ends_at integer NOT NULL, created_at integer NOT NULL)",
+        "INSERT INTO orders (id, tg_user_id, product_id, kind, days, created_at) VALUES (3, 7, 1, 'pin', 7, 1)",
+        "INSERT INTO promotions (id, kind, starts_at, ends_at, created_at) VALUES (2, 'pin', 1, 2, 1)",
+        "INSERT INTO audit_log (actor, action, target, created_at) VALUES ('tg:7', 'order.create', 'order:40', 1), ('system', 'promotion.start', 'promotion:12', 1)",
+        "INSERT INTO promotion_clicks (promotion_id, day, clicks) VALUES (15, '2026-09-17', 3)",
+      ].map((query) => env.DB.prepare(query)),
+    );
+    await env.DB.batch(migration.queries.map((query) => env.DB.prepare(query)));
+
+    expect(await getOrder(db, 3)).toMatchObject({ tgUserId: 7 });
+    expect(await getPromotion(db, 2)).toMatchObject({ endsAt: 2, endedAt: null });
+    expect((await pinOrder()).id).toBe(41);
+    const promo = {
+      kind: "pin" as const,
+      orderId: null,
+      startsAt: NOW,
+      endsAt: NOW,
+      createdAt: NOW,
+    };
+    expect((await insertPromotion(db, promo)).id).toBe(16);
+    // The placeholders that moved the sequences are gone.
+    const { results } = await env.DB.prepare(
+      "SELECT (SELECT COUNT(*) FROM orders) AS orders, (SELECT COUNT(*) FROM promotions) AS promotions",
+    ).all();
+    expect(results).toEqual([{ orders: 2, promotions: 2 }]);
   });
 });

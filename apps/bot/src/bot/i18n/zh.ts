@@ -235,6 +235,7 @@ export const zh = {
         ? `名额已满，最早 ${utcDate(nextFreeAt)} 有空位，届时再来吧。`
         : "名额已满，请稍后再试。",
     productUnavailable: "该商品已下架，请发送 /promote 重新选择。",
+    tooManyPending: "你有好几笔未付款的订单了。请先付掉其中一笔，或等它们两天后自动失效再下单。",
     order: (o: OrderSummary) =>
       [
         `订单 #${o.id}`,
@@ -273,11 +274,8 @@ export const zh = {
     paidEntry: (t: PromotionTarget, days: number) =>
       `✅ 支付成功！${zhTarget(t)} 已上线 ${days} 天，网站几分钟后更新。`,
     paidAd: "✅ 支付成功！广告已提交审核，通过后会通知你。",
-    adApproved: (t: PromotionTarget, endsAt: number) =>
-      `🎉 你的广告（${zhTarget(t)}）已通过审核并上线，展示至 ${utcTime(endsAt)}。`,
-    adRejectedRefunded: "很抱歉，你的广告未通过审核，Stars 已原路退回。",
-    adRejectedManual: (orderId: number, support: string | null) =>
-      `很抱歉，你的广告未通过审核。请联系客服${support ? ` @${support}` : ""}办理退款（订单 #${orderId}）。`,
+    paidWaiting: (t: PromotionTarget) =>
+      `✅ 支付成功！不过 ${zhTarget(t)} 的名额刚好被占满了。名额一空出就为你上线并通知你；不想等可以联系客服退款。`,
     orphanRefunded: "该订单已失效，本次支付的 Stars 已原路退回。",
     expired: (t: PromotionTarget) =>
       `你的推广（${zhTarget(t)}）已到期下架。发送 /promote 可以再次购买。`,
@@ -355,6 +353,18 @@ export const zh = {
       `❌ 已拒绝（${name}）${refunded ? "，已自动退款" : `，需人工退款 ${amount}`}`,
     orphanPayment: (orderId: number, provider: string, chargeId: string, amount: string) =>
       `⚠️ 收到无效订单 #${orderId} 的付款（${provider} ${chargeId}，${amount}），请人工核对并退款。`,
+    slotWaiting: (o: PromotionTarget & { id: number; amount: string; buyerId: number }) =>
+      [
+        "⏳ 已付款，但名额已满",
+        `订单 #${o.id}：${zhTarget(o)}`,
+        `支付：${o.amount}`,
+        `买家：${o.buyerId}`,
+        "",
+        "名额空出后点「上线」；不想让买家等就点「退款」。",
+      ].join("\n"),
+    startNow: "▶️ 上线",
+    refund: "↩️ 退款",
+    stillFull: "名额仍然是满的，等有空位再点上线。",
     banUsage: "用法：/ban <用户ID|@用户名> [原因]",
     unbanUsage: "用法：/unban <用户ID|@用户名>",
     banned: (target: string) => `已拉黑 ${target}`,
