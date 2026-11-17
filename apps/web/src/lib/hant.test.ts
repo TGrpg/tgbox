@@ -41,6 +41,48 @@ test("absolute URLs outside href/src keep their bytes too", () => {
   );
 });
 
+test.each([
+  [
+    "a later srcset candidate",
+    '<img srcset="https://img.example/a.png 1x, https://img.example/图.png 2x">',
+  ],
+  ["an href with brackets", '<a href="https://example.com/wiki/电报(软件)">'],
+  ["a CSS url() with spaces", '<div style="background:url( https://img.example/软件.png )">'],
+  ["a script template literal", "<script>const a = `https://img.example/图.png`;</script>"],
+  ["an entity inside an href", '<a href="https://example.com/电报&#34;软件">'],
+])("%s keeps its URL bytes", (_label, html) => {
+  expect(toTraditionalPage(html)).toBe(html);
+});
+
+test("a description that starts with a link is converted in JSON-LD and island props", () => {
+  const prose = "https://github.com/trending获取新的存储库";
+  const converted = "https://github.com/trending獲取新的存儲庫";
+  expect(
+    toTraditionalPage(
+      `<script type="application/ld+json">{"description":"${prose}","url":"https://t.me/频道"}</script>`,
+    ),
+  ).toBe(
+    `<script type="application/ld+json">{"description":"${converted}","url":"https://t.me/频道"}</script>`,
+  );
+  expect(
+    toTraditionalPage(`<astro-island props="{&#34;description&#34;:[0,&#34;${prose}&#34;]}">`),
+  ).toBe(`<astro-island props="{&quot;description&quot;:[0,&quot;${converted}&quot;]}">`);
+});
+
+test("JSON-LD re-serialized cannot close its script element", () => {
+  expect(
+    toTraditionalPage('<script type="application/ld+json">{"name":"\\u003c/script>频道"}</script>'),
+  ).toBe('<script type="application/ld+json">{"name":"\\u003c/script>頻道"}</script>');
+});
+
+test("text in a tag's attributes and around a CSS url() is still converted", () => {
+  expect(
+    toTraditionalPage(
+      "<img alt=\"频道\" title='机器人' style=\"content:'软件';background:url(/图.png)\">",
+    ),
+  ).toBe("<img alt=\"頻道\" title='機器人' style=\"content:'軟件';background:url(/图.png)\">");
+});
+
 test("a bare link in prose keeps its bytes, the text running on after it is still converted", () => {
   expect(toTraditionalPage("<p>机器人会自动从https://github.com/trending获取新的存储库</p>")).toBe(
     "<p>機器人會自動從https://github.com/trending獲取新的存儲庫</p>",
