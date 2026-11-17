@@ -39,6 +39,36 @@ describe("friend links", () => {
     expect(other).toMatchObject({ ok: true, request: { backlink: false } });
   });
 
+  test("a huge home page is read only up to the limit, and the application still lands", async () => {
+    const { ctx } = await setup({ SITE_URL: "https://tgbox.cc" });
+    const chunk = new TextEncoder().encode("x".repeat(64 * 1024));
+    let pulls = 0;
+    const endless = (head: string) => async () =>
+      new Response(
+        new ReadableStream<Uint8Array>({
+          start: (controller) => controller.enqueue(new TextEncoder().encode(head)),
+          pull: (controller) => {
+            pulls++;
+            controller.enqueue(chunk);
+          },
+        }),
+      );
+
+    const linked = await applyForFriendLink(
+      { ...ctx, fetch: endless('<a href="https://tgbox.cc/">') },
+      application,
+    );
+    expect(linked).toMatchObject({ ok: true, request: { backlink: true } });
+    // 1 MB in 64 KB chunks, plus the stream's own read-ahead.
+    expect(pulls).toBeLessThan(20);
+
+    const late = await applyForFriendLink(
+      { ...ctx, fetch: endless("") },
+      { ...application, tgUserId: 79 },
+    );
+    expect(late).toMatchObject({ ok: true, request: { backlink: false } });
+  });
+
   test("one open application per applicant, and none for a site already listed", async () => {
     const { ctx } = await setup({ SITE_URL: "https://tgbox.cc" });
     await applyForFriendLink(ctx, application);
