@@ -69,7 +69,9 @@ export async function submitEntry(
     now: new Date(ctx.now()),
     knownKind: null,
     needCreatedAt: false,
+    retry: true,
   });
+  if (snap.liveness === "unknown") return { ok: false, error: "unavailable" };
   const kind = entryKinds.find((entryKind) => entryKind === snap.kind);
   // A user account, a dead link or a page t.me wouldn't show us is not something to review.
   if (snap.liveness !== "active" || !kind || !snap.profile) return { ok: false, error: "invalid" };

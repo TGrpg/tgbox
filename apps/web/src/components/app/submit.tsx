@@ -73,11 +73,7 @@ export function SubmitScreen({ locale }: { locale: Locale }) {
       return;
     }
     if (!result.data.ok) {
-      setError(
-        result.data.error === "invalid"
-          ? strings.submit.errors.invalid
-          : strings.submit.errors.not_found,
-      );
+      setError(strings.submit.errors[result.data.error]);
       return;
     }
     // Pre-selected, not decided: both pickers below stay fully editable, and the hint says so.

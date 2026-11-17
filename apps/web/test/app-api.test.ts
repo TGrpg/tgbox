@@ -405,6 +405,20 @@ describe("POST /api/app/submit", () => {
     });
   });
 
+  test("asks to try again when t.me doesn't answer", async () => {
+    telegram.fetchEntrySnapshot.mockResolvedValue({
+      liveness: "unknown",
+      kind: null,
+      profile: null,
+    });
+
+    expect(await (await call(submit, "/api/app/submit", { body })).json()).toEqual({
+      ok: false,
+      error: "unavailable",
+    });
+    expect(db.createSubmission).not.toHaveBeenCalled();
+  });
+
   test.each([
     ["a malformed body", { username: "devnotes" }],
     ["an unknown category", { ...body, categoryId: 99 }],
@@ -447,6 +461,22 @@ describe("GET /api/app/preview", () => {
     expect(
       await (await call(preview, "/api/app/preview", { query: "?username=durov" })).json(),
     ).toEqual({ ok: false, error: "not_found" });
+  });
+
+  test("t.me not answering is reported as such, not as a missing page", async () => {
+    telegram.fetchEntrySnapshot.mockResolvedValue({
+      liveness: "unknown",
+      kind: null,
+      profile: null,
+    });
+
+    expect(
+      await (await call(preview, "/api/app/preview", { query: "?username=devnotes" })).json(),
+    ).toEqual({ ok: false, error: "unavailable" });
+    expect(telegram.fetchEntrySnapshot).toHaveBeenCalledWith(
+      "devnotes",
+      expect.objectContaining({ retry: true }),
+    );
   });
 
   test("a malformed username never reaches t.me", async () => {

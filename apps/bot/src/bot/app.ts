@@ -128,6 +128,11 @@ export function createApp(env: BotEnv, deps: BotDeps): App {
       return superAdminIds.has(id) || (await settings()).bot.extraAdminIds.includes(id);
     },
     snapshot: (username, options) =>
-      fetchEntrySnapshot(username, { ...options, fetch: deps.fetch, now: new Date(now()) }),
+      fetchEntrySnapshot(username, {
+        ...options,
+        fetch: deps.fetch,
+        now: new Date(now()),
+        retry: true,
+      }),
   };
 }

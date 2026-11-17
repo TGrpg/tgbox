@@ -184,6 +184,36 @@ describe("fetchEntrySnapshot", () => {
     expect(snap).toMatchObject({ liveness: "unknown", rateLimited: false, subrequests: 1 });
   });
 
+  test("a submitter's lookup retries the profile once after a transient failure", async () => {
+    let attempts = 0;
+    const { fetch } = fakeFetch({
+      "https://t.me/BotFather": () => (++attempts === 1 ? "throw" : html("profile-bot.html")()),
+    });
+    const snap = await fetchEntrySnapshot("BotFather", {
+      fetch,
+      now,
+      knownKind: null,
+      needCreatedAt: false,
+      retry: true,
+    });
+    expect(snap).toMatchObject({ liveness: "active", kind: "bot", subrequests: 2 });
+  });
+
+  test.each([
+    ["a 429", () => new Response("", { status: 429 }), 1],
+    ["a second failure", () => new Response("", { status: 503 }), 2],
+  ])("the retry stops at %s", async (_label, route, subrequests) => {
+    const { fetch } = fakeFetch({ "https://t.me/BotFather": route });
+    const snap = await fetchEntrySnapshot("BotFather", {
+      fetch,
+      now,
+      knownKind: null,
+      needCreatedAt: false,
+      retry: true,
+    });
+    expect(snap).toMatchObject({ liveness: "unknown", subrequests });
+  });
+
   test("not found profile", async () => {
     const { fetch } = fakeFetch({
       "https://t.me/zzqq_not_exist_987654": html("profile-not-found.html"),

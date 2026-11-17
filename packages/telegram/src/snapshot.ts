@@ -21,6 +21,12 @@ export type SnapshotOptions = {
    * for a channel, the `/{u}/1` embed for a group (groups have no /s/ preview)
    */
   needCreatedAt: boolean;
+  /**
+   * Retry the profile page once when t.me didn't answer (network error, timeout, 5xx). For a
+   * submitter waiting on the answer; the cron leaves it off, it has a subrequest budget and comes
+   * back on its own. A 429 is never retried.
+   */
+  retry?: boolean;
 };
 
 export type EntrySnapshot = {
@@ -76,7 +82,10 @@ export async function fetchEntrySnapshot(
     rateLimited: false,
   };
 
-  const profilePage = await get(`/${username}`);
+  let profilePage = await get(`/${username}`);
+  if (options.retry && (!profilePage || profilePage.status >= 500)) {
+    profilePage = await get(`/${username}`);
+  }
   const profileResponse: ProfileResponse | null =
     profilePage && !profilePage.redirected ? profilePage : null;
   if (profileResponse?.status === 200) {
