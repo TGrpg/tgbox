@@ -196,10 +196,6 @@ export const zh = {
   submitted: "已提交，等待审核。审核结果会私信通知你。",
   noPermission: "没有权限。",
   alreadyHandled: "已被处理。",
-  approvedNotice: (username: string) =>
-    `🎉 你提交的 @${username} 已通过审核并收录，网站几分钟后更新。`,
-  rejectedNotice: (username: string, reason: string) =>
-    `很抱歉，你提交的 @${username} 未通过审核。原因：${reason}`,
   openTelegram: "打开 Telegram",
   openSite: "网站详情",
   promote: {

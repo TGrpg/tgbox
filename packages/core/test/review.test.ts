@@ -14,6 +14,7 @@ import {
   getSubmission,
   insertApprovedEntry,
   listCategories,
+  setUserLocale,
   upsertSetting,
 } from "@tgbox/db";
 import { settingsDefaults } from "@tgbox/shared";
@@ -119,6 +120,29 @@ describe("admin review queue", () => {
     // Two left for authenticating the admin.
     expect(d1.calls() + fetches).toBeLessThanOrEqual(48);
     vi.restoreAllMocks();
+  });
+
+  test("a full rejection request fits the subrequest limit, notices included", async () => {
+    const { ctx } = await setup({ BOT_TOKEN: "1:t", SITE_URL: "https://tgbox.test" });
+    const ids: number[] = [];
+    for (let i = 0; i < 8; i++) ids.push(await pending(`reject_${i}`));
+    const d1 = countingD1(env.DB);
+    let fetches = 0;
+    const background: Promise<unknown>[] = [];
+    const counted = {
+      ...ctx,
+      db: createDb(d1.binding),
+      waitUntil: (promise: Promise<unknown>) => void background.push(promise),
+      fetch: async (input: string, init?: RequestInit) => {
+        fetches++;
+        return ctx.fetch(input, init);
+      },
+    };
+    const results = await rejectSubmissions(counted, { ids, reason: "grey", actor });
+    await Promise.all(background);
+    expect(results.every((result) => result.ok)).toBe(true);
+    expect(fetches).toBe(8);
+    expect(d1.calls() + fetches).toBeLessThanOrEqual(48);
   });
 
   test("eight category changes in one request dispatch once and fit the limit", async () => {
@@ -227,9 +251,11 @@ describe("admin review queue", () => {
 
     await approveSubmissions(ctx, { ids: [id], actor });
 
-    expect(telegram).toHaveLength(1);
-    expect(telegram[0]).toMatchObject({ method: "sendMessage", body: { chat_id: "-100999" } });
-    const body = telegram[0]?.body as { text: string; reply_markup: unknown };
+    // The submitter's notice, then the channel post.
+    expect(telegram).toHaveLength(2);
+    const post = telegram.find((call) => (call.body as { chat_id: unknown }).chat_id === "-100999");
+    expect(post).toMatchObject({ method: "sendMessage" });
+    const body = post?.body as { text: string; reply_markup: unknown };
     expect(body.text).toContain("🆕 新收录 · 频道");
     expect(body.text).toContain("@fresh_one");
     expect(body.text).toContain("https://tgbox.test/detail/fresh_one/");
@@ -238,14 +264,42 @@ describe("admin review queue", () => {
 
   test("no channel post without a publish channel or when the entry already existed", async () => {
     const { ctx, telegram } = await setup({ BOT_TOKEN: "1:t", SITE_URL: "https://tgbox.test" });
+    const channelPosts = () =>
+      telegram.filter((call) => (call.body as { chat_id: unknown }).chat_id === "-100999");
     await approveSubmissions(ctx, { ids: [await pending("quiet_one")], actor });
-    expect(telegram).toEqual([]);
+    expect(channelPosts()).toEqual([]);
 
     const bot = { ...settingsDefaults.bot, publishChannelId: "-100999" };
     await upsertSetting(db, "bot", JSON.stringify(bot), NOW);
     // A second submission of a leftover entry relists nothing new.
     await env.DB.prepare("UPDATE submissions SET status = 'rejected'").run();
     await approveSubmissions(ctx, { ids: [await pending("quiet_one")], actor });
-    expect(telegram).toEqual([]);
+    expect(channelPosts()).toEqual([]);
+    // The submitter still hears about both approvals.
+    expect(telegram).toHaveLength(2);
+  });
+
+  test("an admin review tells the submitter, in their bot language when they picked one", async () => {
+    const { ctx, telegram } = await setup({ BOT_TOKEN: "1:t", SITE_URL: "https://tgbox.test" });
+    const id = await pending("told_one");
+    const submitter = (await getSubmission(db, id))?.tgUserId ?? 0;
+    await setUserLocale(db, submitter, "en", NOW);
+
+    await rejectSubmissions(ctx, { ids: [id], reason: "inactive", actor });
+
+    expect(telegram).toEqual([
+      {
+        method: "sendMessage",
+        body: {
+          chat_id: submitter,
+          text: "Sorry, your submission @told_one was not approved. Reason: Inactive",
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "📱 View my submissions", web_app: { url: "https://tgbox.test/app/me/" } }],
+            ],
+          },
+        },
+      },
+    ]);
   });
 });

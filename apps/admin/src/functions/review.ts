@@ -19,12 +19,13 @@ export const MAX_BULK = 20;
 
 /**
  * Per request, against the 50-subrequest limit (authentication takes one or two more). An approval
- * costs up to 14: submission read, up to three t.me pages, entry lookup and insert, transition,
- * audit, dirty flag, dispatch throttle read, and the channel post (settings, entry and categories
- * reads, the send). Three come to 41 with the request's one build dispatch. A rejection costs 3.
+ * costs up to 16: submission read, up to three t.me pages, entry lookup and insert, transition,
+ * audit, dirty flag, dispatch throttle read, the channel post (settings, entry and categories
+ * reads, the send) and the submitter's notice (their language, the send). Three come to 47 with
+ * the request's one build dispatch. A rejection costs 5: read, transition, audit, the notice.
  */
 export const APPROVE_PER_REQUEST = 3;
-export const REJECT_PER_REQUEST = 12;
+export const REJECT_PER_REQUEST = 8;
 
 const ids = (max: number) => z.array(z.number().int().positive()).min(1).max(max);
 

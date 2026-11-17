@@ -21,6 +21,7 @@ import { type Actor, background, type CoreContext } from "./context.ts";
 import { publishEntryToChannel } from "./publish.ts";
 import { notifyNewSubmission } from "./review-notify.ts";
 import { getSettings } from "./settings.ts";
+import { notifySubmitter } from "./submission-notices.ts";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -182,9 +183,13 @@ export async function listApprovedSubmission(
   return listed;
 }
 
-/** Marks the site dirty and, for an entry this approval created, posts it to the publish channel. */
+/**
+ * After an approval: marks the site dirty, tells the submitter and, for an entry this approval
+ * created, posts it to the publish channel.
+ */
 export async function announceListing(ctx: CoreContext, submission: Submission, created: boolean) {
   await markDirtyAndDispatch(ctx);
+  await notifySubmitter(ctx, submission, { type: "approved" });
   if (created) {
     await background(ctx, () => publishEntryToChannel(ctx, { username: submission.username }));
   }
@@ -233,7 +238,7 @@ export async function insertSubmissionEntry(ctx: CoreContext, submission: Submis
   return { entryId, created: !existing };
 }
 
-/** Pending → rejected. Returns the submission, or null if it was already handled. */
+/** Pending → rejected, and the submitter is told. Returns the submission, or null if it was handled. */
 export async function rejectSubmission(
   ctx: CoreContext,
   input: { id: number; reason: RejectReason; actor: Actor },
@@ -250,6 +255,7 @@ export async function rejectSubmission(
     username: submission.username,
     reason: input.reason,
   });
+  await notifySubmitter(ctx, submission, { type: "rejected", reason: input.reason });
   const rejected: Submission = {
     ...submission,
     status: "rejected",
