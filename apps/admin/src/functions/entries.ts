@@ -32,7 +32,9 @@ import { adminMiddleware } from "@/server/middleware.ts";
 
 /**
  * Per request, against the 50-subrequest limit: a status or promoted flag is one write per entry
- * plus one audit and the dirty flag; a category change reads the entry, writes it, audits it.
+ * plus one audit and the dirty flag; a category change reads the entry, writes it, audits it and
+ * marks the site dirty (4 each, ~35 for 8 with the taxonomy read, throttle read and one dispatch:
+ * the request sends at most one, see `markDirtyAndDispatch`).
  */
 export const FLAGS_PER_REQUEST = 30;
 export const CATEGORY_PER_REQUEST = 8;

@@ -366,7 +366,8 @@ describe("running promotions", () => {
     expect((await runPromotionMaintenance(ctx, NOW + 6.6 * DAY)).expiringSoon).toEqual([]);
 
     const dispatchesBefore = dispatches.length;
-    const done = await runPromotionMaintenance(ctx, NOW + 7 * DAY);
+    // A separate cron invocation, so a separate context.
+    const done = await runPromotionMaintenance({ ...ctx }, NOW + 7 * DAY);
     expect(done.expired).toMatchObject([{ id: created.id, status: "expired", tgUserId: BUYER }]);
     expect(await listActivePromotions(db, 0)).toEqual([]);
     expect(await getSiteState(db, "dirty_since")).toBeDefined();

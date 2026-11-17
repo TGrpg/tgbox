@@ -133,20 +133,20 @@ const reviewerIdOf = (actor: Actor) => (actor.startsWith("tg:") ? Number(actor.s
  */
 export async function approveSubmission(ctx: CoreContext, input: { id: number; actor: Actor }) {
   const submission = await getSubmission(ctx.db, input.id);
+  return submission ? markApproved(ctx, submission, input.actor) : null;
+}
+
+/** The transition and its audit row, for a submission already read. Null if it was handled. */
+export async function markApproved(ctx: CoreContext, submission: Submission, actor: Actor) {
   const now = ctx.now();
-  if (
-    !submission ||
-    !(await approveSubmissionRow(ctx.db, input.id, reviewerIdOf(input.actor), now))
-  ) {
-    return null;
-  }
-  await audit(ctx, input.actor, "submission.approve", `submission:${input.id}`, {
+  if (!(await approveSubmissionRow(ctx.db, submission.id, reviewerIdOf(actor), now))) return null;
+  await audit(ctx, actor, "submission.approve", `submission:${submission.id}`, {
     username: submission.username,
   });
   const approved: Submission = {
     ...submission,
     status: "approved",
-    reviewerId: reviewerIdOf(input.actor),
+    reviewerId: reviewerIdOf(actor),
     reviewedAt: now,
   };
   return approved;
@@ -157,6 +157,24 @@ export async function approveSubmission(ctx: CoreContext, input: { id: number; a
  * entry is announced in the publish channel in the background (bot and admin approvals alike).
  */
 export async function listApprovedSubmission(ctx: CoreContext, submission: Submission) {
+  const listed = await insertSubmissionEntry(ctx, submission);
+  await announceListing(ctx, submission, listed.created);
+  return listed;
+}
+
+/** Marks the site dirty and, for an entry this approval created, posts it to the publish channel. */
+export async function announceListing(ctx: CoreContext, submission: Submission, created: boolean) {
+  await markDirtyAndDispatch(ctx);
+  if (created) {
+    await background(ctx, () => publishEntryToChannel(ctx, { username: submission.username }));
+  }
+}
+
+/**
+ * Fetches the t.me profile and inserts the submission's entry, unless an entry with its username
+ * already exists. Writes nothing else: no dirty flag, no channel post.
+ */
+export async function insertSubmissionEntry(ctx: CoreContext, submission: Submission) {
   const now = ctx.now();
   const snap = await fetchEntrySnapshot(submission.username, {
     fetch: ctx.fetch,
@@ -191,10 +209,6 @@ export async function listApprovedSubmission(ctx: CoreContext, submission: Submi
       tagIds: submission.tagIds,
       now,
     }));
-  }
-  await markDirtyAndDispatch(ctx);
-  if (!existing) {
-    await background(ctx, () => publishEntryToChannel(ctx, { username: submission.username }));
   }
   return { entryId, created: !existing };
 }

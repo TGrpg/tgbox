@@ -18,10 +18,12 @@ export type ReviewTab = (typeof reviewTabs)[number];
 export const MAX_BULK = 20;
 
 /**
- * Per request, against the 50-subrequest limit: an approval costs ~10 (read, transition, audit,
- * up to three t.me pages, entry lookup and insert, dirty flag), a rejection 3.
+ * Per request, against the 50-subrequest limit (authentication takes one or two more). An approval
+ * costs up to 14: submission read, up to three t.me pages, entry lookup and insert, transition,
+ * audit, dirty flag, dispatch throttle read, and the channel post (settings, entry and categories
+ * reads, the send). Three come to 41 with the request's one build dispatch. A rejection costs 3.
  */
-export const APPROVE_PER_REQUEST = 4;
+export const APPROVE_PER_REQUEST = 3;
 export const REJECT_PER_REQUEST = 12;
 
 const ids = (max: number) => z.array(z.number().int().positive()).min(1).max(max);

@@ -1,14 +1,23 @@
 import { env } from "cloudflare:workers";
-import { approveSubmissions, previewSubmission, rejectSubmissions } from "@tgbox/core";
 import {
+  approveSubmissions,
+  previewSubmission,
+  rejectSubmissions,
+  setEntryCategoryAndTags,
+} from "@tgbox/core";
+import {
+  createDb,
   createSubmission,
   getEntryByUsername,
+  getEntryWithStats,
   getSiteState,
   getSubmission,
+  insertApprovedEntry,
+  listCategories,
   upsertSetting,
 } from "@tgbox/db";
 import { settingsDefaults } from "@tgbox/shared";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { actor, auditRows, db, NOW, setup } from "./fake.ts";
 
 async function pending(username: string) {
@@ -25,7 +34,141 @@ async function pending(username: string) {
   return id;
 }
 
+/**
+ * A D1 binding that counts every call the Workers runtime would bill as a subrequest: each
+ * statement execution and each batch.
+ */
+function countingD1(d1: D1Database) {
+  let calls = 0;
+  const wrap = (statement: D1PreparedStatement): D1PreparedStatement => {
+    for (const method of ["run", "all", "first", "raw"] as const) {
+      const original = statement[method].bind(statement) as (...args: unknown[]) => unknown;
+      Object.assign(statement, {
+        [method]: (...args: unknown[]) => {
+          calls++;
+          return original(...args);
+        },
+      });
+    }
+    const bind = statement.bind.bind(statement);
+    statement.bind = (...values: unknown[]) => wrap(bind(...values));
+    return statement;
+  };
+  const binding = {
+    prepare: (query: string) => wrap(d1.prepare(query)),
+    batch: (statements: D1PreparedStatement[]) => {
+      calls++;
+      return d1.batch(statements);
+    },
+  } as unknown as D1Database;
+  return { binding, calls: () => calls };
+}
+
 describe("admin review queue", () => {
+  test("a request cut short after listing leaves the submission pending, and approving again finishes it", async () => {
+    const { ctx } = await setup();
+    const id = await pending("half_done");
+    await env.DB.prepare(
+      "CREATE TRIGGER fail_approve BEFORE UPDATE ON submissions BEGIN SELECT RAISE(ABORT, 'injected'); END",
+    ).run();
+    try {
+      await expect(approveSubmissions(ctx, { ids: [id], actor })).rejects.toThrow();
+    } finally {
+      await env.DB.prepare("DROP TRIGGER fail_approve").run();
+    }
+    // Still in the queue, so the admin sees it and can try again.
+    expect(await getSubmission(db, id)).toMatchObject({ status: "pending" });
+    const entry = await getEntryByUsername(db, "half_done");
+
+    expect(await approveSubmissions(ctx, { ids: [id], actor })).toEqual([
+      { id, ok: true, entryId: entry?.id },
+    ]);
+    expect(await getSubmission(db, id)).toMatchObject({ status: "approved" });
+  });
+
+  test("a full approval request fits the subrequest limit, channel post and slow GitHub included", async () => {
+    const { ctx, dispatches } = await setup({ BOT_TOKEN: "1:t", SITE_URL: "https://tgbox.test" });
+    const bot = { ...settingsDefaults.bot, publishChannelId: "-100999" };
+    await upsertSetting(db, "bot", JSON.stringify(bot), NOW);
+    const ids = [await pending("cost_a"), await pending("cost_b"), await pending("cost_c")];
+
+    const d1 = countingD1(env.DB);
+    let fetches = 0;
+    // GitHub answers only after the approvals, so build_dispatched_at is never there to throttle.
+    const github: (() => void)[] = [];
+    const background: Promise<unknown>[] = [];
+    const counted = {
+      ...ctx,
+      db: createDb(d1.binding),
+      waitUntil: (promise: Promise<unknown>) => void background.push(promise),
+      fetch: async (input: string, init?: RequestInit) => {
+        fetches++;
+        if (new URL(input).hostname === "api.github.com") {
+          await new Promise<void>((resolve) => github.push(resolve));
+        }
+        return ctx.fetch(input, init);
+      },
+    };
+
+    const results = await approveSubmissions(counted, { ids, actor });
+    for (const release of github) release();
+    await Promise.all(background);
+
+    expect(results.every((result) => result.ok)).toBe(true);
+    expect(dispatches).toHaveLength(1);
+    // Two left for authenticating the admin.
+    expect(d1.calls() + fetches).toBeLessThanOrEqual(48);
+    vi.restoreAllMocks();
+  });
+
+  test("eight category changes in one request dispatch once and fit the limit", async () => {
+    const { ctx, dispatches } = await setup();
+    const ids: number[] = [];
+    for (let i = 0; i < 8; i++) {
+      const { id } = await insertApprovedEntry(db, {
+        entry: {
+          username: `moved_${i}`,
+          kind: "channel",
+          categoryId: 1,
+          title: "x",
+          listedAt: NOW,
+        },
+        stats: { members: 1, online: null, activityTier: null, statsWrittenAt: NOW },
+        tagIds: [],
+        now: NOW,
+      });
+      ids.push(id);
+    }
+    const target = (await listCategories(db)).find((row) => row.kind === "channel" && row.id !== 1);
+    if (!target) throw new Error("no second channel category");
+
+    const d1 = countingD1(env.DB);
+    let fetches = 0;
+    const github: (() => void)[] = [];
+    const background: Promise<unknown>[] = [];
+    const counted = {
+      ...ctx,
+      db: createDb(d1.binding),
+      waitUntil: (promise: Promise<unknown>) => void background.push(promise),
+      fetch: async (input: string, init?: RequestInit) => {
+        fetches++;
+        await new Promise<void>((resolve) => github.push(resolve));
+        return ctx.fetch(input, init);
+      },
+    };
+    // What $setEntriesCategory does: one taxonomy read, then per entry a read and the change.
+    await listCategories(counted.db);
+    for (const id of ids) {
+      await getEntryWithStats(counted.db, id);
+      await setEntryCategoryAndTags(counted, { id, categoryId: target.id, actor });
+    }
+    for (const release of github) release();
+    await Promise.all(background);
+
+    expect(dispatches).toHaveLength(1);
+    expect(d1.calls() + fetches).toBeLessThanOrEqual(48);
+  });
+
   test("bulk approval lists each pending submission once and skips handled ones", async () => {
     const { ctx, dispatches } = await setup();
     const first = await pending("first_one");
