@@ -5,7 +5,7 @@ import { chatMembers } from "./chat-members.ts";
 import { friendLinks } from "./friend-links.ts";
 import { guard } from "./guard.ts";
 import { inlineSearch } from "./inline-search.ts";
-import { payments } from "./payments.ts";
+import { payments, starsPayments } from "./payments.ts";
 import { promote } from "./promote.ts";
 import { review } from "./review.ts";
 import { startHelp } from "./start-help.ts";
@@ -49,6 +49,7 @@ export function createBot(
   // private senders (blacklisted ones too, so the admin can find them) before any flow answers.
   // `bot.catch` only applies to long polling. For webhooks a thrown error becomes a 500 and Telegram
   // redelivers the update (e.g. forever for a user who blocked the bot), so log and answer 200.
+  bot.use(starsPayments(app));
   bot.errorBoundary(
     (error) => console.error("bot update failed", error.error),
     chatMembers(app),

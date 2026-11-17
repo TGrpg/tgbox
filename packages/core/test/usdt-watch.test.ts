@@ -252,6 +252,23 @@ describe("settling transfers", () => {
     );
   });
 
+  test("a transfer whose settling failed is settled again on the next tick", async () => {
+    const { order, product } = await withOrder(harness);
+    const quote = await quoteUsdtOrder(harness.ctx, { orderId: order.id, productId: product.id });
+    if (!quote.ok) throw new Error("quote failed");
+    harness.tron.transfers = [transfer(quote.quote.amountMicro, NOW + MINUTE)];
+
+    const failing = vi.fn().mockRejectedValue(new Error("D1 hiccup"));
+    const first = await watchUsdtPayments(harness.ctx, failing);
+    expect(first.matched).toEqual([]);
+    expect((await getUsdtPayment(db, order.id))?.status).toBe("pending");
+
+    const settle = vi.fn();
+    await watchUsdtPayments(harness.ctx, settle);
+    expect(settle).toHaveBeenCalledOnce();
+    expect((await getUsdtPayment(db, order.id))?.status).toBe("paid");
+  });
+
   test("the same transfer seen again settles nothing", async () => {
     const { order, product } = await withOrder(harness);
     const quote = await quoteUsdtOrder(harness.ctx, { orderId: order.id, productId: product.id });

@@ -15,7 +15,7 @@ import {
   sql,
 } from "drizzle-orm";
 import type { SQLiteColumn } from "drizzle-orm/sqlite-core";
-import type { Db } from "./access.ts";
+import { batchWrite, type Db } from "./access.ts";
 import { entries, orders, products, promotions } from "./schema.ts";
 
 export type Product = typeof products.$inferSelect;
@@ -141,6 +141,35 @@ export async function markOrderPaidRow(
     .where(and(eq(orders.id, id), eq(orders.status, "pending")))
     .run();
   return result.meta.changes > 0;
+}
+
+/**
+ * paid → active and the promotion it starts, in one batch (a D1 batch is a transaction), so an
+ * order is never active with nothing to show. The promotion is copied from the order row and only
+ * written when this batch made it active. Returns the new promotion's id, or null if the order
+ * was not `paid`.
+ */
+export async function activateOrderRow(
+  db: Db,
+  input: { id: number; startsAt: number; endsAt: number },
+) {
+  const [, inserted] = await batchWrite(db, [
+    db
+      .update(orders)
+      .set({ status: "active", startsAt: input.startsAt, endsAt: input.endsAt })
+      .where(and(eq(orders.id, input.id), eq(orders.status, "paid"))),
+    // `starts_at` is this call's own timestamp; the NOT EXISTS keeps a concurrent activation in the
+    // same millisecond (whose update changed nothing) from adding a second row.
+    sql`INSERT INTO promotions (kind, order_id, entry_username, banner, starts_at, ends_at, created_at)
+      SELECT kind, id, target_username, banner, starts_at, ends_at, ${input.startsAt} FROM orders
+      WHERE id = ${input.id} AND status = 'active' AND starts_at = ${input.startsAt}
+        AND NOT EXISTS (
+          SELECT 1 FROM promotions WHERE order_id = ${input.id} AND starts_at = ${input.startsAt}
+        )
+      RETURNING id`,
+  ]);
+  const [row] = (inserted?.results ?? []) as { id: number }[];
+  return row?.id ?? null;
 }
 
 /** State-machine update guarded by the expected current status. Returns true if it applied. */

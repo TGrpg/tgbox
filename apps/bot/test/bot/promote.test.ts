@@ -403,6 +403,25 @@ describe("buying a pin with Stars", () => {
     expect(h.calls("answerPreCheckoutQuery")[0]?.payload).toMatchObject({ ok: false });
   });
 
+  test("a Stars payment that failed to record is not acknowledged, and the redelivery finishes it", async () => {
+    const pin = await order({ productId: 1, targetUsername: "@pin_me" });
+    await env.DB.prepare(
+      "CREATE TRIGGER fail_promotion BEFORE INSERT ON promotions BEGIN SELECT RAISE(ABORT, 'injected'); END",
+    ).run();
+    try {
+      // The Worker throws, which the runtime answers with a 500 that Telegram redelivers.
+      await expect(successfulPayment(pin.id, "charge_1")).rejects.toThrow("injected");
+    } finally {
+      await env.DB.prepare("DROP TRIGGER fail_promotion").run();
+    }
+    expect((await successfulPayment(pin.id, "charge_1")).status).toBe(200);
+
+    expect(await getOrder(db, pin.id)).toMatchObject({ status: "active", chargeId: "charge_1" });
+    expect(await listActivePromotions(db, Date.now(), "pin")).toMatchObject([{ orderId: pin.id }]);
+    const notices = h.calls("sendMessage").filter((c) => c.payload.chat_id === buyer.id);
+    expect(notices).toHaveLength(1);
+  });
+
   test("a successful payment activates the pin once and tells the buyer", async () => {
     const pin = await order({ productId: 1, targetUsername: "@pin_me" });
     await successfulPayment(pin.id, "charge_1");

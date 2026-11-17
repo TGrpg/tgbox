@@ -122,6 +122,34 @@ async function sendAdReview(app: App, order: Order) {
   );
 }
 
+/**
+ * Stars arrive here once, as a message. Registered outside the bot's error boundary on purpose: a
+ * failure must answer 500 so Telegram redelivers it and the re-entrant `markOrderPaid` finishes
+ * the job, instead of the money being in with the order still pending. Messages to the buyer go
+ * out in the background, so a buyer who blocked the bot can't make this redeliver forever.
+ */
+export function starsPayments(app: App) {
+  const composer = new Composer<Context>();
+  composer.on("message:successful_payment", async (ctx) => {
+    const payment = ctx.message.successful_payment;
+    const orderId = parseOrderPayload(payment.invoice_payload);
+    if (orderId === null || payment.currency !== "XTR") {
+      console.error("unexpected successful_payment", payment);
+      return;
+    }
+    await recordPayment(app, {
+      orderId,
+      provider: "stars",
+      chargeId: payment.telegram_payment_charge_id,
+      amount: String(payment.total_amount),
+      currency: "XTR",
+      buyerId: ctx.from?.id ?? null,
+      locale: await app.locale(ctx),
+    });
+  });
+  return composer;
+}
+
 export function payments(app: App) {
   const composer = new Composer<Context>();
 
@@ -145,24 +173,6 @@ export function payments(app: App) {
       return;
     }
     await ctx.answerPreCheckoutQuery(true);
-  });
-
-  composer.on("message:successful_payment", async (ctx) => {
-    const payment = ctx.message.successful_payment;
-    const orderId = parseOrderPayload(payment.invoice_payload);
-    if (orderId === null || payment.currency !== "XTR") {
-      console.error("unexpected successful_payment", payment);
-      return;
-    }
-    await recordPayment(app, {
-      orderId,
-      provider: "stars",
-      chargeId: payment.telegram_payment_charge_id,
-      amount: String(payment.total_amount),
-      currency: "XTR",
-      buyerId: ctx.from?.id ?? null,
-      locale: await app.locale(ctx),
-    });
   });
 
   composer.callbackQuery(/^b[aj]:/, async (ctx, next) => {

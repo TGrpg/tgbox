@@ -1,4 +1,5 @@
 import {
+  activateOrderRow,
   countActivePromotions,
   countPaidOrders,
   createPendingOrder,
@@ -156,34 +157,26 @@ export async function createOrder(
 async function activateOrder(ctx: CoreContext, order: Order, actor: Actor) {
   const now = ctx.now();
   const endsAt = now + order.days * DAY_MS;
-  const applied = await setOrderStatus(ctx.db, {
-    id: order.id,
-    from: "paid",
-    to: "active",
-    fields: { startsAt: now, endsAt },
-  });
-  if (!applied) return false;
-  const promotion = await insertPromotion(ctx.db, {
-    kind: order.kind,
-    orderId: order.id,
-    entryUsername: order.targetUsername,
-    banner: order.banner,
-    startsAt: now,
-    endsAt,
-    createdAt: now,
-  });
-  await audit(ctx, actor, "promotion.start", promotionTarget(promotion.id), {
-    orderId: order.id,
-    kind: order.kind,
-    endsAt,
-  });
+  const promotionId = await activateOrderRow(ctx.db, { id: order.id, startsAt: now, endsAt });
+  if (promotionId === null) return false;
+  // The site is marked first: a lost audit row costs less than a live promotion nobody sees.
   await markDirtyAndDispatch(ctx);
+  await audit(ctx, actor, "promotion.start", promotionTarget(promotionId), {
+    orderId: order.id,
+    kind: order.kind,
+    endsAt,
+  });
   return true;
 }
 
 /**
  * Records a payment (idempotent: retried callbacks return `changed: false`). Entry promotions go
  * live immediately; brand ads stay `paid` until reviewed. Returns null for an unknown order.
+ *
+ * Re-entrant: when an earlier attempt for the same charge stopped after recording the payment, a
+ * retry finishes starting the promotion (and reports `changed`) instead of stopping at "already
+ * paid". Callers make sure a failure is retried: Telegram and Crypto Pay redeliver on a 500, the
+ * USDT watcher keeps the transfer pending.
  */
 export async function markOrderPaid(
   ctx: CoreContext,
@@ -207,16 +200,21 @@ export async function markOrderPaid(
     currency: input.currency,
     paidAt: ctx.now(),
   });
+  const actor = input.actor ?? tgActor(order.tgUserId);
   if (changed) {
-    const actor = input.actor ?? tgActor(order.tgUserId);
     await audit(ctx, actor, "order.paid", orderTarget(order.id), {
       provider: input.provider,
       amount: input.amount,
       currency: input.currency,
     });
-    if (isEntryProduct(order.kind)) await activateOrder(ctx, order, actor);
   }
-  return { order: (await getOrder(ctx.db, order.id)) ?? order, changed };
+  const ours =
+    changed ||
+    (order.status === "paid" &&
+      order.provider === input.provider &&
+      order.chargeId === input.chargeId);
+  const started = ours && isEntryProduct(order.kind) && (await activateOrder(ctx, order, actor));
+  return { order: (await getOrder(ctx.db, order.id)) ?? order, changed: changed || started };
 }
 
 /** Admin approves a paid brand ad. Returns the updated order, or null if it was not awaiting review. */

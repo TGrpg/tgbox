@@ -213,13 +213,19 @@ export async function watchUsdtPayments(
       }
       continue;
     }
-    // Conditional on the row still being pending, so a replayed transfer settles nothing twice.
-    if (!(await markUsdtPaid(ctx.db, { orderId, txHash: transfer.transaction_id, now }))) continue;
-    result.subrequests++;
-    settled.add(orderId);
+    // Settle before marking the transfer paid: crediting the order is idempotent per tx hash, so
+    // when it fails the row stays pending and the next tick settles the same transfer again.
     const amount = microToUsdt(valueMicro);
+    try {
+      await settle({ orderId, txHash: transfer.transaction_id, amount });
+    } catch (error) {
+      console.error("usdt settle failed", orderId, transfer.transaction_id, error);
+      continue;
+    }
+    settled.add(orderId);
     result.matched.push({ orderId, txHash: transfer.transaction_id, amount });
-    await settle({ orderId, txHash: transfer.transaction_id, amount });
+    await markUsdtPaid(ctx.db, { orderId, txHash: transfer.transaction_id, now });
+    result.subrequests++;
   }
 
   result.expired = await expireUsdtPayments(ctx.db, now - CONFIRMATION_GRACE_MS);

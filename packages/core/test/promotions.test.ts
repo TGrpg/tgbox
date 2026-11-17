@@ -94,7 +94,47 @@ describe("creating orders", () => {
   });
 });
 
+/** Runs `body` while every promotion insert fails, like a D1 error halfway through activation. */
+async function withFailingPromotionInsert(body: () => Promise<void>) {
+  await env.DB.prepare(
+    "CREATE TRIGGER fail_promotion BEFORE INSERT ON promotions BEGIN SELECT RAISE(ABORT, 'injected'); END",
+  ).run();
+  try {
+    await body();
+  } finally {
+    await env.DB.prepare("DROP TRIGGER fail_promotion").run();
+  }
+}
+
 describe("paying", () => {
+  test("a pin whose promotion failed to start is never active, and the retry starts it", async () => {
+    const { ctx } = await setup();
+    await listed("pin_me");
+    const pin = await order(ctx, PIN_7, { targetUsername: "@pin_me" });
+
+    await withFailingPromotionInsert(async () => {
+      await expect(markOrderPaid(ctx, starsPayment(pin.id))).rejects.toThrow();
+    });
+    // The payment is on record, but the order didn't go live without its promotion.
+    expect(await getOrder(db, pin.id)).toMatchObject({ status: "paid" });
+    expect(await listActivePromotions(db, NOW)).toEqual([]);
+
+    // Another charge for the same order is not this payment and finishes nothing.
+    expect(await markOrderPaid(ctx, starsPayment(pin.id, "other"))).toMatchObject({
+      changed: false,
+      order: { status: "paid" },
+    });
+
+    // The provider redelivers the same charge: the retry completes the activation.
+    expect(await markOrderPaid(ctx, starsPayment(pin.id))).toMatchObject({
+      changed: true,
+      order: { status: "active" },
+    });
+    expect(await listActivePromotions(db, NOW)).toMatchObject([{ orderId: pin.id }]);
+    expect(await markOrderPaid(ctx, starsPayment(pin.id))).toMatchObject({ changed: false });
+    expect(await listActivePromotions(db, NOW)).toHaveLength(1);
+  });
+
   test("a paid pin goes live at once; the retried callback changes nothing", async () => {
     const { ctx, dispatches } = await setup();
     await listed("pin_me");
