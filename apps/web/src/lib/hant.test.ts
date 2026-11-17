@@ -26,6 +26,27 @@ test("external URLs keep their bytes; site paths are converted with the page", (
   );
 });
 
+test("absolute URLs outside href/src keep their bytes too", () => {
+  const page = toTraditionalPage(
+    '<div style="background: url(&quot;https://img.example/软件.png&quot;) center">软件</div>' +
+      '<img srcset="https://img.example/图.png 1x, //img.example/a@2x.png 2x">' +
+      '<script type="application/ld+json">{"url":"https://img.example/频道","name":"频道"}</script>' +
+      '<astro-island props="{&quot;href&quot;:[0,&quot;https://t.me/频道&quot;]}"></astro-island>',
+  );
+  expect(page).toBe(
+    '<div style="background: url(&quot;https://img.example/软件.png&quot;) center">軟件</div>' +
+      '<img srcset="https://img.example/图.png 1x, //img.example/a@2x.png 2x">' +
+      '<script type="application/ld+json">{"url":"https://img.example/频道","name":"頻道"}</script>' +
+      '<astro-island props="{&quot;href&quot;:[0,&quot;https://t.me/频道&quot;]}"></astro-island>',
+  );
+});
+
+test("a bare link in prose keeps its bytes, the text running on after it is still converted", () => {
+  expect(toTraditionalPage("<p>机器人会自动从https://github.com/trending获取新的存储库</p>")).toBe(
+    "<p>機器人會自動從https://github.com/trending獲取新的存儲庫</p>",
+  );
+});
+
 test("every page and JSON file in the tree is converted in place, other files are left alone", async () => {
   const dir = mkdtempSync(path.join(tmpdir(), "hant-"));
   mkdirSync(path.join(dir, "detail/x"), { recursive: true });

@@ -2,18 +2,22 @@ import { readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { toHant } from "@tgbox/hant";
 
-// Links to other sites keep their exact bytes: a converted character in a URL is a different URL.
-// Site paths are converted with the page, so a `/?q=…` search link matches the Traditional index.
-const EXTERNAL_URL_ATTR = /(\s(?:href|src)=")((?!\/(?!\/))[^"]*)(")/g;
+// Absolute URLs keep their exact bytes wherever they appear — href/src, a CSS `url()` in a style
+// attribute, JSON-LD or island props: a converted character in a URL is a different URL. One that
+// opens a quoted value (raw or HTML-escaped quote, or `(`) runs to the closing delimiter, non-ASCII
+// path included. A bare one in prose stops at its last ASCII character, since descriptions run text
+// straight on after a link ("从https://github.com/trending获取…"). Site paths are converted with the
+// page, so a `/?q=…` search link matches the Traditional index.
+const ABSOLUTE_URL =
+  /(?<=["'(]|&quot;|&#3[49];)(?:https?:)?\/\/(?:(?!&quot;|&#3[49];)[^\s"'<>()\\])+|(?:https?:)?\/\/[!#-&*-;=?-[\]-~]+/g;
 
-/** A rendered zh page in Traditional Chinese, leaving external URLs untouched. */
+/** A rendered zh page in Traditional Chinese, leaving absolute URLs untouched. */
 export function toTraditionalPage(html: string): string {
   let out = "";
   let last = 0;
-  for (const match of html.matchAll(EXTERNAL_URL_ATTR)) {
-    const valueStart = match.index + (match[1]?.length ?? 0);
-    out += toHant(html.slice(last, valueStart)) + (match[2] ?? "");
-    last = valueStart + (match[2]?.length ?? 0);
+  for (const match of html.matchAll(ABSOLUTE_URL)) {
+    out += toHant(html.slice(last, match.index)) + match[0];
+    last = match.index + match[0].length;
   }
   return out + toHant(html.slice(last));
 }
