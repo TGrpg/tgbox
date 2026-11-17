@@ -239,6 +239,7 @@ export const zh = {
         ? `名额已满，最早 ${utcDate(nextFreeAt)} 有空位，届时再来吧。`
         : "名额已满，请稍后再试。",
     productUnavailable: "该商品已下架，请发送 /promote 重新选择。",
+    tooManyPending: "你有好几笔未付款的订单了。请先付掉其中一笔，或等它们两天后自动失效再下单。",
     order: (o: OrderSummary) =>
       [
         `订单 #${o.id}`,

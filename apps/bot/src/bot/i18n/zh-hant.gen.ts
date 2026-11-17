@@ -240,6 +240,7 @@ export const zhHant = {
         ? `名額已滿，最早 ${utcDate(nextFreeAt)} 有空位，屆時再來吧。`
         : "名額已滿，請稍後再試。",
     productUnavailable: "該商品已下架，請發送 /promote 重新選擇。",
+    tooManyPending: "你有好幾筆未付款的訂單了。請先付掉其中一筆，或等它們兩天後自動失效再下單。",
     order: (o: OrderSummary) =>
       [
         `訂單 #${o.id}`,

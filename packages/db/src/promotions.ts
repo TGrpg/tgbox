@@ -16,7 +16,7 @@ import {
 } from "drizzle-orm";
 import type { SQLiteColumn } from "drizzle-orm/sqlite-core";
 import { batchWrite, type Db } from "./access.ts";
-import { entries, orders, products, promotions } from "./schema.ts";
+import { entries, orders, products, promotions, usdtPayments } from "./schema.ts";
 
 export type Product = typeof products.$inferSelect;
 export type Order = typeof orders.$inferSelect;
@@ -80,6 +80,24 @@ export async function createPendingOrder(db: Db, order: NewOrder) {
     .returning();
   if (!row) throw new Error("createPendingOrder: no row returned");
   return row;
+}
+
+/**
+ * A buyer's unpaid orders, newest first, with the state of any USDT quote. Served by the
+ * `orders_user` index. `limit` bounds the read; a buyer is never allowed more than that many.
+ */
+export function listPendingOrdersOf(db: Db, tgUserId: number, limit: number) {
+  return db
+    .select({
+      order: orders,
+      usdtStatus: usdtPayments.status,
+      usdtExpiresAt: usdtPayments.expiresAt,
+    })
+    .from(orders)
+    .leftJoin(usdtPayments, eq(usdtPayments.orderId, orders.id))
+    .where(and(eq(orders.tgUserId, tgUserId), eq(orders.status, "pending")))
+    .orderBy(desc(orders.id))
+    .limit(limit);
 }
 
 export async function getOrder(db: Db, id: number) {

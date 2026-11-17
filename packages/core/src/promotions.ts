@@ -14,6 +14,7 @@ import {
   insertPromotion,
   listExpiredPromotions,
   listOrdersToRemind,
+  listPendingOrdersOf,
   listProducts,
   markOrderPaidRow,
   type Order,
@@ -39,6 +40,8 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const MAX_DAYS = 365;
 /** Unpaid orders older than this are deleted. */
 const PENDING_TTL_MS = 2 * DAY_MS;
+/** Unpaid orders one buyer may hold at once; asking again for the same pin reuses one. */
+const MAX_PENDING_PER_USER = 5;
 /** Renewal reminder window before a promotion ends. */
 const REMIND_BEFORE_MS = DAY_MS;
 
@@ -114,7 +117,12 @@ export async function checkOrderSlots(
   return checkSlots(ctx, order.kind, entry?.categoryId);
 }
 
-/** A buyer starts a purchase in the bot. Payment is attached later by `markOrderPaid`. */
+/**
+ * A buyer starts a purchase in the bot or the Mini App. Payment is attached later by
+ * `markOrderPaid`. Ordering the same entry promotion again returns the unpaid order already open
+ * for it, unless its USDT quote ran out (that order can't be paid any more); a buyer can hold
+ * `MAX_PENDING_PER_USER` unpaid orders, so nobody fills the table (or the USDT amounts) by tapping.
+ */
 export async function createOrder(
   ctx: CoreContext,
   input: {
@@ -127,7 +135,7 @@ export async function createOrder(
   },
 ): Promise<
   | { ok: true; order: Order }
-  | { ok: false; error: PromotionContentError | "product_unavailable" }
+  | { ok: false; error: PromotionContentError | "product_unavailable" | "too_many_pending" }
   | { ok: false; error: "no_slots"; nextFreeAt: number | null }
 > {
   const product = await getProduct(ctx.db, input.productId);
@@ -137,6 +145,18 @@ export async function createOrder(
   const slots = await checkSlots(ctx, product.kind, content.categoryId);
   if (slots.available === 0) return { ok: false, error: "no_slots", nextFreeAt: slots.nextFreeAt };
 
+  const now = ctx.now();
+  const open = await listPendingOrdersOf(ctx.db, input.tgUserId, MAX_PENDING_PER_USER);
+  const same = open.find(
+    (row) =>
+      content.targetUsername !== null &&
+      row.order.productId === product.id &&
+      row.order.targetUsername === content.targetUsername &&
+      (row.usdtStatus === null || (row.usdtStatus === "pending" && (row.usdtExpiresAt ?? 0) > now)),
+  );
+  if (same) return { ok: true, order: same.order };
+  if (open.length >= MAX_PENDING_PER_USER) return { ok: false, error: "too_many_pending" };
+
   const order = await createPendingOrder(ctx.db, {
     tgUserId: input.tgUserId,
     productId: product.id,
@@ -144,7 +164,7 @@ export async function createOrder(
     days: product.days,
     targetUsername: content.targetUsername,
     banner: content.banner,
-    createdAt: ctx.now(),
+    createdAt: now,
   });
   await audit(ctx, tgActor(input.tgUserId), "order.create", orderTarget(order.id), {
     productId: product.id,

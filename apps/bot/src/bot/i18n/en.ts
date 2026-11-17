@@ -182,6 +182,8 @@ export const en: typeof zh = {
         ? `All slots are taken. The next one frees up on ${new Date(nextFreeAt).toISOString().slice(0, 10)}.`
         : "All slots are taken. Please try again later.",
     productUnavailable: "That product is no longer available. Send /promote to choose again.",
+    tooManyPending:
+      "You already have several unpaid orders. Pay one of them, or wait for them to lapse after two days, before ordering again.",
     order: (o: OrderSummary) =>
       [
         `Order #${o.id}`,

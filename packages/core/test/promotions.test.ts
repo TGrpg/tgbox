@@ -15,6 +15,7 @@ import {
   upsertProduct,
 } from "@tgbox/core";
 import {
+  createUsdtPayment,
   getOrder,
   getSiteState,
   insertApprovedEntry,
@@ -92,6 +93,41 @@ describe("creating orders", () => {
     });
     const card = await createOrder(ctx, { tgUserId: BUYER, productId: BANNER_7, banner });
     expect(card).toMatchObject({ ok: true, order: { kind: "banner", banner } });
+  });
+
+  test("ordering the same pin again reuses the unpaid order, unless its USDT quote ran out", async () => {
+    const { ctx } = await setup();
+    await listed("pin_me");
+    const first = await order(ctx, PIN_7, { targetUsername: "@pin_me" });
+    expect((await order(ctx, PIN_7, { targetUsername: "t.me/pin_me" })).id).toBe(first.id);
+    expect(
+      await createOrder(ctx, { tgUserId: BUYER + 1, productId: PIN_7, targetUsername: "pin_me" }),
+    ).toMatchObject({ ok: true });
+    expect((await auditRows()).filter((row) => row.action === "order.create")).toHaveLength(2);
+
+    await createUsdtPayment(db, {
+      orderId: first.id,
+      amountMicro: 10_000_100,
+      address: "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
+      createdAt: NOW,
+      expiresAt: NOW + 30 * 60_000,
+    });
+    expect((await order(ctx, PIN_7, { targetUsername: "pin_me" })).id).toBe(first.id);
+    const later = { ...ctx, now: () => NOW + 31 * 60_000 };
+    expect((await order(later, PIN_7, { targetUsername: "pin_me" })).id).not.toBe(first.id);
+  });
+
+  test("a buyer can't hold more than five unpaid orders", async () => {
+    const { ctx } = await setup();
+    for (let i = 0; i < 5; i++) await order(ctx, BANNER_7, { banner });
+    expect(await createOrder(ctx, { tgUserId: BUYER, productId: BANNER_7, banner })).toEqual({
+      ok: false,
+      error: "too_many_pending",
+    });
+    // Another buyer is unaffected.
+    expect(
+      await createOrder(ctx, { tgUserId: BUYER + 1, productId: BANNER_7, banner }),
+    ).toMatchObject({ ok: true });
   });
 });
 

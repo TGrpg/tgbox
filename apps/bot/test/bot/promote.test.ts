@@ -457,7 +457,14 @@ describe("a pin paid after its placement filled up", () => {
   async function paidWhileFull() {
     const late = await order({ productId: 1, targetUsername: "@pin_me" });
     for (let i = 0; i < 10; i++) {
-      const other = await order({ productId: 1, targetUsername: "@pin_me" });
+      // Other buyers: the same buyer ordering the same pin again would get `late` back.
+      const created = await createOrder(core, {
+        tgUserId: 9000 + i,
+        productId: 1,
+        targetUsername: "@pin_me",
+      });
+      if (!created.ok) throw new Error(created.error);
+      const other = created.order;
       await markOrderPaid(core, {
         orderId: other.id,
         provider: "manual",
