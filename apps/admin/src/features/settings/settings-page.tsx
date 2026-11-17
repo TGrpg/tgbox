@@ -342,7 +342,7 @@ function SiteSection({ initial }: { initial: SiteSettings }) {
     setAnnouncement((current) => ({ ...current, ...next }));
 
   const blocklist = parsePostBlocklist(blocklistText);
-  const candidate: Omit<SiteSettings, "friendLinks"> = {
+  const candidate: Omit<SiteSettings, "friendLinks" | "featured"> = {
     announcement: {
       ...announcement,
       zh: announcement.zh.trim(),

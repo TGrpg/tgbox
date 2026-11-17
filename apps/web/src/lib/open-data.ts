@@ -4,8 +4,8 @@ import { byMembers } from "./site-data.ts";
 
 /**
  * The whole public directory as one file, for mirrors such as the awesome-telegram list on GitHub.
- * Only what the site already shows: no promotion state, posts or member history, and no avatar
- * URLs, so copies don't hotlink the media bucket.
+ * Public entry fields and explicit admin curation (`featured`), without promotion state, posts,
+ * member history or avatar URLs, so copies don't hotlink the media bucket.
  */
 export function openData(data: SiteData) {
   return {
@@ -13,6 +13,7 @@ export function openData(data: SiteData) {
     site: siteUrl,
     generatedAt: data.generatedAt,
     stats: data.stats,
+    featured: data.featured.map(({ name, url, descZh, descEn }) => ({ name, url, descZh, descEn })),
     categories: data.categories.map(({ kind, slug, nameZh, nameEn, count }) => ({
       kind,
       slug,

@@ -50,6 +50,24 @@ describe("buildSiteData", () => {
     expect(SiteData.safeParse(data).success).toBe(true);
   });
 
+  test("publishes featured items in admin order and defaults old exports to an empty list", async () => {
+    const dbPath = fixtureDb();
+    expect((await buildSiteData({ dbPath, now: fixtureNow })).featured).toEqual([]);
+    const featured = [
+      { name: "Z first", url: "https://t.me/first", descZh: "推荐", descEn: "Featured" },
+      { name: "A second", url: "https://example.com/", descZh: "", descEn: "" },
+    ];
+    const db = new DatabaseSync(dbPath);
+    db.prepare("INSERT INTO settings (key, value, updated_at) VALUES ('site', ?, 0)").run(
+      JSON.stringify({ featured }),
+    );
+    db.close();
+    const data = await buildSiteData({ dbPath, now: fixtureNow });
+    expect(data.featured).toEqual(featured);
+    const { featured: _featured, ...legacy } = data;
+    expect(SiteData.parse(legacy).featured).toEqual([]);
+  });
+
   test("maps entry fields from the export", async () => {
     const data = await buildSiteData({
       dbPath: fixtureDb(),

@@ -25,7 +25,15 @@ export async function convertTraditionalPages(dir: string): Promise<number> {
   );
   for (const file of files) {
     const target = path.join(dir, file);
-    await writeFile(target, toTraditionalPage(await readFile(target, "utf8")));
+    const source = await readFile(target, "utf8");
+    const converted = file.endsWith(".json")
+      ? JSON.stringify(
+          JSON.parse(source, (_key, value: unknown) =>
+            typeof value === "string" && !/^(?:https?:)?\/\//.test(value) ? toHant(value) : value,
+          ),
+        )
+      : toTraditionalPage(source);
+    await writeFile(target, converted);
   }
   return files.length;
 }

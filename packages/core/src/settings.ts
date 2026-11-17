@@ -7,6 +7,7 @@ import {
 } from "@tgbox/db";
 import {
   BotSettings,
+  type FriendLink,
   PaymentSettings,
   type Settings,
   type SettingsKey,
@@ -59,25 +60,27 @@ export function settingsFromRows(rows: { key: string; value: string }[]): Settin
 
 export type SettingsUpdate =
   | { key: "bot"; value: BotSettings }
-  | { key: "site"; value: Omit<SiteSettings, "friendLinks"> }
+  | { key: "site"; value: Omit<SiteSettings, "friendLinks" | "featured"> }
   | { key: "payments"; value: PaymentSettings };
 
 /**
- * Replaces one settings key. The site announcement is baked into the static build. Friend links
- * live in the `site` row but have their own operations (a bot approval can land while the settings
- * page is open), so a site update keeps the stored list.
+ * Replaces one settings key. Friend links and featured picks have their own editors, so a site
+ * update keeps those stored lists even when the settings page has stale values.
  */
 export async function updateSettings(
   ctx: CoreContext,
   input: SettingsUpdate & { actor: Actor },
 ): Promise<{ ok: true; changed: boolean } | { ok: false; error: "invalid" }> {
+  const { friendLinks, featured } =
+    input.key === "site" ? (await getSettings(ctx)).site : settingsDefaults.site;
   const parsed =
     input.key === "bot"
       ? BotSettings.safeParse(input.value)
       : input.key === "site"
         ? SiteSettings.safeParse({
             ...input.value,
-            friendLinks: (await getSettings(ctx)).site.friendLinks,
+            friendLinks,
+            featured,
           })
         : PaymentSettings.safeParse(input.value);
   if (!parsed.success) return { ok: false, error: "invalid" };
@@ -94,6 +97,24 @@ export async function updateSettings(
     if (input.key === "site") await markDirtyAndDispatch(ctx);
   }
   return { ok: true, changed };
+}
+
+/** Saves the ordered README picks without overwriting the other site settings. */
+export async function setFeatured(
+  ctx: CoreContext,
+  input: { featured: FriendLink[]; actor: Actor },
+) {
+  const featured = SiteSettings.shape.featured.parse(input.featured);
+  const { site } = await getSettings(ctx);
+  if (JSON.stringify(featured) === JSON.stringify(site.featured)) return { changed: false };
+  const value = SiteSettings.parse({ ...site, featured });
+  const { rowsWritten } = await upsertSetting(ctx.db, "site", JSON.stringify(value), ctx.now());
+  const changed = rowsWritten > 0;
+  if (changed) {
+    await audit(ctx, input.actor, "settings.update", "settings:site", value);
+    await markDirtyAndDispatch(ctx);
+  }
+  return { changed };
 }
 
 /* ------------------------------------------------------------- credentials */

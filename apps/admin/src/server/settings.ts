@@ -43,8 +43,8 @@ export const SettingsInput = z.discriminatedUnion("key", [
   }),
   z.object({
     key: z.literal("site"),
-    // Friend links have their own page and operations; a settings save keeps the stored list.
-    value: SiteSettings.omit({ friendLinks: true }).extend({
+    // Curated lists have their own editors; a settings save keeps the stored lists.
+    value: SiteSettings.omit({ friendLinks: true, featured: true }).extend({
       announcement: z
         .object({
           enabled: z.boolean(),
