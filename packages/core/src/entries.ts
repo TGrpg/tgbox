@@ -120,15 +120,29 @@ export type ListEntryError =
   | "user_account"
   | "not_found"
   | "banned"
-  | "unavailable";
+  | "unavailable"
+  | "invalid_start_payload";
 
-/** Admin "add entry": fetch the t.me profile and list it directly (no submission). */
+/**
+ * Admin "add entry": fetch the t.me profile and list it directly (no submission). A bot keeps the
+ * admin's `startPayload` (usually read from the pasted `t.me/<bot>?start=…`); other kinds have none.
+ */
 export async function listEntryManually(
   ctx: CoreContext,
-  input: { username: string; categorySlug: string; tagSlugs: string[]; actor: Actor },
+  input: {
+    username: string;
+    categorySlug: string;
+    tagSlugs: string[];
+    startPayload?: string | null;
+    actor: Actor;
+  },
 ): Promise<{ ok: true; entryId: number } | { ok: false; error: ListEntryError }> {
   const username = parseTelegramRef(input.username)?.toLowerCase();
   if (!username) return { ok: false, error: "invalid_username" };
+  const payload = input.startPayload?.trim() ? input.startPayload : null;
+  if (payload !== null && !isStartPayload(payload)) {
+    return { ok: false, error: "invalid_start_payload" };
+  }
   if (await getEntryByUsername(ctx.db, username)) return { ok: false, error: "already_listed" };
   const slugs = [...new Set(input.tagSlugs)];
   if (slugs.length > MAX_TAGS) return { ok: false, error: "too_many_tags" };
@@ -156,10 +170,12 @@ export async function listEntryManually(
   if (!category) return { ok: false, error: "unknown_category" };
 
   const createdAt = snap.createdAt ? Date.parse(snap.createdAt) : Number.NaN;
+  const startPayload = kind === "bot" ? payload : null;
   const { id } = await insertApprovedEntry(ctx.db, {
     entry: {
       username,
       kind,
+      startPayload,
       categoryId: category.id,
       title: profile.title ?? username,
       description: profile.description ?? "",
@@ -181,6 +197,7 @@ export async function listEntryManually(
     username,
     category: category.slug,
     tags: slugs,
+    ...(startPayload ? { startPayload } : {}),
   });
   await markDirtyAndDispatch(ctx);
   return { ok: true, entryId: id };

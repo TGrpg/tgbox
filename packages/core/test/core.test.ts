@@ -124,6 +124,41 @@ describe("manual listing", () => {
     ]);
   });
 
+  test("a bot added from its ?start= link keeps the payload; a channel never gets one", async () => {
+    const { ctx } = await setup();
+    const botCategory = (await listCategories(db)).find((row) => row.kind === "bot");
+    const channelCategory = (await listCategories(db)).find((row) => row.kind === "channel");
+    if (!botCategory || !channelCategory) throw new Error("no categories");
+    const bot = await listEntryManually(ctx, {
+      username: "https://t.me/Some_Bot?start=tgbox",
+      categorySlug: botCategory.slug,
+      tagSlugs: [],
+      startPayload: "tgbox",
+      actor,
+    });
+    expect(bot.ok).toBe(true);
+    expect(await getEntryByUsername(db, "some_bot")).toMatchObject({ startPayload: "tgbox" });
+
+    await listEntryManually(ctx, {
+      username: "some_channel",
+      categorySlug: channelCategory.slug,
+      tagSlugs: [],
+      startPayload: "tgbox",
+      actor,
+    });
+    expect(await getEntryByUsername(db, "some_channel")).toMatchObject({ startPayload: null });
+
+    expect(
+      await listEntryManually(ctx, {
+        username: "other_bot",
+        categorySlug: botCategory.slug,
+        tagSlugs: [],
+        startPayload: "no spaces",
+        actor,
+      }),
+    ).toEqual({ ok: false, error: "invalid_start_payload" });
+  });
+
   test.each([
     ["some_user", "software", "user_account"],
     ["gone_away", "software", "not_found"],
