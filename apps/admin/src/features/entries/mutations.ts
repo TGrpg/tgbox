@@ -19,7 +19,7 @@ import {
   $setPostVisibility,
   type EntryPostsView,
 } from "@/functions/posts.ts";
-import { inChunks } from "@/lib/chunks.ts";
+import { failureToast, inChunks, PartialFailure } from "@/lib/chunks.ts";
 import { invalidate, queryKeys } from "@/lib/query-keys.ts";
 import { entryEditErrorText } from "./edit.ts";
 import { formatCount, livenessLabel, statusLabel } from "./labels.ts";
@@ -61,8 +61,18 @@ function useSettled() {
   return () => invalidate(client, "entries", "adminStats", "dashboardActivity", "audit");
 }
 
-const failed = (error: Error) =>
-  toastManager.add({ type: "error", title: "操作失败", description: error.message });
+const failed = (error: Error) => toastManager.add(failureToast(error));
+
+/** Rolls the optimistic patch back, except on rows whose request already went through. */
+function undo(
+  client: QueryClient,
+  error: Error,
+  context: { rollback: () => void } | undefined,
+  patch: Partial<EntryRow>,
+) {
+  context?.rollback();
+  if (error instanceof PartialFailure) patchRows(client, error.doneIds, patch);
+}
 
 export function useSetStatus() {
   const client = useQueryClient();
@@ -79,8 +89,8 @@ export function useSetStatus() {
       await client.cancelQueries({ queryKey: queryKeys.entries });
       return { rollback: patchRows(client, input.ids, { status: input.status }) };
     },
-    onError: (error, _input, context) => {
-      context?.rollback();
+    onError: (error, input, context) => {
+      undo(client, error, context, { status: input.status });
       failed(error);
     },
     onSuccess: (result, input) =>
@@ -108,8 +118,8 @@ export function useSetPromoted() {
       await client.cancelQueries({ queryKey: queryKeys.entries });
       return { rollback: patchRows(client, input.ids, { promoted: input.promoted }) };
     },
-    onError: (error, _input, context) => {
-      context?.rollback();
+    onError: (error, input, context) => {
+      undo(client, error, context, { promoted: input.promoted });
       failed(error);
     },
     onSuccess: (result, input) =>
