@@ -479,6 +479,21 @@ test("stays within the subrequest budget when every entry needs full writes", as
   for (const name of run.deferred) expect(tg.tme(name)).toHaveLength(0);
 });
 
+test("a slice the budget cuts short still refreshes its tail on later cycles", async () => {
+  const names = ["d1", "d2", "d3", "d4", "d5", "d6"];
+  for (const name of names) await addEntry(name, { kind: "group" });
+  const tg = fakeTelegram(Object.fromEntries(names.map((name) => [name, "group" as const])));
+
+  // One slice, so every tick is a new cycle; other work on the tick leaves room for one entry.
+  const seen = new Set<string>();
+  for (let tick = 0; tick < names.length; tick++) {
+    const run = await runRefresh(env, T0 + tick * REFRESH_INTERVAL_MS, tg, 25);
+    expect(run.processed).toHaveLength(1);
+    for (const name of run.processed) seen.add(name);
+  }
+  expect([...seen].sort()).toEqual(names);
+});
+
 test("the cron's default fetch is called the way the Workers runtime requires", async () => {
   await addEntry("default_fetch", { kind: "group" });
   const tg = fakeTelegram({ default_fetch: "group" });
