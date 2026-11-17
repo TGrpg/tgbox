@@ -1,5 +1,10 @@
 import { describe, expect, test } from "vitest";
-import { goTelegramTarget, isStartPayload, telegramLinks } from "./telegram-links.ts";
+import {
+  goTelegramTarget,
+  isStartPayload,
+  startPayloadOf,
+  telegramLinks,
+} from "./telegram-links.ts";
 
 describe("opt-in bot start payload transport", () => {
   test.each(["botlist", "a".repeat(64), "A_0-x"])("retains valid %s", (payload) => {
@@ -40,4 +45,19 @@ describe("opt-in bot start payload transport", () => {
   ])("rejects invalid Go transport %s", (query) =>
     expect(goTelegramTarget(new URLSearchParams(query))).toBeNull(),
   );
+});
+
+describe("startPayloadOf", () => {
+  test.each([
+    ["https://t.me/MyBot?start=tgbox", "tgbox"],
+    ["t.me/MyBot?start=ref_01-a", "ref_01-a"],
+    ["https://telegram.me/MyBot?start=x", "x"],
+    ["https://t.me/MyBot", null],
+    ["@MyBot", null],
+    ["https://t.me/MyBot?start=", null],
+    ["https://t.me/MyBot?start=has%20space", null],
+    ["https://example.com/MyBot?start=x", null],
+  ])("%s → %s", (link, payload) => {
+    expect(startPayloadOf(link)).toBe(payload);
+  });
 });

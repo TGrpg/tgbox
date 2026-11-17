@@ -14,4 +14,5 @@ export const addEntryErrorText: Record<AddEntryError, string> = {
   not_found: "t.me 上找不到该用户名",
   banned: "该频道/群组已被 Telegram 封禁",
   unavailable: "暂时无法获取资料（可能是网络问题或类型无法识别），请稍后重试",
+  invalid_start_payload: "Start 参数仅支持 1–64 位字母、数字、_ 或 -",
 };

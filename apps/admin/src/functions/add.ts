@@ -23,6 +23,7 @@ export const $listEntry = createServerFn({ method: "POST" })
       username: usernameInput,
       categorySlug: z.string().min(1).max(64),
       tagSlugs: z.array(z.string().min(1).max(64)).max(20),
+      startPayload: z.string().max(64).nullable().optional(),
     }),
   )
   .handler(async ({ data, context }) => {

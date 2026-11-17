@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import type { EntryPreview } from "@tgbox/core";
-import { type EntryKind, entryKinds, type Suggestion } from "@tgbox/shared";
+import { type EntryKind, entryKinds, type Suggestion, startPayloadOf } from "@tgbox/shared";
 import { BadgeCheckIcon, CircleAlertIcon, SearchIcon, SendIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
@@ -14,6 +14,7 @@ import { Label } from "@/components/coss/ui/label.tsx";
 import { Skeleton } from "@/components/coss/ui/skeleton.tsx";
 import { toastManager } from "@/components/coss/ui/toast.tsx";
 import { PageHeader } from "@/components/shell/page-header.tsx";
+import { checkStartPayloadEdit } from "@/features/entries/edit.ts";
 import {
   formatCount,
   kindLabel,
@@ -23,6 +24,7 @@ import {
   statusLabel,
 } from "@/features/entries/labels.ts";
 import { OptionSelect } from "@/features/entries/option-select.tsx";
+import { StartPayloadField } from "@/features/entries/start-payload-field.tsx";
 import { TagPicker } from "@/features/entries/tag-picker.tsx";
 import { $listEntry, $previewEntry } from "@/functions/add.ts";
 import { taxonomyQueryOptions } from "@/functions/taxonomy.ts";
@@ -34,8 +36,13 @@ const ease = [0.16, 1, 0.3, 1] as const;
 
 export function AddPage() {
   const [input, setInput] = useState("");
+  // The `?start=` of the link that was fetched, for a bot of the admin's own.
+  const [linkPayload, setLinkPayload] = useState<string | null>(null);
   const preview = useMutation({
-    mutationFn: (username: string) => $previewEntry({ data: { username } }),
+    mutationFn: (username: string) => {
+      setLinkPayload(startPayloadOf(username));
+      return $previewEntry({ data: { username } });
+    },
     onError: (error) =>
       toastManager.add({ type: "error", title: "抓取失败", description: error.message }),
   });
@@ -79,7 +86,11 @@ export function AddPage() {
               transition={{ duration: 0.3, ease }}
             >
               {preview.data.ok ? (
-                <PreviewResult preview={preview.data} onListed={() => preview.reset()} />
+                <PreviewResult
+                  preview={preview.data}
+                  linkPayload={linkPayload}
+                  onListed={() => preview.reset()}
+                />
               ) : (
                 <Problem title={addEntryErrorText[preview.data.error]} />
               )}
@@ -103,7 +114,15 @@ function Problem({ title, children }: { title: string; children?: React.ReactNod
   );
 }
 
-function PreviewResult({ preview, onListed }: { preview: Preview; onListed: () => void }) {
+function PreviewResult({
+  preview,
+  linkPayload,
+  onListed,
+}: {
+  preview: Preview;
+  linkPayload: string | null;
+  onListed: () => void;
+}) {
   if (preview.existing) {
     return (
       <Problem title={`@${preview.username} 已收录（${statusLabel[preview.existing.status]}）`}>
@@ -117,6 +136,12 @@ function PreviewResult({ preview, onListed }: { preview: Preview; onListed: () =
             在条目管理中查看
           </Link>
         </span>
+        {linkPayload && (
+          <span className="text-muted-foreground">
+            链接里的 start={linkPayload} 没有保存：已收录的机器人请在条目管理 → 编辑 → Start
+            参数里填写。
+          </span>
+        )}
       </Problem>
     );
   }
@@ -220,6 +245,7 @@ function PreviewResult({ preview, onListed }: { preview: Preview; onListed: () =
             username={preview.username}
             kind={kind}
             suggestion={preview.suggestion}
+            linkPayload={linkPayload}
             onListed={onListed}
           />
         )
@@ -232,13 +258,17 @@ function ListForm({
   username,
   kind,
   suggestion,
+  linkPayload,
   onListed,
 }: {
   username: string;
   kind: EntryKind;
   suggestion: Suggestion;
+  linkPayload: string | null;
   onListed: () => void;
 }) {
+  const [startPayload, setStartPayload] = useState(linkPayload ?? "");
+  const payloadError = kind === "bot" ? checkStartPayloadEdit(startPayload) : null;
   const client = useQueryClient();
   const navigate = useNavigate();
   const taxonomy = useQuery(taxonomyQueryOptions());
@@ -259,7 +289,13 @@ function ListForm({
 
   const list = useMutation({
     mutationFn: (input: { categorySlug: string; tagSlugs: string[] }) =>
-      $listEntry({ data: { username, ...input } }),
+      $listEntry({
+        data: {
+          username,
+          ...input,
+          startPayload: kind === "bot" && startPayload.trim() !== "" ? startPayload : null,
+        },
+      }),
     onError: (error) =>
       toastManager.add({ type: "error", title: "上线失败", description: error.message }),
     onSuccess: async (result) => {
@@ -307,10 +343,18 @@ function ListForm({
           </p>
         )}
       </div>
+      {kind === "bot" && (
+        <StartPayloadField
+          username={username}
+          value={startPayload}
+          error={payloadError}
+          onChange={setStartPayload}
+        />
+      )}
       <Button
         size="lg"
         loading={list.isPending}
-        disabled={!categorySlug}
+        disabled={!categorySlug || payloadError !== null}
         onClick={() =>
           categorySlug &&
           list.mutate({
