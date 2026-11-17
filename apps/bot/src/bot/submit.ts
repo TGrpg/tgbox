@@ -46,10 +46,16 @@ type Draft = {
   tagIds: number[];
 };
 
+/**
+ * Tag ids go into callback data as four base36 digits at most, which keeps five of them, the
+ * version and the page under Telegram's 64 bytes. D1 hands out small ids; nothing gets near this.
+ */
+const MAX_TAG_ID = 36 ** 4 - 1;
+
 const isTagIds = (value: unknown): value is number[] =>
   Array.isArray(value) &&
   value.length <= MAX_TAGS &&
-  value.every((id) => Number.isSafeInteger(id) && id > 0);
+  value.every((id) => Number.isSafeInteger(id) && id > 0 && id <= MAX_TAG_ID);
 
 /**
  * Drafts come back from D1 as JSON: validate instead of trusting the shape. A draft saved before
@@ -95,15 +101,23 @@ function parseDraft(
 
 const version = (updatedAt: number) => updatedAt.toString(36);
 
-// A selection travels in callback data as base36 ids joined by "-": at most MAX_TAGS of them, so
-// the data stays well under Telegram's 64 bytes however many tags the admin adds.
+// A selection travels in callback data as base36 ids joined by "-": at most MAX_TAGS of them, each
+// at most MAX_TAG_ID, so the data stays under Telegram's 64 bytes however many tags there are.
 const encodeTagIds = (ids: number[]) => ids.map((id) => id.toString(36)).join("-");
-function decodeTagIds(text: string, known: Set<number>) {
-  const ids = text === "" ? [] : text.split("-").map((part) => Number.parseInt(part, 36));
-  const valid =
-    ids.length <= MAX_TAGS && new Set(ids).size === ids.length && ids.every((id) => known.has(id));
-  return valid ? ids : null;
+/** Null for anything our buttons never send; ids of tags deleted since are the caller's to drop. */
+function decodeTagIds(text: string) {
+  const parts = text === "" ? [] : text.split("-");
+  if (parts.length > MAX_TAGS || !parts.every((part) => /^[0-9a-z]{1,4}$/.test(part))) return null;
+  const ids = parts.map((part) => Number.parseInt(part, 36));
+  return new Set(ids).size === ids.length && ids.every((id) => id > 0) ? ids : null;
 }
+
+/** Tag ids of a pre-id draft's bitmask: bit `i` was the `i`-th tag of the id-ordered list. */
+const idsOfLegacyMask = (mask: number, tags: { id: number }[]) =>
+  tags
+    .filter((_tag, index) => Math.floor(mask / 2 ** index) % 2 === 1)
+    .map((tag) => tag.id)
+    .slice(0, MAX_TAGS);
 
 type TagRow = { slug: string; nameZh: string; nameEn: string };
 const tagName = (locale: SiteLocale, tag: TagRow | undefined) =>
@@ -152,16 +166,20 @@ export function submit(app: App) {
   /** At least one page, so "done" still works when the admin has no tags at all. */
   const tagPages = (count: number) => Math.max(1, Math.ceil(count / TAGS_PER_PAGE));
 
-  /** The category's hinted tags first, then the rest; `selected` is a list of tag ids. */
+  /**
+   * The category's hinted tags first, then the rest; `picked` is a list of tag ids. A picked tag
+   * deleted since drops out here, so it neither takes a slot nor rides along in the buttons.
+   */
   async function tagView(
     locale: SiteLocale,
     draft: Draft,
-    selected: number[],
+    picked: number[],
     page: number,
     v: string,
   ) {
     const m = messages(locale);
     const tags = await allTags();
+    const selected = picked.filter((id) => tags.some((tag) => tag.id === id));
     const category = (await categoriesFor(draft.kind)).find((row) => row.id === draft.categoryId);
     const { hinted, rest } = tagsForCategory(draft.kind, category?.slug ?? null, tags);
     const shown = [...hinted, ...rest];
@@ -317,7 +335,9 @@ export function submit(app: App) {
   });
 
   composer.callbackQuery(/^(s[cdtoegx]):([0-9a-z]+):(.*)$/, async (ctx) => {
-    const [, action = "", v = "", arg = ""] = ctx.match;
+    const [, action = "", sentVersion = "", sentArg = ""] = ctx.match;
+    let v = sentVersion;
+    let arg = sentArg;
     const locale = await app.locale(ctx);
     const m = messages(locale);
     const userId = ctx.from.id;
@@ -329,12 +349,22 @@ export function submit(app: App) {
       return;
     }
     const { step, draft } = current;
-    if (current.legacyTagMask !== undefined) {
-      const mask = current.legacyTagMask;
-      draft.tagIds = (await allTags())
-        .filter((_tag, index) => Math.floor(mask / 2 ** index) % 2 === 1)
-        .map((tag) => tag.id)
-        .slice(0, MAX_TAGS);
+    if (current.legacyTagMask !== undefined && action !== "sx") {
+      // Saved before tags were stored by id, so its buttons still send bitmasks over the id-ordered
+      // tag list. Both are read against today's list — a tag deleted since shifts the bits, and
+      // nothing recorded the old list — and the draft is saved converted, so those buttons expire.
+      const tags = await allTags();
+      draft.tagIds = idsOfLegacyMask(current.legacyTagMask, tags);
+      if (action === "st" || action === "sd") {
+        const [maskText = "", page = "0"] = arg.split(".");
+        const mask = Number.parseInt(maskText, 36);
+        if (!/^[0-9a-z]+$/.test(maskText) || !Number.isSafeInteger(mask)) {
+          await ctx.answerCallbackQuery();
+          return;
+        }
+        arg = `${encodeTagIds(idsOfLegacyMask(mask, tags))}.${page}`;
+      }
+      v = await saveDraft(userId, step, draft);
     }
 
     if (action === "sx") {
@@ -367,12 +397,14 @@ export function submit(app: App) {
     if ((action === "st" || action === "sd") && step === "choosing_tags") {
       const [idsText = "", pageText = "0"] = arg.split(".");
       const tags = await allTags();
-      const selected = decodeTagIds(idsText, new Set(tags.map((tag) => tag.id)));
+      const decoded = decodeTagIds(idsText);
       const page = Number(pageText);
-      if (!selected || !Number.isInteger(page) || page < 0 || page >= tagPages(tags.length)) {
+      if (!decoded || !Number.isInteger(page) || page < 0 || page >= tagPages(tags.length)) {
         await ctx.answerCallbackQuery();
         return;
       }
+      // A tag deleted while the picker was open drops out instead of making every button invalid.
+      const selected = decoded.filter((id) => tags.some((tag) => tag.id === id));
       if (action === "st") {
         // Toggling keeps the selection in the buttons only; the draft is written on "done".
         await ctx.answerCallbackQuery();
