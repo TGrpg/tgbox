@@ -347,4 +347,15 @@ describe("blacklist, drafts, site state", () => {
     expect(await clearDirty(db, NOW + 10)).toBe(true);
     expect(await markDirty(db, NOW + 20)).toBe(true);
   });
+
+  test("a change made while a build runs survives that build's clean-up", async () => {
+    await markDirty(db, NOW);
+    // The workflow records its start, exports D1 and builds; meanwhile another change lands.
+    await setSiteState(db, "build_started_at", String(NOW + 100));
+    expect(await markDirty(db, NOW + 300)).toBe(true);
+    // Later changes in the same build cost nothing more.
+    expect(await markDirty(db, NOW + 400)).toBe(false);
+    expect(await clearDirty(db, NOW + 100)).toBe(false);
+    expect(await getSiteState(db, "dirty_since")).toBe(String(NOW + 300));
+  });
 });

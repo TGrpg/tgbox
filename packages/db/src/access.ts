@@ -590,12 +590,21 @@ export async function setSiteState(db: Db, key: string, value: string) {
 /**
  * Sets `dirty_since` if unset. Returns true only on the empty → dirty transition,
  * which is when the bot should dispatch a build (debounce).
+ *
+ * A flag older than the running build's `build_started_at` (written by the workflow before it
+ * exports D1) is moved to `now`: that build has already exported, and without the bump its
+ * clean-up step would clear this change along with the ones it did publish. Costs one write per
+ * build, not per change, and counts as a transition since the running build won't carry it.
  */
 export async function markDirty(db: Db, now: number) {
   const result = await db
     .insert(siteState)
     .values({ key: "dirty_since", value: String(now) })
-    .onConflictDoNothing()
+    .onConflictDoUpdate({
+      target: siteState.key,
+      set: { value: sql`excluded.value` },
+      setWhere: sql`CAST(${siteState.value} AS INTEGER) < (SELECT CAST(value AS INTEGER) FROM site_state WHERE key = 'build_started_at')`,
+    })
     .run();
   return result.meta.changes > 0;
 }
