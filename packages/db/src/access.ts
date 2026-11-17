@@ -195,6 +195,8 @@ export async function updateEntryCold(db: Db, id: number, fields: ColdFields, no
       : {
           descriptionZh: sql`CASE WHEN ${descriptionChanged} THEN NULL ELSE ${entries.descriptionZh} END`,
           descriptionEn: sql`CASE WHEN ${descriptionChanged} THEN NULL ELSE ${entries.descriptionEn} END`,
+          // Requeues the entry for translation; nothing else does.
+          descriptionTranslatedAt: sql`CASE WHEN ${descriptionChanged} THEN NULL ELSE ${entries.descriptionTranslatedAt} END`,
         };
   const changed = or(
     differs(entries.username, values.username),
@@ -590,12 +592,29 @@ export async function setSiteState(db: Db, key: string, value: string) {
 /**
  * Sets `dirty_since` if unset. Returns true only on the empty → dirty transition,
  * which is when the bot should dispatch a build (debounce).
+ *
+ * A flag older than the running build's `build_started_at` (written by the workflow before it
+ * exports D1) is moved to `now`: that build has already exported, and without the bump its
+ * clean-up step would clear this change along with the ones it did publish. Costs one write per
+ * build, not per change, and counts as a transition since the running build won't carry it.
+ *
+ * The value written is never below that `build_started_at`: cron callers pass their scheduled
+ * time, which can predate a build that exported before their write landed. Equal to the fence
+ * still survives the clean-up, which only removes flags strictly older.
  */
 export async function markDirty(db: Db, now: number) {
+  const fence = sql`(SELECT CAST(value AS INTEGER) FROM site_state WHERE key = 'build_started_at')`;
   const result = await db
     .insert(siteState)
-    .values({ key: "dirty_since", value: String(now) })
-    .onConflictDoNothing()
+    .values({
+      key: "dirty_since",
+      value: sql`CAST(MAX(CAST(${now} AS INTEGER), COALESCE(${fence}, 0)) AS TEXT)`,
+    })
+    .onConflictDoUpdate({
+      target: siteState.key,
+      set: { value: sql`excluded.value` },
+      setWhere: sql`CAST(${siteState.value} AS INTEGER) < ${fence}`,
+    })
     .run();
   return result.meta.changes > 0;
 }

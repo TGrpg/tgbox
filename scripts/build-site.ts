@@ -106,7 +106,7 @@ run("pnpm", ["--filter", "@tgbox/web", "exec", "astro", "build"], {
 });
 
 // 4. Pagefind → apps/web/dist/pagefind, copied into dist/client/pagefind so it ships with the
-// site. Past ~6,000 entries, set PAGEFIND_R2=1 and upload it instead (scripts/sync-pagefind.ts)
+// site; the script fails the build if that copy takes the site past the file limit. Past ~6,000 entries, set PAGEFIND_R2=1 and upload it instead (scripts/sync-pagefind.ts)
 // so it stops counting against the 20,000 static-file limit.
 run("pnpm", ["--filter", "@tgbox/web", "exec", "node", "scripts/pagefind.ts", "dist"]);
 

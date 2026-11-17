@@ -304,6 +304,8 @@ describe("slots and products", () => {
     };
     const created = await upsertProduct(ctx, product);
     if (!created.ok) throw new Error(created.error);
+    // The site's price list comes from the products table.
+    expect(await getSiteState(db, "dirty_since")).toBe(String(NOW));
     expect(await upsertProduct(ctx, { ...product, id: created.id, priceUsdt: "1.234" })).toEqual({
       ok: false,
       error: "invalid",

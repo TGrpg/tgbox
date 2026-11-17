@@ -13,6 +13,7 @@
 import { cpSync, rmSync } from "node:fs";
 import path from "node:path";
 import { close, createIndex } from "pagefind";
+import { checkStaticFileCount, countFiles } from "../src/lib/build-guard.ts";
 
 const dist = path.resolve(process.argv[2] ?? "dist");
 const site = path.join(dist, "client");
@@ -37,4 +38,11 @@ await close();
 if (process.env.PAGEFIND_R2 !== "1") {
   cpSync(outputPath, path.join(site, "pagefind"), { recursive: true });
   console.log(`pagefind: copied to ${path.join(site, "pagefind")}`);
+}
+
+// The Astro build checked its own output; the index copied in above counts against the same
+// 20,000-file limit, so the final tree is checked again rather than left for deploy to reject.
+const count = await countFiles(site);
+if (checkStaticFileCount(count) === "fail") {
+  throw new Error(`${count} static files with the Pagefind index exceed the 20,000-file limit`);
 }

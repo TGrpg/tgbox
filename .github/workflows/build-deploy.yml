@@ -72,6 +72,15 @@ jobs:
             echo "Site is clean; nothing to build."
           fi
 
+      # Before the export, so the bot can tell a change this build won't carry: markDirty moves an
+      # older `dirty_since` past this mark, and the clean-up below then leaves it for the next run.
+      - name: Record build start in D1
+        if: steps.dirty.outputs.build == 'true'
+        working-directory: apps/bot
+        run: |
+          pnpm exec wrangler d1 execute tgbox --remote \
+            --command "INSERT INTO site_state (key, value) VALUES ('build_started_at', '$BUILD_STARTED_AT') ON CONFLICT (key) DO UPDATE SET value = excluded.value"
+
       - name: Export D1, snapshot, astro build, Pagefind
         if: steps.dirty.outputs.build == 'true'
         run: node scripts/build-site.ts --remote --media-base-url "$R2_PUBLIC_URL"

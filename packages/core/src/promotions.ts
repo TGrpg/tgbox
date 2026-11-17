@@ -409,6 +409,8 @@ export async function upsertProduct(
   const id = await upsertProductRow(ctx.db, fields);
   if (id === null) return { ok: false, error: "not_found" };
   await audit(ctx, actor, "product.upsert", `product:${id}`, fields);
+  // The site's price list shows active products, so every edit is published.
+  await markDirtyAndDispatch(ctx);
   return { ok: true, id };
 }
 
