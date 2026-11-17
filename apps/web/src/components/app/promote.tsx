@@ -18,7 +18,7 @@ import { appUi } from "@/i18n/ui-app.ts";
 import { type AppProducts, payMethods } from "@/lib/app-data.ts";
 import { cn } from "@/lib/cn.ts";
 import { fill } from "@/lib/format.ts";
-import { nextUsdtPoll } from "@/lib/usdt-poll.ts";
+import { startUsdtPolling, withCheckTimeout } from "@/lib/usdt-poll.ts";
 import { apiCall } from "./api.ts";
 import { BannerCard } from "./banner-card.tsx";
 import { appDate, appDateTime } from "./format.ts";
@@ -45,7 +45,7 @@ type Stage =
 
 /**
  * Polls one order while a USDT payment is open. This is the only polling in the app: only while the
- * screen is actually visible, and only until the quote's grace period is over (`nextUsdtPoll`).
+ * screen is actually visible, and only until the quote's grace period is over (`startUsdtPolling`).
  * After that `stopped` turns on and the buyer checks by hand with `checkNow`.
  */
 function useOrderPolling(orderId: number, expiresAt: number, onPaid: () => void) {
@@ -57,46 +57,30 @@ function useOrderPolling(orderId: number, expiresAt: number, onPaid: () => void)
   const [checking, setChecking] = useState(false);
 
   useEffect(() => {
-    let timer: number | undefined;
-    let done = false;
-
-    const schedule = () => {
-      window.clearTimeout(timer);
-      timer = undefined;
-      if (done || document.visibilityState !== "visible") return;
-      const delay = nextUsdtPoll(Date.now(), expiresAt);
-      if (delay === null) {
-        done = true;
-        setStopped(true);
-        return;
-      }
-      timer = window.setTimeout(() => void tick(), delay);
+    const paid = async (signal: AbortSignal) => {
+      const result = await apiCall(`/orders/${orderId}`, OrderStatusResult, { signal });
+      return result.ok && result.data.paidAt !== null;
     };
-    const tick = async () => {
-      timer = undefined;
-      const result = await apiCall(`/orders/${orderId}`, OrderStatusResult);
-      if (done) return;
-      if (result.ok && result.data.paidAt !== null) {
-        done = true;
-        latest.current();
-        return;
-      }
-      schedule();
-    };
-
     setStopped(false);
-    document.addEventListener("visibilitychange", schedule);
-    schedule();
+    const polling = startUsdtPolling({
+      expiresAt,
+      check: paid,
+      visible: () => document.visibilityState === "visible",
+      onPaid: () => latest.current(),
+      onStop: () => setStopped(true),
+    });
+    document.addEventListener("visibilitychange", polling.wake);
     return () => {
-      done = true;
-      window.clearTimeout(timer);
-      document.removeEventListener("visibilitychange", schedule);
+      polling.stop();
+      document.removeEventListener("visibilitychange", polling.wake);
     };
   }, [orderId, expiresAt]);
 
   const checkNow = useCallback(async () => {
     setChecking(true);
-    const result = await apiCall(`/orders/${orderId}`, OrderStatusResult);
+    const result = await withCheckTimeout((signal) =>
+      apiCall(`/orders/${orderId}`, OrderStatusResult, { signal }),
+    );
     setChecking(false);
     if (result.ok && result.data.paidAt !== null) latest.current();
   }, [orderId]);
