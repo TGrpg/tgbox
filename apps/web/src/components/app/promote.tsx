@@ -10,12 +10,12 @@ import {
 } from "@tgbox/shared";
 import { CheckCircle2Icon, CopyIcon, ImageIcon, TriangleAlertIcon } from "lucide-react";
 import QRCode from "qrcode";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/coss/ui/button";
 import { Spinner } from "@/components/coss/ui/spinner";
 import { localizePath } from "@/i18n/locale.ts";
 import { appUi } from "@/i18n/ui-app.ts";
-import type { AppProducts } from "@/lib/app-data.ts";
+import { type AppProducts, payMethods } from "@/lib/app-data.ts";
 import { cn } from "@/lib/cn.ts";
 import { fill } from "@/lib/format.ts";
 import { apiCall } from "./api.ts";
@@ -159,15 +159,18 @@ export function PromoteScreen({ locale }: { locale: Locale }) {
   if (catalogue.status === "error") {
     return <ErrorScreen locale={locale} error="offline" onRetry={() => window.location.reload()} />;
   }
-  const { products, payments } = catalogue.data;
+  const { products } = catalogue.data;
+  const methods = payMethods(catalogue.data.payments);
 
   /** Only the prices a buyer can actually pay — the operator may have either method switched off. */
   function priceLine(product: ProductView) {
-    const parts = [
-      payments.stars ? fill(strings.promote.stars, { n: product.priceStars }) : null,
-      payments.usdt ? fill(strings.promote.usdt, { n: product.priceUsdt }) : null,
-    ].filter((part): part is string => part !== null);
-    return parts.join(` ${strings.promote.or} `);
+    return methods
+      .map((method) =>
+        method === "stars"
+          ? fill(strings.promote.stars, { n: product.priceStars })
+          : fill(strings.promote.usdt, { n: product.priceUsdt }),
+      )
+      .join(` ${strings.promote.or} `);
   }
 
   function pickImage(file: File | undefined) {
@@ -283,22 +286,26 @@ export function PromoteScreen({ locale }: { locale: Locale }) {
           {fill(strings.promote.payTitle, { id: stage.orderId })}
         </h1>
         {error && <p className="text-error text-sm">{error}</p>}
-        {payments.stars && (
-          <Button size="lg" loading={busy} onClick={() => void pay(stage.orderId, "stars")}>
-            {strings.promote.payStars}
-          </Button>
+        {methods.length === 0 && (
+          <p className="text-muted-foreground text-sm">
+            {strings.promote.errors.no_payment_method}
+          </p>
         )}
-        {payments.stars && payments.usdt && (
-          <p className="text-center text-muted-foreground text-xs">{strings.promote.or}</p>
-        )}
-        <Button
-          size="lg"
-          variant="outline"
-          loading={busy}
-          onClick={() => void pay(stage.orderId, "usdt")}
-        >
-          {strings.promote.payUsdt}
-        </Button>
+        {methods.map((method, index) => (
+          <Fragment key={method}>
+            {index > 0 && (
+              <p className="text-center text-muted-foreground text-xs">{strings.promote.or}</p>
+            )}
+            <Button
+              size="lg"
+              variant={index === 0 ? "default" : "outline"}
+              loading={busy}
+              onClick={() => void pay(stage.orderId, method)}
+            >
+              {method === "stars" ? strings.promote.payStars : strings.promote.payUsdt}
+            </Button>
+          </Fragment>
+        ))}
       </div>
     );
   }
@@ -418,8 +425,12 @@ export function PromoteScreen({ locale }: { locale: Locale }) {
         <h1 className="font-semibold text-lg">{strings.promote.title}</h1>
         <p className="mt-1 text-muted-foreground text-sm">{strings.promote.lead}</p>
       </header>
-      {products.length === 0 ? (
-        <p className="py-12 text-center text-muted-foreground text-sm">{strings.promote.soldOut}</p>
+      {products.length === 0 || methods.length === 0 ? (
+        <p className="py-12 text-center text-muted-foreground text-sm">
+          {products.length === 0
+            ? strings.promote.soldOut
+            : strings.promote.errors.no_payment_method}
+        </p>
       ) : (
         [
           {
