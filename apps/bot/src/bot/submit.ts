@@ -40,14 +40,26 @@ type Draft = {
   /** What `suggestTaxonomy` proposed, so the keyboard can keep marking it after an edit. */
   suggestedCategoryId: number | null;
   /**
-   * Indexes into the D1 tag list (ordered by id), encoded as a bitmask. Never the order the
-   * keyboard shows: that changes with the category, this must not.
+   * Tag ids, never positions in the tag list: an admin deleting a tag shifts every position after
+   * it, which would silently change what a saved draft (or a button already on screen) means.
    */
-  tagMask: number;
+  tagIds: number[];
 };
 
-// Drafts come back from D1 as JSON: validate instead of trusting the shape.
-function parseDraft(step: string, payload: unknown): { step: Step; draft: Draft } | null {
+const isTagIds = (value: unknown): value is number[] =>
+  Array.isArray(value) &&
+  value.length <= MAX_TAGS &&
+  value.every((id) => Number.isSafeInteger(id) && id > 0);
+
+/**
+ * Drafts come back from D1 as JSON: validate instead of trusting the shape. A draft saved before
+ * tags were stored by id carries `legacyTagMask` (bits over the id-ordered tag list), which the
+ * caller converts once.
+ */
+function parseDraft(
+  step: string,
+  payload: unknown,
+): { step: Step; draft: Draft; legacyTagMask?: number } | null {
   if (typeof payload !== "object" || payload === null) return null;
   const p: Record<string, unknown> = { ...payload };
   const kind = entryKinds.find((k) => k === p.kind);
@@ -61,12 +73,13 @@ function parseDraft(step: string, payload: unknown): { step: Step; draft: Draft 
     !(p.categoryId === null || typeof p.categoryId === "number") ||
     // Absent in drafts written before suggestions existed; those just lose the ✨.
     !(p.suggestedCategoryId == null || typeof p.suggestedCategoryId === "number") ||
-    typeof p.tagMask !== "number"
+    !(isTagIds(p.tagIds) || typeof p.tagMask === "number")
   ) {
     return null;
   }
   return {
     step,
+    ...(isTagIds(p.tagIds) || typeof p.tagMask !== "number" ? {} : { legacyTagMask: p.tagMask }),
     draft: {
       username: p.username,
       kind,
@@ -75,23 +88,22 @@ function parseDraft(step: string, payload: unknown): { step: Step; draft: Draft 
       members: p.members,
       categoryId: p.categoryId,
       suggestedCategoryId: typeof p.suggestedCategoryId === "number" ? p.suggestedCategoryId : null,
-      tagMask: p.tagMask,
+      tagIds: isTagIds(p.tagIds) ? p.tagIds : [],
     },
   };
 }
 
 const version = (updatedAt: number) => updatedAt.toString(36);
 
-// Tags live in D1 and admins may add more, so the mask uses arithmetic instead of 32-bit bitwise
-// operators (safe up to 53 tags; the callback data stays well under Telegram's 64 bytes).
-const hasBit = (mask: number, index: number) => Math.floor(mask / 2 ** index) % 2 === 1;
-const selectedTagIndexes = (mask: number, count: number) =>
-  Array.from({ length: count }, (_tag, index) => index).filter((index) => hasBit(mask, index));
-const validMask = (mask: number, count: number) =>
-  Number.isSafeInteger(mask) &&
-  mask >= 0 &&
-  mask < 2 ** count &&
-  selectedTagIndexes(mask, count).length <= MAX_TAGS;
+// A selection travels in callback data as base36 ids joined by "-": at most MAX_TAGS of them, so
+// the data stays well under Telegram's 64 bytes however many tags the admin adds.
+const encodeTagIds = (ids: number[]) => ids.map((id) => id.toString(36)).join("-");
+function decodeTagIds(text: string, known: Set<number>) {
+  const ids = text === "" ? [] : text.split("-").map((part) => Number.parseInt(part, 36));
+  const valid =
+    ids.length <= MAX_TAGS && new Set(ids).size === ids.length && ids.every((id) => known.has(id));
+  return valid ? ids : null;
+}
 
 type TagRow = { slug: string; nameZh: string; nameEn: string };
 const tagName = (locale: SiteLocale, tag: TagRow | undefined) =>
@@ -137,54 +149,53 @@ export function submit(app: App) {
     return { text: suggested ? m.chooseCategorySuggested : m.chooseCategory, keyboard };
   }
 
-  /**
-   * The tag list from D1 (ordered by id) is the mask's index space and nothing may reorder it: the
-   * mask lives in saved drafts and in callback data, so a tag that changed position would silently
-   * change what an existing draft means. The category's hinted tags are brought to the front as a
-   * `displayOrder` of indexes *into* that list instead, and every bit still refers to `tags[index]`.
-   */
-  async function tagView(locale: SiteLocale, draft: Draft, mask: number, page: number, v: string) {
+  /** At least one page, so "done" still works when the admin has no tags at all. */
+  const tagPages = (count: number) => Math.max(1, Math.ceil(count / TAGS_PER_PAGE));
+
+  /** The category's hinted tags first, then the rest; `selected` is a list of tag ids. */
+  async function tagView(
+    locale: SiteLocale,
+    draft: Draft,
+    selected: number[],
+    page: number,
+    v: string,
+  ) {
     const m = messages(locale);
     const tags = await allTags();
-    const count = selectedTagIndexes(mask, tags.length).length;
     const category = (await categoriesFor(draft.kind)).find((row) => row.id === draft.categoryId);
     const { hinted, rest } = tagsForCategory(draft.kind, category?.slug ?? null, tags);
-    const canonical = new Map(tags.map((tag, index) => [tag.id, index]));
-    const displayOrder = [...hinted, ...rest].flatMap((tag) => {
-      const index = canonical.get(tag.id);
-      return index === undefined ? [] : [index];
-    });
+    const shown = [...hinted, ...rest];
     const keyboard = new InlineKeyboard();
     const start = page * TAGS_PER_PAGE;
-    displayOrder.slice(start, start + TAGS_PER_PAGE).forEach((index, offset) => {
-      const selected = hasBit(mask, index);
-      // A full selection only allows deselecting; the unchanged mask makes the tap a no-op.
-      const bit = 2 ** index;
-      const next = selected ? mask - bit : count < MAX_TAGS ? mask + bit : mask;
+    shown.slice(start, start + TAGS_PER_PAGE).forEach((tag, offset) => {
+      const on = selected.includes(tag.id);
+      // A full selection only allows deselecting; the unchanged list makes the tap a no-op.
+      const next = on
+        ? selected.filter((id) => id !== tag.id)
+        : selected.length < MAX_TAGS
+          ? [...selected, tag.id]
+          : selected;
       keyboard.text(
-        `${selected ? "✅ " : ""}${tagName(locale, tags[index])}`,
-        `st:${v}:${next.toString(36)}.${page}`,
+        `${on ? "✅ " : ""}${tagName(locale, tag)}`,
+        `st:${v}:${encodeTagIds(next)}.${page}`,
       );
       if (offset % 2 === 1) keyboard.row();
     });
     keyboard.row();
-    const pages = Math.ceil(displayOrder.length / TAGS_PER_PAGE);
-    if (page > 0) keyboard.text(m.prevPage, `st:${v}:${mask.toString(36)}.${page - 1}`);
-    if (page < pages - 1) keyboard.text(m.nextPage, `st:${v}:${mask.toString(36)}.${page + 1}`);
-    keyboard
-      .row()
-      .text(m.tagsDone, `sd:${v}:${mask.toString(36)}`)
-      .text(m.cancel, `sx:${v}:`);
-    return { text: m.chooseTags(count, MAX_TAGS), keyboard };
+    const ids = encodeTagIds(selected);
+    if (page > 0) keyboard.text(m.prevPage, `st:${v}:${ids}.${page - 1}`);
+    if (page < tagPages(shown.length) - 1) keyboard.text(m.nextPage, `st:${v}:${ids}.${page + 1}`);
+    keyboard.row().text(m.tagsDone, `sd:${v}:${ids}`).text(m.cancel, `sx:${v}:`);
+    return { text: m.chooseTags(selected.length, MAX_TAGS), keyboard };
   }
 
   async function confirmView(locale: SiteLocale, draft: Draft, v: string) {
     const m = messages(locale);
     const category = (await categoriesFor(draft.kind)).find((row) => row.id === draft.categoryId);
-    const tags = await allTags();
-    const tagNames = selectedTagIndexes(draft.tagMask, tags.length).map((index) =>
-      tagName(locale, tags[index]),
-    );
+    // A tag deleted since it was picked simply drops out, here and from the submission alike.
+    const tagNames = (await allTags())
+      .filter((tag) => draft.tagIds.includes(tag.id))
+      .map((tag) => tagName(locale, tag));
     const text = [
       m.confirmTitle,
       "",
@@ -297,7 +308,7 @@ export function submit(app: App) {
         members: snap.profile.members ?? snap.profile.monthlyUsers,
         categoryId: null,
         suggestedCategoryId: suggestion.categoryId,
-        tagMask: 0,
+        tagIds: [],
       };
       const v = await saveDraft(userId, "choosing_category", draft);
       const view = await categoryView(locale, draft, v);
@@ -318,6 +329,13 @@ export function submit(app: App) {
       return;
     }
     const { step, draft } = current;
+    if (current.legacyTagMask !== undefined) {
+      const mask = current.legacyTagMask;
+      draft.tagIds = (await allTags())
+        .filter((_tag, index) => Math.floor(mask / 2 ** index) % 2 === 1)
+        .map((tag) => tag.id)
+        .slice(0, MAX_TAGS);
+    }
 
     if (action === "sx") {
       await deleteBotDraft(app.db, userId);
@@ -341,28 +359,27 @@ export function submit(app: App) {
         ctx,
         nextStep === "confirming"
           ? await confirmView(locale, next, nv)
-          : await tagView(locale, next, next.tagMask, 0, nv),
+          : await tagView(locale, next, next.tagIds, 0, nv),
       );
       return;
     }
 
     if ((action === "st" || action === "sd") && step === "choosing_tags") {
-      const [maskText = "", pageText = "0"] = arg.split(".");
-      const mask = Number.parseInt(maskText, 36);
+      const [idsText = "", pageText = "0"] = arg.split(".");
+      const tags = await allTags();
+      const selected = decodeTagIds(idsText, new Set(tags.map((tag) => tag.id)));
       const page = Number(pageText);
-      const tagCount = (await allTags()).length;
-      const pages = Math.ceil(tagCount / TAGS_PER_PAGE);
-      if (!validMask(mask, tagCount) || !Number.isInteger(page) || page < 0 || page >= pages) {
+      if (!selected || !Number.isInteger(page) || page < 0 || page >= tagPages(tags.length)) {
         await ctx.answerCallbackQuery();
         return;
       }
       if (action === "st") {
         // Toggling keeps the selection in the buttons only; the draft is written on "done".
         await ctx.answerCallbackQuery();
-        await show(ctx, await tagView(locale, draft, mask, page, v));
+        await show(ctx, await tagView(locale, draft, selected, page, v));
         return;
       }
-      const next = { ...draft, tagMask: mask };
+      const next = { ...draft, tagIds: selected };
       const nv = await saveDraft(userId, "confirming", next);
       await ctx.answerCallbackQuery();
       await show(ctx, await confirmView(locale, next, nv));
@@ -379,7 +396,7 @@ export function submit(app: App) {
     if (action === "sg" && step === "confirming") {
       const nv = await saveDraft(userId, "choosing_tags", draft);
       await ctx.answerCallbackQuery();
-      await show(ctx, await tagView(locale, draft, draft.tagMask, 0, nv));
+      await show(ctx, await tagView(locale, draft, draft.tagIds, 0, nv));
       return;
     }
 
@@ -391,10 +408,7 @@ export function submit(app: App) {
         if (problem) await ctx.editMessageText(problem);
         return;
       }
-      const tags = await allTags();
-      const selectedTags = selectedTagIndexes(draft.tagMask, tags.length).flatMap(
-        (index) => tags[index] ?? [],
-      );
+      const selectedTags = (await allTags()).filter((tag) => draft.tagIds.includes(tag.id));
       const submissionId = await createSubmission(app.db, {
         tgUserId: userId,
         username: draft.username,

@@ -4,6 +4,7 @@ import {
   getBotDraft,
   listCategories,
   listTags,
+  putBotDraft,
   submissions,
   tags,
 } from "@tgbox/db";
@@ -39,7 +40,78 @@ const press = async (from: typeof owner, prefix: string, index = 0) => {
   return button;
 };
 
+/** Runs `body` with some tags deleted, then puts them back: the taxonomy persists across tests. */
+async function withoutTags(
+  remove: (rows: (typeof tags.$inferSelect)[]) => number[],
+  body: () => Promise<void>,
+) {
+  const rows = await db.select().from(tags);
+  const ids = remove(rows);
+  try {
+    for (const id of ids) await db.delete(tags).where(eq(tags.id, id));
+    await body();
+  } finally {
+    for (const row of rows.filter((r) => ids.includes(r.id))) await db.insert(tags).values(row);
+  }
+}
+
+const submittedTagIds = async (username: string) =>
+  (await db.select().from(submissions).where(eq(submissions.username, username)))[0]?.tagIds;
+
 describe("submission flow", () => {
+  test("a tag deleted while the submitter picks doesn't change which tags they picked", async () => {
+    await h.message(owner, "https://t.me/sample_channel");
+    await press(owner, "sc:", 0);
+    const picked = (await listTags(db)).find((tag) => tag.nameZh === h.lastButtons()[1]?.text);
+    if (!picked) throw new Error("no tag");
+    await press(owner, "st:", 1);
+    await press(owner, "sd:");
+    // A tag ordered before the picked one disappears; positions after it all shift by one.
+    await withoutTags(
+      (rows) => [Math.min(...rows.filter((r) => r.id !== picked.id).map((r) => r.id))],
+      async () => {
+        await press(owner, "so:");
+        expect(await submittedTagIds("sample_channel")).toEqual([picked.id]);
+      },
+    );
+  });
+
+  test("with no tags at all the submitter can still finish", async () => {
+    await withoutTags(
+      (rows) => rows.map((r) => r.id),
+      async () => {
+        await h.message(owner, "https://t.me/sample_channel");
+        await press(owner, "sc:", 0);
+        await press(owner, "sd:");
+        await press(owner, "so:");
+        expect(await submittedTagIds("sample_channel")).toEqual([]);
+      },
+    );
+  });
+
+  test("a draft saved before tags were stored by id keeps its tags", async () => {
+    const [first] = await listTags(db);
+    const category = (await listCategories(db)).find((c) => c.kind === "channel");
+    if (!first || !category) throw new Error("no taxonomy");
+    const updatedAt = Date.now();
+    await putBotDraft(db, {
+      tgUserId: owner.id,
+      step: "confirming",
+      payload: {
+        username: "legacy_channel",
+        kind: "channel",
+        title: "Legacy",
+        description: "",
+        members: null,
+        categoryId: category.id,
+        tagMask: 1,
+      },
+      updatedAt,
+    });
+    await h.callback(owner, `so:${updatedAt.toString(36)}:`);
+    expect(await submittedTagIds("legacy_channel")).toEqual([first.id]);
+  });
+
   test("tag keyboard and summary use the taxonomy stored in D1", async () => {
     // Whatever the keyboard offers first for this category, renamed in D1 behind its back.
     await h.message(owner, "https://t.me/sample_channel");
