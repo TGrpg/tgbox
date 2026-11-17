@@ -189,6 +189,43 @@ describe("settling transfers", () => {
     expect((await getUsdtPayment(db, order.id))?.txHash).toBe("tx-1");
   });
 
+  test("the last quote still settles an on-time transfer first seen after expiry", async () => {
+    const { order, product } = await withOrder(harness);
+    const quote = await quoteUsdtOrder(harness.ctx, { orderId: order.id, productId: product.id });
+    if (!quote.ok) throw new Error("quote failed");
+    harness.tron.transfers = [transfer(quote.quote.amountMicro, NOW + 29 * MINUTE)];
+    const settle = vi.fn();
+    await watchUsdtPayments({ ...harness.ctx, now: () => NOW + 31 * MINUTE }, settle);
+    expect(settle).toHaveBeenCalledOnce();
+    expect((await getUsdtPayment(db, order.id))?.status).toBe("paid");
+  });
+
+  test("confirmation grace keeps the amount reserved until a successful final scan", async () => {
+    const { order, product } = await withOrder(harness);
+    await quoteUsdtOrder(harness.ctx, { orderId: order.id, productId: product.id });
+    await watchUsdtPayments({ ...harness.ctx, now: () => NOW + 40 * MINUTE }, vi.fn());
+    expect((await getUsdtPayment(db, order.id))?.status).toBe("pending");
+    harness.tron.status = 502;
+    await watchUsdtPayments({ ...harness.ctx, now: () => NOW + 50 * MINUTE }, vi.fn());
+    expect((await getUsdtPayment(db, order.id))?.status).toBe("pending");
+    harness.tron.status = 200;
+    await watchUsdtPayments({ ...harness.ctx, now: () => NOW + 51 * MINUTE }, vi.fn());
+    expect((await getUsdtPayment(db, order.id))?.status).toBe("expired");
+  });
+
+  test("after a long outage the watcher still requests the quote's whole payment window", async () => {
+    const { order, product } = await withOrder(harness);
+    const quote = await quoteUsdtOrder(harness.ctx, { orderId: order.id, productId: product.id });
+    if (!quote.ok) throw new Error("quote failed");
+    harness.tron.transfers = [transfer(quote.quote.amountMicro, NOW + 29 * MINUTE)];
+    const settle = vi.fn();
+    await watchUsdtPayments({ ...harness.ctx, now: () => NOW + 300 * MINUTE }, settle);
+    expect(settle).toHaveBeenCalledOnce();
+    expect(new URL(harness.tron.calls[0] ?? "").searchParams.get("min_block_timestamp")).toBe(
+      String(NOW),
+    );
+  });
+
   test("the same transfer seen again settles nothing", async () => {
     const { order, product } = await withOrder(harness);
     const quote = await quoteUsdtOrder(harness.ctx, { orderId: order.id, productId: product.id });

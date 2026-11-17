@@ -1,5 +1,4 @@
 import {
-  countPendingUsdtPayments,
   createUsdtPayment,
   expireUsdtPayments,
   getProduct,
@@ -21,8 +20,8 @@ import {
 } from "./usdt.ts";
 
 const MINUTE_MS = 60_000;
-/** How far back the watcher looks. Comfortably longer than the longest allowed payment window. */
-const LOOKBACK_MS = 3 * 60 * MINUTE_MS;
+/** Keep expired quotes reserved while an on-time transfer obtains chain confirmations. */
+const CONFIRMATION_GRACE_MS = 15 * MINUTE_MS;
 /** One page is plenty: the address only receives payments for this bot. */
 const PAGE_SIZE = 50;
 
@@ -142,17 +141,9 @@ export async function watchUsdtPayments(
   const { payments } = await getSettings(ctx);
   if (!payments.usdtSelfEnabled || payments.usdtAddress === "") return result;
 
-  const waiting = await countPendingUsdtPayments(ctx.db, now);
-  result.subrequests++;
-  if (waiting === 0) {
-    // Still sweep up amounts whose window closed, so they can be handed out again.
-    result.expired = await expireUsdtPayments(ctx.db, now);
-    if (result.expired > 0) result.subrequests++;
-    return result;
-  }
-
   const pending: PendingUsdtPayment[] = await listPendingUsdtPayments(ctx.db);
   result.subrequests++;
+  if (pending.length === 0) return result;
 
   const url = new URL(
     `https://api.trongrid.io/v1/accounts/${payments.usdtAddress}/transactions/trc20`,
@@ -161,7 +152,10 @@ export async function watchUsdtPayments(
   // Unconfirmed transfers can still be reorged away; never credit an order from one.
   url.searchParams.set("only_confirmed", "true");
   url.searchParams.set("contract_address", USDT_TRC20_CONTRACT);
-  url.searchParams.set("min_block_timestamp", String(now - LOOKBACK_MS));
+  url.searchParams.set(
+    "min_block_timestamp",
+    String(Math.min(...pending.map((payment) => payment.createdAt))),
+  );
   url.searchParams.set("order_by", "block_timestamp,desc");
   url.searchParams.set("limit", String(PAGE_SIZE));
 
@@ -217,7 +211,7 @@ export async function watchUsdtPayments(
     await settle({ orderId, txHash: transfer.transaction_id, amount });
   }
 
-  result.expired = await expireUsdtPayments(ctx.db, now);
+  result.expired = await expireUsdtPayments(ctx.db, now - CONFIRMATION_GRACE_MS);
   if (result.expired > 0) result.subrequests++;
   return result;
 }
