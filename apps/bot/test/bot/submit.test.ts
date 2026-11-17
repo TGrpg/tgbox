@@ -385,6 +385,14 @@ describe("submission flow", () => {
     });
   });
 
+  test("an extra admin from settings keeps the app menu button, since the panel only takes ADMIN_IDS", async () => {
+    await setBotSettings({ extraAdminIds: ["555"] });
+    await h.message({ ...owner, id: 555 }, "/start");
+    expect(h.calls("setChatMenuButton").at(-1)?.payload.menu_button).toMatchObject({
+      web_app: { url: "https://tgbox.test/app/" },
+    });
+  });
+
   test("the website's ?start=submit deep link asks for a link and still sets the menu button", async () => {
     // The deep-link branch used to return before the menu button was pushed, so the one person
     // most likely to be new — a visitor arriving from a directory page — never got it.
