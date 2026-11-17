@@ -7,6 +7,7 @@ import {
   eq,
   gt,
   inArray,
+  isNotNull,
   isNull,
   lt,
   lte,
@@ -336,23 +337,24 @@ export async function earliestPromotionEnd(db: Db, scope: SlotScope, now: number
   return row?.value ?? null;
 }
 
-/** Promotions whose end has passed (ends_at <= now), the longest-ended first. */
+/** Promotions whose end has passed (ends_at <= now) but not ended yet, the longest-ended first. */
 export function listExpiredPromotions(db: Db, now: number, limit = 100) {
   return db
     .select()
     .from(promotions)
-    .where(lte(promotions.endsAt, now))
+    .where(and(lte(promotions.endsAt, now), isNull(promotions.endedAt)))
     .orderBy(asc(promotions.endsAt), asc(promotions.id))
     .limit(limit);
 }
 
 /**
- * Removes promotions and moves their orders from active to expired in one transaction.
- * Returns the deleted promotions and the orders that changed (for user notifications).
+ * Ends promotions (an early end also stops them showing now) and moves their orders from active to
+ * expired in one transaction. The rows stay, so clicks keep their order. Returns the promotions
+ * that ended here and the orders that changed (for user notifications).
  */
-export async function endPromotionRows(db: Db, ids: number[]) {
+export async function endPromotionRows(db: Db, ids: number[], now: number) {
   if (ids.length === 0) return { promotions: [], orders: [] };
-  const [endedOrders, deleted] = await db.batch([
+  const [endedOrders, ended] = await db.batch([
     db
       .update(orders)
       .set({ status: "expired" })
@@ -364,22 +366,35 @@ export async function endPromotionRows(db: Db, ids: number[]) {
             db
               .select({ id: promotions.orderId })
               .from(promotions)
-              .where(inArray(promotions.id, ids)),
+              .where(and(inArray(promotions.id, ids), isNull(promotions.endedAt))),
           ),
         ),
       )
       .returning(),
-    db.delete(promotions).where(inArray(promotions.id, ids)).returning(),
+    db
+      .update(promotions)
+      .set({ endedAt: now, endsAt: sql`MIN(${promotions.endsAt}, ${now})` })
+      .where(and(inArray(promotions.id, ids), isNull(promotions.endedAt)))
+      .returning(),
   ]);
-  return { promotions: deleted, orders: endedOrders };
+  return { promotions: ended, orders: endedOrders };
 }
 
-/** Moves ends_at by `ms` (may be negative). Returns true if the promotion exists. */
+/** Moves ends_at by `ms` (may be negative). Returns true if the promotion exists and runs still. */
 export async function extendPromotionRow(db: Db, id: number, ms: number) {
   const result = await db
     .update(promotions)
     .set({ endsAt: sql`${promotions.endsAt} + ${ms}` })
-    .where(eq(promotions.id, id))
+    .where(and(eq(promotions.id, id), isNull(promotions.endedAt)))
     .run();
   return result.meta.changes > 0;
+}
+
+/** The promotions these orders bought, ended ones included. Served by `promotions_order`. */
+export function listPromotionsOfOrders(db: Db, orderIds: number[]) {
+  if (orderIds.length === 0) return Promise.resolve([]);
+  return db
+    .select()
+    .from(promotions)
+    .where(and(isNotNull(promotions.orderId), inArray(promotions.orderId, orderIds)));
 }

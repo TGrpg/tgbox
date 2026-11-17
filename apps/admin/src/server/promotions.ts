@@ -36,7 +36,7 @@ export async function loadOrders(
     rows: rows.map(({ invoiceId: _invoice, chargeId: _charge, ...order }) => ({
       ...order,
       productName: names.get(order.productId) ?? null,
-      /** null once the promotion has ended and its row is gone. */
+      /** null for an order that never went live. */
       clicks: clicks[order.id] ?? null,
     })),
     total,

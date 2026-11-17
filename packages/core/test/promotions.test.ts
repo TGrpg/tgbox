@@ -22,6 +22,7 @@ import {
   insertApprovedEntry,
   listActivePromotions,
   listProducts,
+  listPromotionsOfOrders,
   markOrdersReminded,
   setEntryStatus,
 } from "@tgbox/db";
@@ -580,7 +581,11 @@ describe("running promotions", () => {
     const dispatchesBefore = dispatches.length;
     const done = await runPromotionMaintenance(ctx, NOW + 7 * DAY);
     expect(done.expired).toMatchObject([{ id: created.id, status: "expired", tgUserId: BUYER }]);
-    expect(await listActivePromotions(db, 0)).toEqual([]);
+    expect(await listActivePromotions(db, NOW + 7 * DAY)).toEqual([]);
+    // The ended promotion keeps its row, so the order's clicks stay attached to it.
+    expect(await listPromotionsOfOrders(db, [created.id])).toMatchObject([
+      { endedAt: NOW + 7 * DAY },
+    ]);
     expect(await getSiteState(db, "dirty_since")).toBeDefined();
     expect(dispatches.length).toBe(dispatchesBefore + 1);
     expect((await auditRows()).filter((row) => row.actor === "system")).toEqual([

@@ -371,7 +371,7 @@ export async function createManualPromotion(
 
 /** Ends a promotion early; its order (if any) becomes expired. Returns false if it doesn't exist. */
 export async function endPromotion(ctx: CoreContext, input: { promotionId: number; actor: Actor }) {
-  const ended = await endPromotionRows(ctx.db, [input.promotionId]);
+  const ended = await endPromotionRows(ctx.db, [input.promotionId], ctx.now());
   if (ended.promotions.length === 0) return false;
   await audit(ctx, input.actor, "promotion.end", promotionTarget(input.promotionId), {
     orderIds: ended.orders.map((order) => order.id),
@@ -488,7 +488,7 @@ export async function runPromotionMaintenance(
   { maxNotices = 100 }: { maxNotices?: number } = {},
 ) {
   const expiredIds = (await listExpiredPromotions(ctx.db, now, maxNotices)).map((row) => row.id);
-  const ended = await endPromotionRows(ctx.db, expiredIds);
+  const ended = await endPromotionRows(ctx.db, expiredIds, now);
   if (ended.promotions.length > 0) {
     await audit(ctx, "system", "promotion.expire", "promotions", {
       promotionIds: ended.promotions.map((row) => row.id),

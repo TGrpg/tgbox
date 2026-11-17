@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte, inArray, sum } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, isNotNull, sum } from "drizzle-orm";
 import type { Db } from "./access.ts";
 import {
   orders,
@@ -53,14 +53,13 @@ export async function loadAppOverview(db: Db, input: { tgUserId: number; since: 
         .where(eq(orders.tgUserId, input.tgUserId))
         .orderBy(desc(orders.id))
         .limit(PAGE),
-      // Clicks of the promotions those orders bought. `promotions` holds only live rows (expired
-      // ones are deleted), so a finished campaign reports 0 — a scan of a few dozen rows either
-      // way, which is why `promotions.order_id` is deliberately not indexed.
+      // Clicks of the promotions those orders bought, finished ones included (ended promotions
+      // keep their row). `promotions_order` finds them without scanning the table.
       db
         .select({ orderId: promotions.orderId, clicks: sum(promotionClicks.clicks) })
-        .from(promotionClicks)
-        .innerJoin(promotions, eq(promotions.id, promotionClicks.promotionId))
-        .where(inArray(promotions.orderId, own))
+        .from(promotions)
+        .innerJoin(promotionClicks, eq(promotionClicks.promotionId, promotions.id))
+        .where(and(isNotNull(promotions.orderId), inArray(promotions.orderId, own)))
         .groupBy(promotions.orderId),
       db.select({ key: settings.key, value: settings.value }).from(settings),
       db

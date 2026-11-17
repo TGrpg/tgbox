@@ -11,6 +11,7 @@ const db = vi.hoisted(() => ({
   listOrders: vi.fn(),
   listProducts: vi.fn(),
   listActivePromotions: vi.fn(),
+  listPromotionsOfOrders: vi.fn(),
 }));
 vi.mock("@tgbox/core", () => core);
 vi.mock("@tgbox/db", () => db);
@@ -97,7 +98,7 @@ test("loadOrders names products, counts clicks and keeps provider ids on the ser
     total: 2,
   });
   db.listProducts.mockResolvedValue([{ id: 2, nameZh: "首页横幅 7 天" }]);
-  db.listActivePromotions.mockResolvedValue([{ id: 41, orderId: 1 }]);
+  db.listPromotionsOfOrders.mockResolvedValue([{ id: 41, orderId: 1 }]);
   core.promotionClickTotals.mockResolvedValue({ 41: { total: 128, recent: 30 } });
 
   const result = await loadOrders(ctx, { status: undefined, page: 2, pageSize: 20 });
@@ -116,7 +117,7 @@ test("loadOrders names products, counts clicks and keeps provider ids on the ser
         productName: "首页横幅 7 天",
         clicks: { total: 128, recent: 30 },
       },
-      // The promotion of order 9 is over and its row is gone, so there is nothing to report.
+      // Order 9 never went live, so there is nothing to report.
       { id: 9, productId: 2, status: "expired", productName: "首页横幅 7 天", clicks: null },
     ],
     total: 2,
