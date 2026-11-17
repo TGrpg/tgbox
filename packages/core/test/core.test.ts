@@ -26,6 +26,7 @@ import {
   insertApprovedEntry,
   listCategories,
   listTags,
+  setSiteState,
 } from "@tgbox/db";
 import { PostView } from "@tgbox/shared";
 import { describe, expect, test, vi } from "vitest";
@@ -69,7 +70,7 @@ describe("reviewing submissions", () => {
     expect(await approveSubmission(ctx, { id, actor })).toBeNull();
     if (!approved) throw new Error("not approved");
 
-    const listed = await listApprovedSubmission(ctx, approved);
+    const listed = await listApprovedSubmission(ctx, approved, actor);
     expect(listed.created).toBe(true);
     expect(await getEntryByUsername(db, "review_me")).toMatchObject({
       id: listed.entryId,
@@ -243,19 +244,20 @@ describe("build and blacklist", () => {
   test("a change while the site is already dirty dispatches once the last build is 3 min old", async () => {
     const { ctx, dispatches } = await setup();
     let clock = NOW;
-    const at = { ...ctx, now: () => clock };
+    // Each call is its own request, so each gets its own context, as in production.
+    const at = () => ({ ...ctx, now: () => clock });
 
     // The site was left dirty by an earlier cron run that did dispatch.
-    await markDirtyAndDispatch(at);
+    await markDirtyAndDispatch(at());
     expect(dispatches).toHaveLength(1);
     expect(await getSiteState(db, "build_dispatched_at")).toBe(String(NOW));
 
     clock = NOW + 2 * MINUTE;
-    await markDirtyAndDispatch(at);
+    await markDirtyAndDispatch(at());
     expect(dispatches).toHaveLength(1);
 
     clock = NOW + 4 * MINUTE;
-    await markDirtyAndDispatch(at);
+    await markDirtyAndDispatch(at());
     expect(dispatches).toHaveLength(2);
     expect(await getSiteState(db, "dirty_since")).toBe(String(NOW));
     expect(await getSiteState(db, "build_dispatched_at")).toBe(String(NOW + 4 * MINUTE));
@@ -264,12 +266,13 @@ describe("build and blacklist", () => {
   test("a refused dispatch is not recorded, so the next change retries right away", async () => {
     const { ctx, dispatches, github } = await setup();
     let clock = NOW;
-    const at = { ...ctx, now: () => clock };
+    // Each call is its own request, so each gets its own context, as in production.
+    const at = () => ({ ...ctx, now: () => clock });
     github.status = 401;
     github.body = JSON.stringify({ message: "Bad credentials" });
     const logged = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    await markDirtyAndDispatch(at);
+    await markDirtyAndDispatch(at());
     expect(dispatches).toHaveLength(1);
     expect(await getSiteState(db, "build_dispatched_at")).toBeUndefined();
     expect(logged).toHaveBeenCalledWith("github dispatch failed", 401, "Bad credentials");
@@ -278,7 +281,7 @@ describe("build and blacklist", () => {
     clock = NOW + MINUTE;
     github.status = 204;
     github.body = "";
-    await markDirtyAndDispatch(at);
+    await markDirtyAndDispatch(at());
     expect(dispatches).toHaveLength(2);
     expect(await getSiteState(db, "build_dispatched_at")).toBe(String(NOW + MINUTE));
     logged.mockRestore();
@@ -287,29 +290,59 @@ describe("build and blacklist", () => {
   test("after a build clears the flag a person's change dispatches at once, the cron's waits", async () => {
     const { ctx, dispatches } = await setup();
     let clock = NOW;
-    const at = { ...ctx, now: () => clock };
+    // Each call is its own request, so each gets its own context, as in production.
+    const at = () => ({ ...ctx, now: () => clock });
     // How the refresh cron asks: never on the transition alone, at most one build per 30 minutes.
     const cron = { minIntervalMs: 30 * MINUTE, onTransition: false };
 
-    await markDirtyAndDispatch(at, cron);
+    await markDirtyAndDispatch(at(), cron);
     expect(dispatches).toHaveLength(1);
     // The workflow built the site and cleared the flag, so the next change looks brand new.
     await clearDirty(db, clock + 1);
 
     clock = NOW + 2 * MINUTE;
-    await markDirtyAndDispatch(at, cron);
+    await markDirtyAndDispatch(at(), cron);
     expect(dispatches).toHaveLength(1);
     expect(await getSiteState(db, "dirty_since")).toBe(String(clock));
 
     clock = NOW + 20 * MINUTE;
-    await markDirtyAndDispatch(at, cron);
+    await markDirtyAndDispatch(at(), cron);
     expect(dispatches).toHaveLength(1);
 
     // A person's change takes the transition shortcut even inside the cron's window.
     await clearDirty(db, clock + 1);
     clock = NOW + 21 * MINUTE;
-    await markDirtyAndDispatch(at);
+    await markDirtyAndDispatch(at());
     expect(dispatches).toHaveLength(2);
+  });
+
+  test("one request dispatches once, however many changes it makes, unless GitHub refused", async () => {
+    const { ctx, dispatches, github } = await setup();
+    // GitHub answers after the request's other work, so build_dispatched_at isn't written yet.
+    const pending: (() => void)[] = [];
+    const slow = {
+      ...ctx,
+      waitUntil: (promise: Promise<unknown>) => void promise,
+      fetch: async (input: string, init?: RequestInit) => {
+        await new Promise<void>((resolve) => pending.push(resolve));
+        return ctx.fetch(input, init);
+      },
+    };
+    for (let i = 0; i < 5; i++) await markDirtyAndDispatch(slow);
+    expect(pending).toHaveLength(1);
+    pending.shift()?.();
+    await vi.waitFor(() => expect(dispatches).toHaveLength(1));
+
+    // A refused dispatch frees the next change in the same request to try again.
+    const refused = { ...ctx };
+    github.status = 401;
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    await setSiteState(db, "build_dispatched_at", "0");
+    await markDirtyAndDispatch(refused);
+    github.status = 204;
+    await markDirtyAndDispatch(refused);
+    expect(dispatches).toHaveLength(3);
+    logged.mockRestore();
   });
 
   test("the hourly net publishes a change the cron throttle held back", async () => {

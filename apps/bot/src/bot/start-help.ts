@@ -13,7 +13,8 @@ export function startHelp(app: App) {
 
   /**
    * The menu button is a single per-bot slot, overridable per chat: the app for everyone, the admin
-   * panel for admins. Pushed on `/start` rather than per update, since each call is an API request —
+   * panel for the admins it lets in (`ADMIN_IDS`; an extra admin from settings reviews in the bot
+   * but would only meet the panel's login refusal). Pushed on `/start` rather than per update, since each call is an API request —
    * and on every `/start`, deep links included, because a visitor arriving from the website's
    * `?start=submit` link is exactly the person who has never had the button set.
    */
@@ -22,7 +23,7 @@ export function startHelp(app: App) {
     if (!appUrl || !ctx.chat) return;
     const chatId = ctx.chat.id;
     const adminUrl = app.env.ADMIN_URL;
-    const admin = Boolean(adminUrl) && (await app.isAdmin(ctx));
+    const admin = Boolean(adminUrl) && app.isSuperAdmin(ctx);
     await app.background(() =>
       setChatMenuButton(app.api, {
         chatId,

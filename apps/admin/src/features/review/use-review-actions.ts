@@ -4,14 +4,18 @@ import { toastManager } from "@/components/coss/ui/toast.tsx";
 import {
   $approveSubmissions,
   $rejectSubmissions,
+  APPROVE_PER_REQUEST,
+  REJECT_PER_REQUEST,
   reviewQueueQueryOptions,
 } from "@/functions/review.ts";
+import { failureToast, inChunks, PartialFailure } from "@/lib/chunks.ts";
 import { invalidate } from "@/lib/query-keys.ts";
 import { rejectReasonLabels } from "./labels.ts";
 
 /**
  * Approve / reject mutations for pending submissions. Rows leave the pending page optimistically
- * and come back if the request fails; afterwards every view that counts submissions is refetched.
+ * and come back if their request fails (rows of requests that went through stay gone); afterwards
+ * every view that counts submissions is refetched.
  */
 export function useReviewActions(page: number) {
   const queryClient = useQueryClient();
@@ -38,12 +42,29 @@ export function useReviewActions(page: number) {
     error: Error,
     context: Awaited<ReturnType<typeof removeOptimistically>> | undefined,
   ) => {
-    if (context) queryClient.setQueryData(queryKey, context.previous);
-    toastManager.add({ type: "error", title: "操作失败", description: error.message });
+    if (context) {
+      const done = error instanceof PartialFailure ? error.doneIds : [];
+      const { previous } = context;
+      queryClient.setQueryData(
+        queryKey,
+        previous && done.length > 0
+          ? {
+              rows: previous.rows.filter((row) => !done.includes(row.id)),
+              total: Math.max(0, previous.total - done.length),
+            }
+          : previous,
+      );
+    }
+    toastManager.add(failureToast(error));
   };
 
   const approve = useMutation({
-    mutationFn: (ids: number[]) => $approveSubmissions({ data: { ids } }),
+    mutationFn: async (ids: number[]) =>
+      (
+        await inChunks(ids, APPROVE_PER_REQUEST, (chunk) =>
+          $approveSubmissions({ data: { ids: chunk } }),
+        )
+      ).flat(),
     onMutate: removeOptimistically,
     onError: (error, _ids, context) => fail(error, context),
     onSuccess: (results) => {
@@ -59,8 +80,12 @@ export function useReviewActions(page: number) {
   });
 
   const reject = useMutation({
-    mutationFn: (input: { ids: number[]; reason: RejectReason }) =>
-      $rejectSubmissions({ data: input }),
+    mutationFn: async (input: { ids: number[]; reason: RejectReason }) =>
+      (
+        await inChunks(input.ids, REJECT_PER_REQUEST, (ids) =>
+          $rejectSubmissions({ data: { ...input, ids } }),
+        )
+      ).flat(),
     onMutate: (input) => removeOptimistically(input.ids),
     onError: (error, _input, context) => fail(error, context),
     onSuccess: (results, input) => {

@@ -27,6 +27,32 @@ const sameSite = (a: string, b: string) => siteHost(a) !== null && siteHost(a) =
 const MAX_PAGE_BYTES = 1_000_000;
 
 /**
+ * The first `MAX_PAGE_BYTES` of a body. Read as a stream and cancelled at the limit: the URL comes
+ * from an applicant, and `res.text()` would buffer whatever they serve before any cut-off.
+ */
+async function readHead(res: Response) {
+  if (!res.body) return "";
+  const reader = res.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  while (size < MAX_PAGE_BYTES) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    size += value.byteLength;
+  }
+  await reader.cancel().catch(() => {});
+  const head = new Uint8Array(Math.min(size, MAX_PAGE_BYTES));
+  let offset = 0;
+  for (const chunk of chunks) {
+    const part = chunk.subarray(0, head.length - offset);
+    head.set(part, offset);
+    offset += part.length;
+  }
+  return new TextDecoder().decode(head);
+}
+
+/**
  * Whether the applicant's page mentions this site's host. One fetch per application, for the
  * reviewer's information only: a missing backlink is shown, never enforced.
  */
@@ -39,7 +65,7 @@ async function linksBack(ctx: CoreContext, url: string) {
       signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) return false;
-    const page = (await res.text()).slice(0, MAX_PAGE_BYTES).toLowerCase();
+    const page = (await readHead(res)).toLowerCase();
     return page.includes(host);
   } catch {
     return false;

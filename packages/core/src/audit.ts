@@ -4,6 +4,8 @@ import type { Actor, CoreContext } from "./context.ts";
 export const auditActions = [
   "submission.approve",
   "submission.reject",
+  /** An approval whose listing failed, put back in the queue. */
+  "submission.reopen",
   "entry.list",
   "entry.status",
   "entry.category",

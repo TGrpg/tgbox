@@ -10,14 +10,15 @@ import {
 } from "@tgbox/shared";
 import { CheckCircle2Icon, CopyIcon, ImageIcon, TriangleAlertIcon } from "lucide-react";
 import QRCode from "qrcode";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/coss/ui/button";
 import { Spinner } from "@/components/coss/ui/spinner";
 import { localizePath } from "@/i18n/locale.ts";
 import { appUi } from "@/i18n/ui-app.ts";
-import type { AppProducts } from "@/lib/app-data.ts";
+import { type AppProducts, payMethods } from "@/lib/app-data.ts";
 import { cn } from "@/lib/cn.ts";
 import { fill } from "@/lib/format.ts";
+import { startUsdtPolling, withCheckTimeout } from "@/lib/usdt-poll.ts";
 import { apiCall } from "./api.ts";
 import { BannerCard } from "./banner-card.tsx";
 import { appDate, appDateTime } from "./format.ts";
@@ -29,10 +30,9 @@ import {
   useBackHandler,
   useWebApp,
 } from "./shell.tsx";
+import { forgetMe } from "./use-me.ts";
 import { useStaticJson } from "./use-static.ts";
 
-const POLL_MS = 2_000;
-const POLL_LIMIT_MS = 15 * 60 * 1000;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
@@ -44,55 +44,61 @@ type Stage =
   | { name: "paid" };
 
 /**
- * Polls one order while a USDT payment is open. This is the only polling in the app: every 2s,
- * for at most 15 minutes, and only while the screen is actually visible.
+ * Polls one order while a USDT payment is open. This is the only polling in the app: only while the
+ * screen is actually visible, and only until the quote's grace period is over (`startUsdtPolling`).
+ * After that `stopped` turns on and the buyer checks by hand with `checkNow`.
  */
-function useOrderPolling(orderId: number | null, onPaid: () => void) {
+function useOrderPolling(orderId: number, expiresAt: number, onPaid: () => void) {
   const latest = useRef(onPaid);
   useEffect(() => {
     latest.current = onPaid;
   }, [onPaid]);
+  const [stopped, setStopped] = useState(false);
+  const [checking, setChecking] = useState(false);
 
   useEffect(() => {
-    if (orderId === null) return;
-    const deadline = Date.now() + POLL_LIMIT_MS;
-    let timer: number | undefined;
-    let done = false;
-
-    const stop = () => {
-      if (timer !== undefined) window.clearInterval(timer);
-      timer = undefined;
+    const paid = async (signal: AbortSignal) => {
+      const result = await apiCall(`/orders/${orderId}`, OrderStatusResult, { signal });
+      return result.ok && result.data.paidAt !== null;
     };
-    const tick = async () => {
-      if (done) return stop();
-      if (Date.now() > deadline) {
-        done = true;
-        return stop();
-      }
-      const result = await apiCall(`/orders/${orderId}`, OrderStatusResult);
-      if (!done && result.ok && result.data.paidAt !== null) {
-        done = true;
-        stop();
-        latest.current();
-      }
-    };
-    const sync = () => {
-      if (done) return;
-      if (document.visibilityState === "visible") {
-        if (timer === undefined) timer = window.setInterval(() => void tick(), POLL_MS);
-      } else {
-        stop();
-      }
-    };
-
-    document.addEventListener("visibilitychange", sync);
-    sync();
+    setStopped(false);
+    const polling = startUsdtPolling({
+      expiresAt,
+      check: paid,
+      visible: () => document.visibilityState === "visible",
+      onPaid: () => latest.current(),
+      onStop: () => setStopped(true),
+    });
+    document.addEventListener("visibilitychange", polling.wake);
     return () => {
-      done = true;
-      stop();
-      document.removeEventListener("visibilitychange", sync);
+      polling.stop();
+      document.removeEventListener("visibilitychange", polling.wake);
     };
+  }, [orderId, expiresAt]);
+
+  const checkNow = useCallback(async () => {
+    setChecking(true);
+    const result = await withCheckTimeout((signal) =>
+      apiCall(`/orders/${orderId}`, OrderStatusResult, { signal }),
+    );
+    setChecking(false);
+    if (result.ok && result.data.paidAt !== null) latest.current();
   }, [orderId]);
+
+  return { stopped, checking, checkNow };
+}
+
+/** Flips to true when `at` passes, so the screen re-renders without a ticking clock. */
+function usePassed(at: number): boolean {
+  const [passed, setPassed] = useState(() => Date.now() > at);
+  useEffect(() => {
+    const left = at - Date.now();
+    setPassed(left < 0);
+    if (left < 0) return;
+    const timer = window.setTimeout(() => setPassed(true), left + 1);
+    return () => window.clearTimeout(timer);
+  }, [at]);
+  return passed;
 }
 
 function CopyRow({
@@ -152,22 +158,27 @@ export function PromoteScreen({ locale }: { locale: Locale }) {
   }, []);
   useBackHandler(stage.name === "details" ? toProducts : null);
 
-  const onPaid = useCallback(() => setStage({ name: "paid" }), []);
-  useOrderPolling(stage.name === "usdt" ? stage.orderId : null, onPaid);
+  const onPaid = useCallback(() => {
+    forgetMe();
+    setStage({ name: "paid" });
+  }, []);
 
   if (catalogue.status === "loading") return <LoadingScreen label={strings.common.loading} />;
   if (catalogue.status === "error") {
     return <ErrorScreen locale={locale} error="offline" onRetry={() => window.location.reload()} />;
   }
-  const { products, payments } = catalogue.data;
+  const { products } = catalogue.data;
+  const methods = payMethods(catalogue.data.payments);
 
   /** Only the prices a buyer can actually pay — the operator may have either method switched off. */
   function priceLine(product: ProductView) {
-    const parts = [
-      payments.stars ? fill(strings.promote.stars, { n: product.priceStars }) : null,
-      payments.usdt ? fill(strings.promote.usdt, { n: product.priceUsdt }) : null,
-    ].filter((part): part is string => part !== null);
-    return parts.join(` ${strings.promote.or} `);
+    return methods
+      .map((method) =>
+        method === "stars"
+          ? fill(strings.promote.stars, { n: product.priceStars })
+          : fill(strings.promote.usdt, { n: product.priceUsdt }),
+      )
+      .join(` ${strings.promote.or} `);
   }
 
   function pickImage(file: File | undefined) {
@@ -213,6 +224,7 @@ export function PromoteScreen({ locale }: { locale: Locale }) {
     }
 
     const orderId = created.data.orderId;
+    forgetMe();
     // Only the home banner carries an image; the announcement bar is text.
     if (image && product.kind === "banner") {
       const form = new FormData();
@@ -269,6 +281,8 @@ export function PromoteScreen({ locale }: { locale: Locale }) {
     return (
       <UsdtPayment
         locale={locale}
+        orderId={stage.orderId}
+        onPaid={onPaid}
         address={stage.address}
         amount={stage.amount}
         expiresAt={stage.expiresAt}
@@ -283,22 +297,26 @@ export function PromoteScreen({ locale }: { locale: Locale }) {
           {fill(strings.promote.payTitle, { id: stage.orderId })}
         </h1>
         {error && <p className="text-error text-sm">{error}</p>}
-        {payments.stars && (
-          <Button size="lg" loading={busy} onClick={() => void pay(stage.orderId, "stars")}>
-            {strings.promote.payStars}
-          </Button>
+        {methods.length === 0 && (
+          <p className="text-muted-foreground text-sm">
+            {strings.promote.errors.no_payment_method}
+          </p>
         )}
-        {payments.stars && payments.usdt && (
-          <p className="text-center text-muted-foreground text-xs">{strings.promote.or}</p>
-        )}
-        <Button
-          size="lg"
-          variant="outline"
-          loading={busy}
-          onClick={() => void pay(stage.orderId, "usdt")}
-        >
-          {strings.promote.payUsdt}
-        </Button>
+        {methods.map((method, index) => (
+          <Fragment key={method}>
+            {index > 0 && (
+              <p className="text-center text-muted-foreground text-xs">{strings.promote.or}</p>
+            )}
+            <Button
+              size="lg"
+              variant={index === 0 ? "default" : "outline"}
+              loading={busy}
+              onClick={() => void pay(stage.orderId, method)}
+            >
+              {method === "stars" ? strings.promote.payStars : strings.promote.payUsdt}
+            </Button>
+          </Fragment>
+        ))}
       </div>
     );
   }
@@ -418,8 +436,12 @@ export function PromoteScreen({ locale }: { locale: Locale }) {
         <h1 className="font-semibold text-lg">{strings.promote.title}</h1>
         <p className="mt-1 text-muted-foreground text-sm">{strings.promote.lead}</p>
       </header>
-      {products.length === 0 ? (
-        <p className="py-12 text-center text-muted-foreground text-sm">{strings.promote.soldOut}</p>
+      {products.length === 0 || methods.length === 0 ? (
+        <p className="py-12 text-center text-muted-foreground text-sm">
+          {products.length === 0
+            ? strings.promote.soldOut
+            : strings.promote.errors.no_payment_method}
+        </p>
       ) : (
         [
           {
@@ -480,11 +502,15 @@ export function PromoteScreen({ locale }: { locale: Locale }) {
 
 function UsdtPayment({
   locale,
+  orderId,
+  onPaid,
   address,
   amount,
   expiresAt,
 }: {
   locale: Locale;
+  orderId: number;
+  onPaid: () => void;
   address: string;
   amount: string;
   expiresAt: number;
@@ -492,7 +518,8 @@ function UsdtPayment({
   const strings = appUi(locale).promote;
   const common = appUi(locale).common;
   const [qr, setQr] = useState<string | null>(null);
-  const expired = Date.now() > expiresAt;
+  const expired = usePassed(expiresAt);
+  const polling = useOrderPolling(orderId, expiresAt, onPaid);
 
   useEffect(() => {
     let cancelled = false;
@@ -547,7 +574,18 @@ function UsdtPayment({
           ? strings.usdtExpired
           : fill(strings.usdtExpires, { time: appDateTime(expiresAt, locale) })}
       </p>
-      {!expired && (
+      {polling.stopped ? (
+        <div className="flex flex-col items-center gap-2 text-center">
+          <p className="text-muted-foreground text-sm">{strings.usdtStopped}</p>
+          <Button
+            variant="outline"
+            loading={polling.checking}
+            onClick={() => void polling.checkNow()}
+          >
+            {strings.usdtCheck}
+          </Button>
+        </div>
+      ) : (
         <p className="flex items-center justify-center gap-2 text-muted-foreground text-sm">
           <Spinner className="size-4" />
           {strings.usdtWaiting}

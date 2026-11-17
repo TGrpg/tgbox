@@ -47,6 +47,8 @@ export type App = {
   ) => Promise<{ mode: ReviewMode; sent: Message.TextMessage[] }>;
   /** env ADMIN_IDS (super admins) ∪ settings extraAdminIds */
   isAdmin: (ctx: Context) => Promise<boolean>;
+  /** env ADMIN_IDS only: the admin panel's Telegram login accepts no one else. */
+  isSuperAdmin: (ctx: Context) => boolean;
   snapshot: (
     username: string,
     options: Pick<SnapshotOptions, "knownKind" | "needCreatedAt">,
@@ -127,6 +129,7 @@ export function createApp(env: BotEnv, deps: BotDeps): App {
       // Super admins skip the settings read.
       return superAdminIds.has(id) || (await settings()).bot.extraAdminIds.includes(id);
     },
+    isSuperAdmin: (ctx) => ctx.from !== undefined && superAdminIds.has(String(ctx.from.id)),
     snapshot: (username, options) =>
       fetchEntrySnapshot(username, {
         ...options,

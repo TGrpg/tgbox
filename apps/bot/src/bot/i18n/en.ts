@@ -137,10 +137,6 @@ export const en: typeof zh = {
   submitted: "Submitted and awaiting review. You'll get a private message with the result.",
   noPermission: "Not allowed.",
   alreadyHandled: "Already handled.",
-  approvedNotice: (username: string) =>
-    `🎉 Your submission @${username} was approved and listed. The site updates in a few minutes.`,
-  rejectedNotice: (username: string, reason: string) =>
-    `Sorry, your submission @${username} was not approved. Reason: ${reason}`,
   openTelegram: "Open in Telegram",
   openSite: "Details",
   promote: {
@@ -249,6 +245,7 @@ export const en: typeof zh = {
     reject: "❌ Reject",
     back: "« Back",
     approvedBy: (name: string) => `✅ Approved (${name})`,
+    listingFailed: "⚠️ Listing failed; the submission is back in the queue. Tap approve again.",
     rejectedBy: (name: string, reason: string) => `❌ Rejected (${name}): ${reason}`,
     reasons: {
       content: "Content violation",

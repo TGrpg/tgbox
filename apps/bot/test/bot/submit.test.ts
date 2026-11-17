@@ -4,6 +4,7 @@ import {
   getBotDraft,
   listCategories,
   listTags,
+  putBotDraft,
   submissions,
   tags,
 } from "@tgbox/db";
@@ -39,7 +40,159 @@ const press = async (from: typeof owner, prefix: string, index = 0) => {
   return button;
 };
 
+/** Runs `body` with some tags deleted, then puts them back: the taxonomy persists across tests. */
+async function withoutTags(
+  remove: (rows: (typeof tags.$inferSelect)[]) => number[],
+  body: () => Promise<void>,
+) {
+  const rows = await db.select().from(tags);
+  const ids = remove(rows);
+  try {
+    for (const id of ids) await db.delete(tags).where(eq(tags.id, id));
+    await body();
+  } finally {
+    for (const row of rows.filter((r) => ids.includes(r.id))) await db.insert(tags).values(row);
+  }
+}
+
+const submittedTagIds = async (username: string) =>
+  (await db.select().from(submissions).where(eq(submissions.username, username)))[0]?.tagIds;
+
 describe("submission flow", () => {
+  test("a tag deleted while the submitter picks doesn't change which tags they picked", async () => {
+    await h.message(owner, "https://t.me/sample_channel");
+    await press(owner, "sc:", 0);
+    const picked = (await listTags(db)).find((tag) => tag.nameZh === h.lastButtons()[1]?.text);
+    if (!picked) throw new Error("no tag");
+    await press(owner, "st:", 1);
+    await press(owner, "sd:");
+    // A tag ordered before the picked one disappears; positions after it all shift by one.
+    await withoutTags(
+      (rows) => [Math.min(...rows.filter((r) => r.id !== picked.id).map((r) => r.id))],
+      async () => {
+        await press(owner, "so:");
+        expect(await submittedTagIds("sample_channel")).toEqual([picked.id]);
+      },
+    );
+  });
+
+  test("with no tags at all the submitter can still finish", async () => {
+    await withoutTags(
+      (rows) => rows.map((r) => r.id),
+      async () => {
+        await h.message(owner, "https://t.me/sample_channel");
+        await press(owner, "sc:", 0);
+        await press(owner, "sd:");
+        await press(owner, "so:");
+        expect(await submittedTagIds("sample_channel")).toEqual([]);
+      },
+    );
+  });
+
+  test("a draft saved before tags were stored by id keeps its tags", async () => {
+    const [first] = await listTags(db);
+    const category = (await listCategories(db)).find((c) => c.kind === "channel");
+    if (!first || !category) throw new Error("no taxonomy");
+    const updatedAt = Date.now();
+    await putBotDraft(db, {
+      tgUserId: owner.id,
+      step: "confirming",
+      payload: {
+        username: "legacy_channel",
+        kind: "channel",
+        title: "Legacy",
+        description: "",
+        members: null,
+        categoryId: category.id,
+        tagMask: 1,
+      },
+      updatedAt,
+    });
+    await h.callback(owner, `so:${updatedAt.toString(36)}:`);
+    expect(await submittedTagIds("legacy_channel")).toEqual([first.id]);
+  });
+
+  /** A draft written before tags were stored by id, waiting in the tag picker. */
+  async function legacyPicker(tagMask: number) {
+    const category = (await listCategories(db)).find((c) => c.kind === "channel");
+    if (!category) throw new Error("no taxonomy");
+    const updatedAt = Date.now();
+    await putBotDraft(db, {
+      tgUserId: owner.id,
+      step: "choosing_tags",
+      payload: {
+        username: "legacy_picker",
+        kind: "channel",
+        title: "Legacy",
+        description: "",
+        members: null,
+        categoryId: category.id,
+        tagMask,
+      },
+      updatedAt,
+    });
+    return updatedAt.toString(36);
+  }
+
+  test.each([
+    [3, 2],
+    [0, 0],
+  ])("an old Done button with mask %i finishes with those tags", async (mask, count) => {
+    const v = await legacyPicker(0);
+    await h.callback(owner, `sd:${v}:${mask.toString(36)}`);
+    await press(owner, "so:");
+    const ids = (await listTags(db)).slice(0, count).map((tag) => tag.id);
+    expect(await submittedTagIds("legacy_picker")).toEqual(ids);
+  });
+
+  test("an old tag button is read as a mask, and its keyboard expires", async () => {
+    const v = await legacyPicker(0);
+    const [first] = await listTags(db);
+    await h.callback(owner, `st:${v}:1.0`);
+    const picked = h.lastButtons().filter((b) => b.text.startsWith("✅ "));
+    expect(picked.map((b) => b.text)).toEqual([`✅ ${first?.nameZh}`]);
+    // The new buttons carry the converted draft's version; the old ones are stale now.
+    expect(h.lastButtons().every((b) => !b.callback_data?.includes(`:${v}:`))).toBe(true);
+    h.reset();
+    await h.callback(owner, `sd:${v}:1`);
+    expect(h.calls("answerCallbackQuery")[0]?.payload.show_alert).toBe(true);
+  });
+
+  test("a picked tag deleted before Done, or before reopening the picker, just drops out", async () => {
+    await h.message(owner, "https://t.me/sample_channel");
+    await press(owner, "sc:", 0);
+    const picked = (await listTags(db)).find((tag) => tag.nameZh === h.lastButtons()[0]?.text);
+    if (!picked) throw new Error("no tag");
+    await press(owner, "st:", 0);
+    await withoutTags(
+      () => [picked.id],
+      async () => {
+        await press(owner, "sd:");
+        expect(h.lastButtons().some((b) => b.callback_data?.startsWith("so:"))).toBe(true);
+        await press(owner, "sg:");
+        await press(owner, "sd:");
+        await press(owner, "so:");
+        expect(await submittedTagIds("sample_channel")).toEqual([]);
+      },
+    );
+  });
+
+  test("five picked tags still fit Telegram's 64-byte callback data", async () => {
+    await h.message(owner, "https://t.me/sample_channel");
+    await press(owner, "sc:", 0);
+    for (let i = 0; i < 5; i++) {
+      const next = h
+        .lastButtons()
+        .filter((b) => b.callback_data?.startsWith("st:") && !b.text.startsWith("✅"));
+      const button = next[0];
+      if (!button?.callback_data) throw new Error("no tag left");
+      await h.callback(owner, button.callback_data);
+    }
+    expect(h.lastButtons().filter((b) => b.text.startsWith("✅ "))).toHaveLength(5);
+    for (const b of h.lastButtons())
+      expect(new TextEncoder().encode(b.callback_data).length).toBeLessThanOrEqual(64);
+  });
+
   test("tag keyboard and summary use the taxonomy stored in D1", async () => {
     // Whatever the keyboard offers first for this category, renamed in D1 behind its back.
     await h.message(owner, "https://t.me/sample_channel");
@@ -382,6 +535,14 @@ describe("submission flow", () => {
     const call = h.calls("setChatMenuButton").at(-1);
     expect(call?.payload.menu_button).toMatchObject({
       web_app: { url: "https://admin.tgbox.test" },
+    });
+  });
+
+  test("an extra admin from settings keeps the app menu button, since the panel only takes ADMIN_IDS", async () => {
+    await setBotSettings({ extraAdminIds: ["555"] });
+    await h.message({ ...owner, id: 555 }, "/start");
+    expect(h.calls("setChatMenuButton").at(-1)?.payload.menu_button).toMatchObject({
+      web_app: { url: "https://tgbox.test/app/" },
     });
   });
 

@@ -197,10 +197,6 @@ export const zhHant = {
   submitted: "已提交，等待審核。審核結果會私信通知你。",
   noPermission: "沒有權限。",
   alreadyHandled: "已被處理。",
-  approvedNotice: (username: string) =>
-    `🎉 你提交的 @${username} 已通過審核並收錄，網站幾分鐘後更新。`,
-  rejectedNotice: (username: string, reason: string) =>
-    `很抱歉，你提交的 @${username} 未通過審核。原因：${reason}`,
   openTelegram: "打開 Telegram",
   openSite: "網站詳情",
   promote: {
@@ -306,6 +302,7 @@ export const zhHant = {
     reject: "❌ 拒絕",
     back: "« 返回",
     approvedBy: (name: string) => `✅ 已通過（${name}）`,
+    listingFailed: "⚠️ 收錄失敗，已退回待審。請再點一次通過。",
     rejectedBy: (name: string, reason: string) => `❌ 已拒絕（${name}）：${reason}`,
     reasons: {
       content: "內容違規",

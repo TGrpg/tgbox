@@ -191,6 +191,8 @@ const zh = {
     usdtWaiting: "正在等待到账，确认后这里会自动更新。",
     usdtExpires: "请在 {time} 前完成转账。",
     usdtExpired: "这笔订单的支付时间已过，请重新下单。",
+    usdtStopped: "已停止自动检查。如果你已经转账，可以再查一次。",
+    usdtCheck: "检查是否到账",
     paidTitle: "支付成功",
     paidLead:
       "条目推广已经上线，网站几分钟内更新；品牌广告会在审核通过后开始投放。进度可以在“我的”里查看。",
@@ -402,6 +404,8 @@ const en: typeof zh = {
     usdtWaiting: "Waiting for the transfer; this updates by itself once it arrives.",
     usdtExpires: "Please send it before {time}.",
     usdtExpired: "This order's payment window has closed. Please order again.",
+    usdtStopped: "Stopped checking automatically. If you already sent it, check again.",
+    usdtCheck: "Check for payment",
     paidTitle: "Payment received",
     paidLead:
       "Listing promotions are live and the site updates within minutes; brand ads start once approved. Follow it under “Mine”.",
