@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { createOrder, markOrderPaid } from "@tgbox/core";
 import {
+  createUsdtPayment,
   getBotDraft,
   getOrder,
   getSiteState,
@@ -144,6 +145,22 @@ describe("prices follow the enabled payment methods", () => {
     await h.callback(buyer, "pp:1");
     await h.message(buyer, "@pin_me");
     expect(said()).not.toContain("⭐");
+  });
+});
+
+describe("paying with USDT", () => {
+  test("an order whose quote ran out is sent to order again, not told USDT is off", async () => {
+    await setPaymentSettings({ starsEnabled: false, usdtSelfEnabled: true, usdtAddress: ADDRESS });
+    const pin = await order({ productId: 1, targetUsername: "@pin_me" });
+    await createUsdtPayment(db, {
+      orderId: pin.id,
+      amountMicro: 10_000_100,
+      address: ADDRESS,
+      createdAt: Date.now() - 60 * 60_000,
+      expiresAt: Date.now() - 30 * 60_000,
+    });
+    await h.callback(buyer, `pv:${pin.id}`);
+    expect(h.calls("answerCallbackQuery").at(-1)?.payload.text).toContain("重新下单");
   });
 });
 

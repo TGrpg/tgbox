@@ -1,4 +1,4 @@
-import { and, eq, lt, sql } from "drizzle-orm";
+import { and, eq, lt } from "drizzle-orm";
 import type { Db } from "./access.ts";
 import { usdtPayments } from "./schema.ts";
 
@@ -8,6 +8,8 @@ export type UsdtPayment = typeof usdtPayments.$inferSelect;
  * Records the amount an order is waiting for. The order id is the primary key, so a buyer who taps
  * "pay with USDT" twice keeps the amount they were already quoted instead of being handed a second
  * one — otherwise a transfer for the first amount would arrive with nothing left to match it.
+ * Pending amounts are unique too: when another order took this amount first, nothing is written
+ * and, for an order without a quote yet, the result is undefined so the caller picks another.
  */
 export async function createUsdtPayment(
   db: Db,
@@ -67,13 +69,4 @@ export async function expireUsdtPayments(db: Db, now: number) {
     .where(and(eq(usdtPayments.status, "pending"), lt(usdtPayments.expiresAt, now)))
     .run();
   return result.meta.changes;
-}
-
-/** Cheap guard for the cron: skip the chain call entirely when nobody owes us anything. */
-export async function countPendingUsdtPayments(db: Db, now: number) {
-  const [row] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(usdtPayments)
-    .where(and(eq(usdtPayments.status, "pending"), sql`${usdtPayments.expiresAt} >= ${now}`));
-  return row?.count ?? 0;
 }

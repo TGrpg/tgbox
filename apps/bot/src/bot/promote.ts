@@ -444,9 +444,15 @@ export function promote(app: App) {
       productId: order.productId,
     });
     if (!quote.ok) {
-      // "no_amount" is transient (every tail for this price is reserved); the rest mean the
-      // operator turned the method off between the button being drawn and this tap.
-      const text = quote.error === "no_amount" ? m.usdtNoAmount : m.noPaymentMethod;
+      // "no_amount" is transient (every tail for this price is reserved); an expired quote can't be
+      // reopened, so the buyer orders again; the rest mean the operator turned the method off
+      // between the button being drawn and this tap.
+      const text =
+        quote.error === "no_amount"
+          ? m.usdtNoAmount
+          : quote.error === "order_expired"
+            ? m.orderExpired
+            : m.noPaymentMethod;
       await ctx.answerCallbackQuery({ text, show_alert: true });
       return;
     }
