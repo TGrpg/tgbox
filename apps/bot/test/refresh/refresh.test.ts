@@ -150,7 +150,8 @@ describe("scheduling", () => {
     const odd = await runRefresh(env, T0 + REFRESH_INTERVAL_MS, tg);
     expect(odd.processed).toEqual(["busy"]);
     const even = await runRefresh(env, T0 + 2 * REFRESH_INTERVAL_MS, tg);
-    expect(even.processed).toEqual(["quiet", "busy"]);
+    // Which one goes first rotates between cycles.
+    expect([...even.processed].sort()).toEqual(["busy", "quiet"]);
   });
 });
 
@@ -485,13 +486,23 @@ test("a slice the budget cuts short still refreshes its tail on later cycles", a
   const tg = fakeTelegram(Object.fromEntries(names.map((name) => [name, "group" as const])));
 
   // One slice, so every tick is a new cycle; other work on the tick leaves room for one entry.
+  // The start moves every two cycles, so a full turn takes twice as many ticks as entries.
   const seen = new Set<string>();
-  for (let tick = 0; tick < names.length; tick++) {
+  for (let tick = 0; tick < 2 * names.length; tick++) {
     const run = await runRefresh(env, T0 + tick * REFRESH_INTERVAL_MS, tg, 25);
     expect(run.processed).toHaveLength(1);
     for (const name of run.processed) seen.add(name);
   }
   expect([...seen].sort()).toEqual(names);
+});
+
+test("a quiet channel behind a rate-limited one still gets its turn on an even cycle", async () => {
+  // Quiet channels only run on even cycles; the busy one ahead of it answers 429 every time.
+  await addEntry("busy", { tier: 2 });
+  await addEntry("quiet", { tier: 1 });
+  const tg = fakeTelegram({ busy: "rate_limited", quiet: "channel" });
+  for (let tick = 0; tick < 4; tick++) await runRefresh(env, T0 + tick * REFRESH_INTERVAL_MS, tg);
+  expect(tg.tme("quiet").length).toBeGreaterThan(0);
 });
 
 test("the cron's default fetch is called the way the Workers runtime requires", async () => {
