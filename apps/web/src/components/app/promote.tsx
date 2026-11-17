@@ -18,6 +18,7 @@ import { appUi } from "@/i18n/ui-app.ts";
 import { type AppProducts, payMethods } from "@/lib/app-data.ts";
 import { cn } from "@/lib/cn.ts";
 import { fill } from "@/lib/format.ts";
+import { nextUsdtPoll } from "@/lib/usdt-poll.ts";
 import { apiCall } from "./api.ts";
 import { BannerCard } from "./banner-card.tsx";
 import { appDate, appDateTime } from "./format.ts";
@@ -31,8 +32,6 @@ import {
 } from "./shell.tsx";
 import { useStaticJson } from "./use-static.ts";
 
-const POLL_MS = 2_000;
-const POLL_LIMIT_MS = 15 * 60 * 1000;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
@@ -44,55 +43,77 @@ type Stage =
   | { name: "paid" };
 
 /**
- * Polls one order while a USDT payment is open. This is the only polling in the app: every 2s,
- * for at most 15 minutes, and only while the screen is actually visible.
+ * Polls one order while a USDT payment is open. This is the only polling in the app: only while the
+ * screen is actually visible, and only until the quote's grace period is over (`nextUsdtPoll`).
+ * After that `stopped` turns on and the buyer checks by hand with `checkNow`.
  */
-function useOrderPolling(orderId: number | null, onPaid: () => void) {
+function useOrderPolling(orderId: number, expiresAt: number, onPaid: () => void) {
   const latest = useRef(onPaid);
   useEffect(() => {
     latest.current = onPaid;
   }, [onPaid]);
+  const [stopped, setStopped] = useState(false);
+  const [checking, setChecking] = useState(false);
 
   useEffect(() => {
-    if (orderId === null) return;
-    const deadline = Date.now() + POLL_LIMIT_MS;
     let timer: number | undefined;
     let done = false;
 
-    const stop = () => {
-      if (timer !== undefined) window.clearInterval(timer);
+    const schedule = () => {
+      window.clearTimeout(timer);
       timer = undefined;
+      if (done || document.visibilityState !== "visible") return;
+      const delay = nextUsdtPoll(Date.now(), expiresAt);
+      if (delay === null) {
+        done = true;
+        setStopped(true);
+        return;
+      }
+      timer = window.setTimeout(() => void tick(), delay);
     };
     const tick = async () => {
-      if (done) return stop();
-      if (Date.now() > deadline) {
-        done = true;
-        return stop();
-      }
+      timer = undefined;
       const result = await apiCall(`/orders/${orderId}`, OrderStatusResult);
-      if (!done && result.ok && result.data.paidAt !== null) {
-        done = true;
-        stop();
-        latest.current();
-      }
-    };
-    const sync = () => {
       if (done) return;
-      if (document.visibilityState === "visible") {
-        if (timer === undefined) timer = window.setInterval(() => void tick(), POLL_MS);
-      } else {
-        stop();
+      if (result.ok && result.data.paidAt !== null) {
+        done = true;
+        latest.current();
+        return;
       }
+      schedule();
     };
 
-    document.addEventListener("visibilitychange", sync);
-    sync();
+    setStopped(false);
+    document.addEventListener("visibilitychange", schedule);
+    schedule();
     return () => {
       done = true;
-      stop();
-      document.removeEventListener("visibilitychange", sync);
+      window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", schedule);
     };
+  }, [orderId, expiresAt]);
+
+  const checkNow = useCallback(async () => {
+    setChecking(true);
+    const result = await apiCall(`/orders/${orderId}`, OrderStatusResult);
+    setChecking(false);
+    if (result.ok && result.data.paidAt !== null) latest.current();
   }, [orderId]);
+
+  return { stopped, checking, checkNow };
+}
+
+/** Flips to true when `at` passes, so the screen re-renders without a ticking clock. */
+function usePassed(at: number): boolean {
+  const [passed, setPassed] = useState(() => Date.now() > at);
+  useEffect(() => {
+    const left = at - Date.now();
+    setPassed(left < 0);
+    if (left < 0) return;
+    const timer = window.setTimeout(() => setPassed(true), left + 1);
+    return () => window.clearTimeout(timer);
+  }, [at]);
+  return passed;
 }
 
 function CopyRow({
@@ -153,7 +174,6 @@ export function PromoteScreen({ locale }: { locale: Locale }) {
   useBackHandler(stage.name === "details" ? toProducts : null);
 
   const onPaid = useCallback(() => setStage({ name: "paid" }), []);
-  useOrderPolling(stage.name === "usdt" ? stage.orderId : null, onPaid);
 
   if (catalogue.status === "loading") return <LoadingScreen label={strings.common.loading} />;
   if (catalogue.status === "error") {
@@ -272,6 +292,8 @@ export function PromoteScreen({ locale }: { locale: Locale }) {
     return (
       <UsdtPayment
         locale={locale}
+        orderId={stage.orderId}
+        onPaid={onPaid}
         address={stage.address}
         amount={stage.amount}
         expiresAt={stage.expiresAt}
@@ -491,11 +513,15 @@ export function PromoteScreen({ locale }: { locale: Locale }) {
 
 function UsdtPayment({
   locale,
+  orderId,
+  onPaid,
   address,
   amount,
   expiresAt,
 }: {
   locale: Locale;
+  orderId: number;
+  onPaid: () => void;
   address: string;
   amount: string;
   expiresAt: number;
@@ -503,7 +529,8 @@ function UsdtPayment({
   const strings = appUi(locale).promote;
   const common = appUi(locale).common;
   const [qr, setQr] = useState<string | null>(null);
-  const expired = Date.now() > expiresAt;
+  const expired = usePassed(expiresAt);
+  const polling = useOrderPolling(orderId, expiresAt, onPaid);
 
   useEffect(() => {
     let cancelled = false;
@@ -558,7 +585,18 @@ function UsdtPayment({
           ? strings.usdtExpired
           : fill(strings.usdtExpires, { time: appDateTime(expiresAt, locale) })}
       </p>
-      {!expired && (
+      {polling.stopped ? (
+        <div className="flex flex-col items-center gap-2 text-center">
+          <p className="text-muted-foreground text-sm">{strings.usdtStopped}</p>
+          <Button
+            variant="outline"
+            loading={polling.checking}
+            onClick={() => void polling.checkNow()}
+          >
+            {strings.usdtCheck}
+          </Button>
+        </div>
+      ) : (
         <p className="flex items-center justify-center gap-2 text-muted-foreground text-sm">
           <Spinner className="size-4" />
           {strings.usdtWaiting}
