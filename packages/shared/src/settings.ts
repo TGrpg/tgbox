@@ -78,6 +78,13 @@ export const SiteSettings = z.object({
   friendLinks: z.array(FriendLink).max(MAX_FRIEND_LINKS),
   /** Admin picks for the awesome-telegram README, in display order. */
   featured: z.array(FriendLink).max(MAX_FEATURED),
+  /** Public channel username (without @), promoted on the site, in the Mini App and the bot. */
+  officialChannel: z
+    .string()
+    .regex(/^[A-Za-z][A-Za-z0-9_]{3,31}$/)
+    .nullable(),
+  /** Submitting needs membership of `officialChannel`; the bot must be an admin there to see it. */
+  followToSubmit: z.boolean(),
 });
 export type SiteSettings = z.infer<typeof SiteSettings>;
 
@@ -123,6 +130,8 @@ export const settingsDefaults: Settings = {
     showAdSlots: false,
     friendLinks: [],
     featured: [],
+    officialChannel: null,
+    followToSubmit: false,
   },
   payments: {
     starsEnabled: true,

@@ -168,6 +168,10 @@ export const zhHant = {
     "無法識別鏈接。請發送 https://t.me/xxx、t.me/xxx 或 @xxx 格式的公開用戶名（邀請鏈接不支持）。",
   alreadyListed: (username: string) => `@${username} 已經收錄，無需重複提交。`,
   alreadyPending: (username: string) => `@${username} 已在審核中，請耐心等待。`,
+  mustFollow: (channel: string) =>
+    `提交收錄前請先關注我們的官方頻道 @${channel}，每天推送新收錄和榜單。關注後再試一次。`,
+  joinChannel: "📢 關注頻道",
+  joinedRetry: "✅ 已關注，繼續提交",
   dailyLimit: (limit: number) => `今天的提交次數已達上限（${limit} 次），請明天再試。`,
   notFound: (username: string) => `@${username} 不存在，請檢查用戶名。`,
   banned: (username: string) => `@${username} 已被 Telegram 封禁或限制，無法收錄。`,

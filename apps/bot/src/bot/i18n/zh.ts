@@ -167,6 +167,10 @@ export const zh = {
     "无法识别链接。请发送 https://t.me/xxx、t.me/xxx 或 @xxx 格式的公开用户名（邀请链接不支持）。",
   alreadyListed: (username: string) => `@${username} 已经收录，无需重复提交。`,
   alreadyPending: (username: string) => `@${username} 已在审核中，请耐心等待。`,
+  mustFollow: (channel: string) =>
+    `提交收录前请先关注我们的官方频道 @${channel}，每天推送新收录和榜单。关注后再试一次。`,
+  joinChannel: "📢 关注频道",
+  joinedRetry: "✅ 已关注，继续提交",
   dailyLimit: (limit: number) => `今天的提交次数已达上限（${limit} 次），请明天再试。`,
   notFound: (username: string) => `@${username} 不存在，请检查用户名。`,
   banned: (username: string) => `@${username} 已被 Telegram 封禁或限制，无法收录。`,

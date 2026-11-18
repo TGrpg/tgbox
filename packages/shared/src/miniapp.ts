@@ -72,6 +72,8 @@ export const SubmitError = z.enum([
   "banned",
   /** t.me didn't answer; nothing is wrong with the link, try again. */
   "unavailable",
+  /** Submitting needs the official channel (`SiteSettings.followToSubmit`). */
+  "not_following",
 ]);
 export type SubmitError = z.infer<typeof SubmitError>;
 
@@ -84,7 +86,12 @@ export type SubmitRequest = z.infer<typeof SubmitRequest>;
 
 export const SubmitResult = z.discriminatedUnion("ok", [
   z.object({ ok: z.literal(true), submissionId: z.number().int() }),
-  z.object({ ok: z.literal(false), error: SubmitError }),
+  z.object({
+    ok: z.literal(false),
+    error: SubmitError,
+    /** With `not_following`: the channel to join, without @. */
+    channel: z.string().optional(),
+  }),
 ]);
 export type SubmitResult = z.infer<typeof SubmitResult>;
 

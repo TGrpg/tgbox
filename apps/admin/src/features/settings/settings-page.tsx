@@ -98,7 +98,14 @@ function useSaveSettings() {
     mutationFn: (data: SettingsInput) => $updateSettings({ data }),
     onSuccess: (result, input) => {
       if (!result.ok) {
-        toastManager.add({ type: "error", title: "设置无效", description: "请检查填写的内容" });
+        toastManager.add({
+          type: "error",
+          title: "设置无效",
+          description:
+            result.error === "bot_not_channel_admin"
+              ? "请先把 bot 设为官方频道的管理员，它才能检查用户是否已关注"
+              : "请检查填写的内容",
+        });
       } else if (!result.changed) {
         toastManager.add({ type: "info", title: "没有改动" });
       } else {
@@ -337,6 +344,8 @@ function SiteSection({ initial }: { initial: SiteSettings }) {
   const [blocklistText, setBlocklistText] = useState(formatPostBlocklist(initial.postBlocklist));
   const [hidePostMedia, setHidePostMedia] = useState(initial.hidePostMedia);
   const [showAdSlots, setShowAdSlots] = useState(initial.showAdSlots);
+  const [channelText, setChannelText] = useState(initial.officialChannel ?? "");
+  const [followToSubmit, setFollowToSubmit] = useState(initial.followToSubmit);
   const save = useSaveSettings();
   const patch = (next: Partial<SiteSettings["announcement"]>) =>
     setAnnouncement((current) => ({ ...current, ...next }));
@@ -352,13 +361,23 @@ function SiteSection({ initial }: { initial: SiteSettings }) {
     postBlocklist: blocklist.keywords,
     hidePostMedia,
     showAdSlots,
+    officialChannel:
+      channelText
+        .trim()
+        .replace(/^@/, "")
+        .replace(/^https:\/\/t\.me\//, "") || null,
+    followToSubmit,
   };
-  const { friendLinks: _, ...saved } = initial;
+  const { friendLinks: _, featured: __, ...saved } = initial;
   const dirty = JSON.stringify(candidate) !== JSON.stringify(saved);
   const missingText =
     candidate.announcement.enabled && (!candidate.announcement.zh || !candidate.announcement.en);
   const badHref =
     candidate.announcement.href !== null && !candidate.announcement.href.startsWith("https://");
+  const badChannel =
+    candidate.officialChannel !== null &&
+    !/^[A-Za-z][A-Za-z0-9_]{3,31}$/.test(candidate.officialChannel);
+  const gateWithoutChannel = followToSubmit && candidate.officialChannel === null;
 
   return (
     <Section
@@ -367,7 +386,11 @@ function SiteSection({ initial }: { initial: SiteSettings }) {
       description="首页顶部公告条与最近消息过滤。保存后会标记网站需重建，并自动触发构建。"
       onSubmit={() => save.mutate({ key: "site", value: candidate })}
       footer={
-        <SaveButton dirty={dirty} pending={save.isPending} disabled={missingText || badHref} />
+        <SaveButton
+          dirty={dirty}
+          pending={save.isPending}
+          disabled={missingText || badHref || badChannel || gateWithoutChannel}
+        />
       }
     >
       <SwitchRow
@@ -445,6 +468,25 @@ function SiteSection({ initial }: { initial: SiteSettings }) {
         hint="开启后「最近消息」只显示文字，不再显示配图。改动在下次网站构建后生效。"
         checked={hidePostMedia}
         onChange={setHidePostMedia}
+      />
+      <Field
+        label="官方频道"
+        htmlFor="site-channel"
+        hint="频道用户名，比如发新收录的频道。会显示在网站页脚和详情页、小程序首页，以及 bot 的欢迎语和审核通过通知里。留空则不显示。"
+        error={badChannel ? "不是有效的频道用户名" : null}
+      >
+        <Input
+          id="site-channel"
+          placeholder="@tgboxcc"
+          value={channelText}
+          onChange={(event) => setChannelText(event.target.value)}
+        />
+      </Field>
+      <SwitchRow
+        label="投稿前需关注官方频道"
+        hint="只限制投稿，浏览、搜索和购买推广不受影响。bot 必须是该频道的管理员，否则无法保存。"
+        checked={followToSubmit}
+        onChange={setFollowToSubmit}
       />
       <SwitchRow
         label="显示广告位招租"

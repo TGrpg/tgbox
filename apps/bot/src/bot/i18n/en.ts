@@ -107,6 +107,10 @@ export const en: typeof zh = {
     "That link wasn't recognized. Send a public username as https://t.me/xxx, t.me/xxx or @xxx (invite links aren't supported).",
   alreadyListed: (username: string) => `@${username} is already listed.`,
   alreadyPending: (username: string) => `@${username} is already awaiting review.`,
+  mustFollow: (channel: string) =>
+    `Please join our official channel @${channel} before submitting: it posts new listings and rankings every day. Then try again.`,
+  joinChannel: "📢 Join the channel",
+  joinedRetry: "✅ Joined, continue",
   dailyLimit: (limit: number) =>
     `You've reached today's submission limit (${limit}). Please try again tomorrow.`,
   notFound: (username: string) => `@${username} doesn't exist. Check the username.`,
