@@ -1,4 +1,4 @@
-import { getSiteState, getSiteStates, markDirty, setSiteState } from "@tgbox/db";
+import { getSiteStates, markDirty, setSiteState } from "@tgbox/db";
 import { audit } from "./audit.ts";
 import { type Actor, background, type CoreContext } from "./context.ts";
 

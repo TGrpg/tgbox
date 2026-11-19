@@ -23,7 +23,7 @@ describe("organizationJsonLd", () => {
     name: "TGbox",
     description: "A directory of Telegram channels.",
     logo: `${siteUrl}/icons/icon-180.png`,
-    sameAs: ["https://github.com/TGrpg/tgbox", "https://t.me/tgboxccbot"],
+    sameAs: ["https://github.com/TGrpg/awesome-telegram", "https://t.me/tgboxccbot"],
   });
 
   test("is one stable entity other pages can reference", () => {
@@ -38,7 +38,7 @@ describe("organizationJsonLd", () => {
   });
 
   test("claims the source repository so the two profiles resolve to the same entity", () => {
-    expect(organization.sameAs).toContain("https://github.com/TGrpg/tgbox");
+    expect(organization.sameAs).toContain("https://github.com/TGrpg/awesome-telegram");
   });
 });
 
