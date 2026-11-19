@@ -1,29 +1,134 @@
-Copyright (c) 2026 TGbox (https://tgbox.cc). All rights reserved.
+TGbox Source Available License 1.0
 
-This repository is public so that its source code can be read. It is NOT open source, and no
-licence is granted except the following: you may view the code, and keep a private copy to study
-and run on your own computer for personal learning and testing.
+Copyright (c) 2026 TGbox. All rights reserved.
 
-Without the prior written permission of TGbox, you may NOT:
+This license is a source-available license. It is not an open source license as defined by
+the Open Source Initiative, because it restricts deployment, commercial use and competing
+public services.
 
-1. Deploy, host or run this software, or anything based on it, as a website, app, bot, API or any
-   other service that people other than yourself can reach (no going live, publicly or not).
-2. Use it, in whole or in part, for any commercial purpose, including in any site, app or bot that
-   carries ads, sells placements or memberships, or charges money.
-3. Copy, modify, merge, publish, distribute, sublicense or sell it, in whole or in part, or build
-   another work from it.
+1. Definitions
+
+"TGbox" means the software, documentation, configuration and other materials distributed in
+this repository, unless a file says otherwise.
+
+"Licensor" means TGbox and its copyright holders.
+
+"Official Service" means the TGbox service operated by the Licensor, including https://tgbox.cc,
+the submission bot https://t.me/tgboxccbot and the admin application.
+
+"Commercial Use" means any use intended for commercial advantage, monetization, business
+operations, customer service, paid services, advertising, affiliate revenue, sponsorship, lead
+generation, resale, or other revenue-generating activity.
+
+"Public Hosted Service" means any website, SaaS, hosted application, bot, API, crawler service,
+data service, directory, navigation site or similar service made available to third parties over
+a network, whether access is paid or free.
+
+"Competitive Service" means any Public Hosted Service that is the same as or substantially
+similar to TGbox's product positioning, including Telegram channel, group and bot directories,
+submission bots, navigation or search sites, and related data aggregation services.
+
+2. Permitted Use
+
+Subject to this license, you may:
+
+- Read and study the source code.
+- Copy and modify the source code for personal learning, research, evaluation and testing on
+  your own computer.
+- Publish non-commercial patches or pull requests back to the official repository.
+- Quote small excerpts of code or documentation for commentary, review or education, with
+  attribution and a link to the official repository.
+
+3. Restrictions
+
+Without prior written permission from the Licensor, you may not:
+
+- Deploy, host or run TGbox, a modified version of TGbox, or a derivative work of TGbox as a
+  Public Hosted Service, whether publicly accessible or open to any third party.
+- Use TGbox for Commercial Use, including in a deployment that carries advertising, affiliate
+  links, sponsored placements, paid listings, paid traffic routing, paid data access, paid
+  membership or other monetization.
+- Operate a Competitive Service based on TGbox or derived from it.
+- Resell, rent, sublicense or offer TGbox as part of a commercial product or service.
+- Distribute copies of TGbox, in whole or in part, other than by pull request to the official
+  repository.
+- Use TGbox as a substitute data feed, bulk mirror, crawler target or dataset backend for
+  another product.
+- Remove or hide copyright, license, attribution or official project notices.
+- Present any fork, mirror, hosted copy, derivative work or modified version as the Official
+  Service.
 
 Forking this repository on GitHub, as GitHub's Terms of Service allow, grants none of the rights
 above; a fork may only be viewed.
 
-Not licensed in any way: the TGbox name, logo and domains, and the directory data and content of
-https://tgbox.cc (entries, categories, tags, translated descriptions, statistics, rankings and
-growth figures), whose terms are at https://tgbox.cc/about/#terms.
+4. Brand, Data and Content
 
-Versions of this repository published before 2026-11-19 were released under the GNU Affero General
-Public License v3.0. That licence continues to apply to those earlier copies only; it does not
-apply to this or any later version.
+This license applies to the software code in this repository only. It does not grant any right
+to use the TGbox name, logo, icon, domain names (including tgbox.cc), visual identity,
+screenshots, or any of the following, except as the Licensor allows in writing:
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED. IN NO EVENT
-SHALL TGBOX BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY ARISING FROM THE SOFTWARE OR ITS
-USE.
+- production data, including the list of entries, categories and tags, translated descriptions,
+  statistics, rankings and growth figures;
+- collected channel and bot lists, raw or normalized data, crawl logs and stock or freshness data;
+- manually reviewed classification results, user submissions, feedback and moderation notes;
+- guides, editorial content and marketing copy.
+
+You may not use the TGbox name or confusingly similar names for an unrelated service, present a
+service as endorsed by TGbox, or register domains, accounts, packages or app names confusingly
+similar to TGbox. The terms for the Official Service's data are at https://tgbox.cc/about/#terms.
+
+5. Contributions
+
+By submitting a contribution to the official repository, you represent that you have the right
+to submit it and you grant the Licensor a perpetual, worldwide, non-exclusive, royalty-free
+license to use, reproduce, modify, distribute, publicly perform, publicly display, operate and
+sublicense your contribution as part of TGbox, including as part of the Official Service and
+under any future official or commercial licensing of TGbox.
+
+Contributions published in this repository remain available under this license.
+
+6. Third-Party Materials
+
+Third-party dependencies and materials included in or referenced by TGbox remain governed by
+their own licenses. This license does not change their terms.
+
+7. Commercial Permission
+
+For any use this license does not allow, including commercial deployment, hosted services,
+competitive use, brand use, data cooperation, sponsorship, advertising or other arrangements,
+ask for written permission first by messaging https://t.me/tgboxccbot and sending /help for
+contact details.
+
+8. Termination
+
+If you violate this license, your rights under it terminate automatically. The Licensor may
+reinstate rights in writing after the violation is cured.
+
+9. No Warranty
+
+TGbox is provided "as is", without warranty of any kind, express or implied, including but not
+limited to warranties of merchantability, fitness for a particular purpose, non-infringement,
+availability, accuracy or reliability. You are responsible for your own use of TGbox and for any
+decision based on it.
+
+10. Historical Versions
+
+Versions published before 2026-11-19 were released under the GNU Affero General Public License
+v3.0, and that licence continues to apply to those exact copies only. This license applies to
+this repository from the commit that introduced it onward, unless a later license file says
+otherwise.
+
+---
+
+声明
+
+本仓库的源码公开仅供阅读，版权所有 © 2026 TGbox，保留所有权利。它不是 OSI 定义的开源软件，
+也不适用 AGPL、MIT 或其他开源许可证。TGbox 没有授予上文未明确列出的任何权利。
+
+- 未经 TGbox 书面许可，不得部署、上线或商用，也不得运营与 TGbox 同类的服务。Fork 只能用于阅读。
+- TGbox 的名称、标志、域名，以及 tgbox.cc 上的数据和内容，不在本许可证的授权范围内，适用
+  https://tgbox.cc/about/#terms 的条款。
+- 2026-11-19 之前公开的版本仍适用当时的 AGPL-3.0，该许可证只适用于那些旧副本。
+- 商业合作或授权请通过 https://t.me/tgboxccbot 私聊并发送 /help 获取联系方式。
+
+本声明为中文摘要。如与上文英文条款有出入，以英文条款为准。

@@ -172,6 +172,6 @@ pnpm --filter @tgbox/admin dev         # 后台 → http://localhost:8789（本�
 
 ## 许可证
 
-**保留所有权利，不是开源软件。** 版权所有 © 2026 TGbox，见 [LICENSE](LICENSE)。代码公开只供阅读：你可以学习它、在自己电脑上运行它，但未经 TGbox 书面许可，**不得部署或上线**它或它的改版（网站、应用、机器人或任何服务都不行），**不得用于任何商业用途**，也不得复制、修改或再分发。TGbox 的名称、标志以及 tgbox.cc 上的数据同样不授权，见[网站使用条款](https://tgbox.cc/about/#terms)。2026-11-19 之前公开的版本以 AGPL-3.0 发布，该许可证只适用于那些旧副本。Telegram 是 Telegram FZ-LLC 的商标，TGbox 是独立项目，与 Telegram 官方无关。
+**保留所有权利，不是开源软件。** 版权所有 © 2026 TGbox，许可证为 [TGbox Source Available License 1.0](LICENSE)。代码公开只供阅读：你可以学习它、在自己电脑上运行它，但未经 TGbox 书面许可，**不得部署或上线**它或它的改版（网站、应用、机器人或任何服务都不行），**不得用于任何商业用途**，也不得复制、修改或再分发。TGbox 的名称、标志以及 tgbox.cc 上的数据同样不授权，见[网站使用条款](https://tgbox.cc/about/#terms)。2026-11-19 之前公开的版本以 AGPL-3.0 发布，该许可证只适用于那些旧副本。Telegram 是 Telegram FZ-LLC 的商标，TGbox 是独立项目，与 Telegram 官方无关。
 
 觉得有用的话，点个 ⭐ 能让更多人找到它。
