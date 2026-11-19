@@ -6,11 +6,11 @@
 
 # TGbox
 
-**A source-available Telegram channel, group & bot directory — with a submission bot, admin panel and zero-cost hosting on Cloudflare's free plan.**
+**A source-visible Telegram channel, group & bot directory — with a submission bot, admin panel and zero-cost hosting on Cloudflare's free plan.**
 
 [**Live demo → tgbox.cc**](https://tgbox.cc) · [Submission bot @tgboxccbot](https://t.me/tgboxccbot) · [Awesome list: awesome-telegram](https://github.com/TGrpg/awesome-telegram) · English · [简体中文](README.zh-CN.md)
 
-[![License: PolyForm Strict 1.0.0, noncommercial](https://img.shields.io/badge/license-PolyForm%20Strict%201.0.0%20%C2%B7%20noncommercial-red.svg)](LICENSE)
+[![License: all rights reserved · no deployment · no commercial use](https://img.shields.io/badge/license-all%20rights%20reserved%20%C2%B7%20no%20deploy%20%C2%B7%20no%20commercial%20use-red.svg)](LICENSE)
 [![CI](https://github.com/TGrpg/tgbox/actions/workflows/ci.yml/badge.svg)](https://github.com/TGrpg/tgbox/actions/workflows/ci.yml)
 [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers%20free%20plan-F38020?logo=cloudflare&logoColor=white)](https://workers.cloudflare.com)
 [![Astro](https://img.shields.io/badge/Astro-7-BC52EE?logo=astro&logoColor=white)](https://astro.build)
@@ -185,4 +185,4 @@ Issues and pull requests are welcome. Please run `pnpm check` and `pnpm test` be
 
 ## License
 
-Source-available, not open source: [PolyForm Strict License 1.0.0](LICENSE), copyright © 2026 TGbox. You may read the code and run it for noncommercial purposes; you may not distribute it, modify it or build on it, and **any commercial use is prohibited** without a written licence from TGbox, including running a copy or derivative as a directory site, app or bot with ads, paid placements or fees. The TGbox name and logo and the data on tgbox.cc are not licensed at all; see the [site terms](https://tgbox.cc/about/#terms). Versions published before 2026-11-19 were released under AGPL-3.0, and that licence still applies to those copies only. Telegram is a trademark of Telegram FZ-LLC; TGbox is an independent project and is not affiliated with Telegram.
+**All rights reserved; not open source.** Copyright © 2026 TGbox, see [LICENSE](LICENSE). The code is public only so it can be read: you may study it and run it on your own computer, but you may **not deploy or host it** (or anything based on it) as a site, app, bot or service, may **not use it commercially** in any way, and may not copy, modify or redistribute it, without written permission from TGbox. The TGbox name and logo and the data on tgbox.cc are not licensed either; see the [site terms](https://tgbox.cc/about/#terms). Versions published before 2026-11-19 were released under AGPL-3.0, and that licence still applies to those copies only. Telegram is a trademark of Telegram FZ-LLC; TGbox is an independent project and is not affiliated with Telegram.

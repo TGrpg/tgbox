@@ -440,7 +440,7 @@ describe("site build from snapshot data", () => {
       const footer = html(route).split("<footer")[1]?.split("</footer>")[0] ?? "";
       expect(footer, route).toMatch(new RegExp(`<a[^>]*href="${terms}"[^>]*>[^<]*${label}`));
       expect(footer, route).toMatch(
-        /<a[^>]*href="https:\/\/github\.com\/TGrpg\/tgbox"[^>]*>[^<]*PolyForm Strict/,
+        /<a[^>]*href="https:\/\/github\.com\/TGrpg\/tgbox"[^>]*>[^<]*(禁止上线和商用|no deployment, no commercial use)/,
       );
       // The GitHub mark stays, pointing at the awesome list.
       expect(footer, route).toMatch(
