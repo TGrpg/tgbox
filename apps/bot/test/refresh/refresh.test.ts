@@ -287,59 +287,25 @@ describe("build dispatch", () => {
   const buildFinished = () =>
     env.DB.prepare("DELETE FROM site_state WHERE key = ?").bind("dirty_since").run();
 
-  test("a change found by the cron dispatches a build, then at most one every 30 minutes", async () => {
+  test("a change found by the cron only marks the site dirty; the hourly net builds it", async () => {
     await addEntry("telegram");
     const pages: { posts?: string } = {};
     const tg = fakeTelegram({ telegram: "channel" }, pages);
 
-    // First listing refresh: everything is new, so the site is dirty and a build goes out.
     const first = await runRefresh(env, T0, tg);
     expect(first.dirty).toBe(true);
-    expect(tg.dispatches()).toHaveLength(1);
-    expect(await getSiteState(db, "build_dispatched_at")).toBe(String(T0));
-
-    // `dirty_since` is still set (the build has not finished), but a fresh change soon after
-    // must not dispatch again.
-    pages.posts = prefixed("Breaking");
-    const soon = await runRefresh(env, T0 + 6 * MINUTE, tg);
-    expect(soon.dirty).toBe(true);
-    expect(tg.dispatches()).toHaveLength(1);
+    expect(await getSiteState(db, "dirty_since")).toBe(String(T0));
 
     pages.posts = prefixed("Later");
     const later = await runRefresh(env, T0 + 32 * MINUTE, tg);
     expect(later.dirty).toBe(true);
-    expect(tg.dispatches()).toHaveLength(2);
-    expect(await getSiteState(db, "build_dispatched_at")).toBe(String(T0 + 32 * MINUTE));
     expect(later.subrequests).toBeLessThanOrEqual(50);
+    // No dispatch from the cron: the flag (still the first change's) waits for the net.
+    expect(tg.dispatches()).toEqual([]);
+    expect(await getSiteState(db, "dirty_since")).toBe(String(T0));
   });
 
-  test("the throttle also holds for the first change after a build cleared the flag", async () => {
-    await addEntry("telegram");
-    const pages: { posts?: string } = {};
-    const tg = fakeTelegram({ telegram: "channel" }, pages);
-    await runRefresh(env, T0, tg);
-    expect(tg.dispatches()).toHaveLength(1);
-    // That build ran and cleared `dirty_since`, so the next change is a fresh transition —
-    // which used to dispatch immediately, giving a build every few minutes.
-    await buildFinished();
-
-    pages.posts = prefixed("Two");
-    await runRefresh(env, T0 + 2 * MINUTE, tg);
-    expect(await getSiteState(db, "dirty_since")).toBe(String(T0 + 2 * MINUTE));
-    expect(tg.dispatches()).toHaveLength(1);
-
-    pages.posts = prefixed("Twenty");
-    await runRefresh(env, T0 + 20 * MINUTE, tg);
-    expect(tg.dispatches()).toHaveLength(1);
-
-    pages.posts = prefixed("ThirtyOne");
-    await runRefresh(env, T0 + 31 * MINUTE, tg);
-    expect(tg.dispatches()).toHaveLength(2);
-    // The change from minute 2 was never lost: the flag stayed set until this build.
-    expect(await getSiteState(db, "dirty_since")).toBe(String(T0 + 2 * MINUTE));
-  });
-
-  test("a refresh that changes nothing dispatches nothing", async () => {
+  test("a refresh that changes nothing leaves the site clean", async () => {
     await addEntry("telegram");
     const tg = fakeTelegram({ telegram: "channel" });
     await runRefresh(env, T0, tg);
@@ -347,8 +313,7 @@ describe("build dispatch", () => {
 
     const second = await runRefresh(env, T0 + 2 * MINUTE, tg);
     expect(second.dirty).toBe(false);
-    expect(tg.dispatches()).toHaveLength(1);
-    expect(await getSiteState(db, "build_dispatched_at")).toBeUndefined();
+    expect(await getSiteState(db, "dirty_since")).toBeUndefined();
   });
 
   test("without a GitHub repo the refresh still marks dirty", async () => {
@@ -489,7 +454,7 @@ test("a slice the budget cuts short still refreshes its tail on later cycles", a
   // The start moves every two cycles, so a full turn takes twice as many ticks as entries.
   const seen = new Set<string>();
   for (let tick = 0; tick < 2 * names.length; tick++) {
-    const run = await runRefresh(env, T0 + tick * REFRESH_INTERVAL_MS, tg, 25);
+    const run = await runRefresh(env, T0 + tick * REFRESH_INTERVAL_MS, tg, 28);
     expect(run.processed).toHaveLength(1);
     for (const name of run.processed) seen.add(name);
   }

@@ -2,6 +2,7 @@ import { env } from "cloudflare:workers";
 import {
   addBlacklist,
   approveSubmission,
+  dispatchHeldBuild,
   dispatchStaleBuild,
   listApprovedSubmission,
   listEntryManually,
@@ -26,6 +27,7 @@ import {
   insertApprovedEntry,
   listCategories,
   listTags,
+  markDirty,
   setSiteState,
 } from "@tgbox/db";
 import { PostView } from "@tgbox/shared";
@@ -276,26 +278,25 @@ describe("build and blacklist", () => {
     expect(await getSiteState(db, "build_dispatched_at")).toBeUndefined();
   });
 
-  test("a change while the site is already dirty dispatches once the last build is 3 min old", async () => {
+  test("a change while the site is already dirty dispatches once the last build is 15 min old", async () => {
     const { ctx, dispatches } = await setup();
     let clock = NOW;
     // Each call is its own request, so each gets its own context, as in production.
     const at = () => ({ ...ctx, now: () => clock });
 
-    // The site was left dirty by an earlier cron run that did dispatch.
     await markDirtyAndDispatch(at());
     expect(dispatches).toHaveLength(1);
     expect(await getSiteState(db, "build_dispatched_at")).toBe(String(NOW));
 
-    clock = NOW + 2 * MINUTE;
+    clock = NOW + 14 * MINUTE;
     await markDirtyAndDispatch(at());
     expect(dispatches).toHaveLength(1);
 
-    clock = NOW + 4 * MINUTE;
+    clock = NOW + 16 * MINUTE;
     await markDirtyAndDispatch(at());
     expect(dispatches).toHaveLength(2);
     expect(await getSiteState(db, "dirty_since")).toBe(String(NOW));
-    expect(await getSiteState(db, "build_dispatched_at")).toBe(String(NOW + 4 * MINUTE));
+    expect(await getSiteState(db, "build_dispatched_at")).toBe(String(NOW + 16 * MINUTE));
   });
 
   test("a refused dispatch is not recorded, so the next change retries right away", async () => {
@@ -322,33 +323,46 @@ describe("build and blacklist", () => {
     logged.mockRestore();
   });
 
-  test("after a build clears the flag a person's change dispatches at once, the cron's waits", async () => {
+  test("a person's change right after a build is held, then the 5-minute cron sends it", async () => {
     const { ctx, dispatches } = await setup();
     let clock = NOW;
     // Each call is its own request, so each gets its own context, as in production.
     const at = () => ({ ...ctx, now: () => clock });
-    // How the refresh cron asks: never on the transition alone, at most one build per 30 minutes.
-    const cron = { minIntervalMs: 30 * MINUTE, onTransition: false };
 
-    await markDirtyAndDispatch(at(), cron);
-    expect(dispatches).toHaveLength(1);
-    // The workflow built the site and cleared the flag, so the next change looks brand new.
-    await clearDirty(db, clock + 1);
-
-    clock = NOW + 2 * MINUTE;
-    await markDirtyAndDispatch(at(), cron);
-    expect(dispatches).toHaveLength(1);
-    expect(await getSiteState(db, "dirty_since")).toBe(String(clock));
-
-    clock = NOW + 20 * MINUTE;
-    await markDirtyAndDispatch(at(), cron);
-    expect(dispatches).toHaveLength(1);
-
-    // A person's change takes the transition shortcut even inside the cron's window.
-    await clearDirty(db, clock + 1);
-    clock = NOW + 21 * MINUTE;
     await markDirtyAndDispatch(at());
+    expect(dispatches).toHaveLength(1);
+    // The workflow built the site and cleared the flag.
+    await clearDirty(db, clock + 1);
+
+    // Two more changes inside the spacing: held, with one write for the pair.
+    clock = NOW + 5 * MINUTE;
+    await markDirtyAndDispatch(at());
+    const heldAt = await getSiteState(db, "build_held_at");
+    clock = NOW + 6 * MINUTE;
+    await markDirtyAndDispatch(at());
+    expect(dispatches).toHaveLength(1);
+    expect(await getSiteState(db, "build_held_at")).toBe(heldAt);
+
+    clock = NOW + 10 * MINUTE;
+    expect(await dispatchHeldBuild(at())).toBe(false);
+    clock = NOW + 15 * MINUTE;
+    expect(await dispatchHeldBuild(at())).toBe(true);
     expect(dispatches).toHaveLength(2);
+    // Sent once: nothing held since that dispatch.
+    clock = NOW + 20 * MINUTE;
+    expect(await dispatchHeldBuild(at())).toBe(false);
+
+    // Outside the spacing a change goes out at once.
+    clock = NOW + 31 * MINUTE;
+    await markDirtyAndDispatch(at());
+    expect(dispatches).toHaveLength(3);
+  });
+
+  test("nothing held, nothing for the 5-minute cron to send", async () => {
+    const { ctx, dispatches } = await setup();
+    await markDirty(db, NOW);
+    expect(await dispatchHeldBuild({ ...ctx, now: () => NOW + 60 * MINUTE })).toBe(false);
+    expect(dispatches).toEqual([]);
   });
 
   test("one request dispatches once, however many changes it makes, unless GitHub refused", async () => {
@@ -380,20 +394,21 @@ describe("build and blacklist", () => {
     logged.mockRestore();
   });
 
-  test("the hourly net publishes a change the cron throttle held back", async () => {
+  test("the hourly net publishes the crons' changes once no build went out for three hours", async () => {
     const { ctx, dispatches } = await setup();
     let clock = NOW;
     const at = { ...ctx, now: () => clock };
-    const cron = { minIntervalMs: 30 * MINUTE, onTransition: false };
 
-    await markDirtyAndDispatch(at, cron);
+    await markDirtyAndDispatch(at);
     await clearDirty(db, clock + 1);
+    // A refresh noticed new member counts: dirty, no dispatch of its own.
     clock = NOW + 2 * MINUTE;
-    await markDirtyAndDispatch(at, cron);
+    await markDirty(db, clock);
     expect(dispatches).toHaveLength(1);
 
-    // Nothing else changes, so no later refresh dispatches it: the hourly net is the backstop.
-    clock = NOW + 31 * MINUTE;
+    clock = NOW + 179 * MINUTE;
+    expect(await dispatchStaleBuild(at)).toBe(false);
+    clock = NOW + 181 * MINUTE;
     expect(await dispatchStaleBuild(at)).toBe(true);
     expect(dispatches).toHaveLength(2);
     expect(await getSiteState(db, "dirty_since")).toBe(String(NOW + 2 * MINUTE));
@@ -411,12 +426,12 @@ describe("build and blacklist", () => {
     await markDirtyAndDispatch(at);
     expect(dispatches).toHaveLength(1);
 
-    clock = NOW + 29 * MINUTE;
+    clock = NOW + 179 * MINUTE;
     expect(await dispatchStaleBuild(at)).toBe(false);
-    clock = NOW + 31 * MINUTE;
+    clock = NOW + 181 * MINUTE;
     expect(await dispatchStaleBuild(at)).toBe(true);
     expect(dispatches).toHaveLength(2);
-    expect(await getSiteState(db, "build_dispatched_at")).toBe(String(NOW + 31 * MINUTE));
+    expect(await getSiteState(db, "build_dispatched_at")).toBe(String(NOW + 181 * MINUTE));
   });
 
   test("the net retries at once when no dispatch was ever recorded", async () => {
