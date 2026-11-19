@@ -7,7 +7,12 @@ export {
   refreshUserAvatars,
 } from "./avatars.ts";
 export { addBlacklist, removeBlacklist } from "./blacklist.ts";
-export { dispatchStaleBuild, markDirtyAndDispatch, triggerBuild } from "./build.ts";
+export {
+  dispatchHeldBuild,
+  dispatchStaleBuild,
+  markDirtyAndDispatch,
+  triggerBuild,
+} from "./build.ts";
 export {
   HISTORY_DAYS,
   type PromotionClicks,

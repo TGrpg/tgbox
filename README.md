@@ -10,7 +10,7 @@
 
 [**Live demo → tgbox.cc**](https://tgbox.cc) · [Submission bot @tgboxccbot](https://t.me/tgboxccbot) · [Awesome list: awesome-telegram](https://github.com/TGrpg/awesome-telegram) · English · [简体中文](README.zh-CN.md)
 
-[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
+[![License: proprietary](https://img.shields.io/badge/license-proprietary-red.svg)](LICENSE)
 [![CI](https://github.com/TGrpg/tgbox/actions/workflows/ci.yml/badge.svg)](https://github.com/TGrpg/tgbox/actions/workflows/ci.yml)
 [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers%20free%20plan-F38020?logo=cloudflare&logoColor=white)](https://workers.cloudflare.com)
 [![Astro](https://img.shields.io/badge/Astro-7-BC52EE?logo=astro&logoColor=white)](https://astro.build)
@@ -39,7 +39,7 @@ Most Telegram directories are either a static list that goes stale, or a server-
 - Instant client-side search (Pagefind, CJK-aware) with a `Ctrl K` command palette
 - Random discovery ("drift bottle"), a fastest-mirror `/go` redirect page, share links and QR codes
 - Simplified Chinese, Traditional Chinese (converted from Simplified at build time) and English, with `hreflang`, per-kind sitemaps, Open Graph tags and structured URLs for SEO; visitors whose browser prefers the other language get a one-tap switch that is remembered
-- Open data: the whole directory at `/data/entries.json`, mirrored daily to the [awesome-telegram](https://github.com/TGrpg/awesome-telegram) list
+- The largest entries of each category, mirrored daily to the [awesome-telegram](https://github.com/TGrpg/awesome-telegram) list from `/data/awesome.json`
 - Friend links in the footer and on `/links/`, applied for through the bot and approved by admins
 - Light and dark themes, mobile tab bar, PWA manifest, subtle Motion animations that respect `prefers-reduced-motion`
 
@@ -185,6 +185,4 @@ Issues and pull requests are welcome. Please run `pnpm check` and `pnpm test` be
 
 ## License
 
-[AGPL-3.0](LICENSE). You can use, modify and self-host TGbox freely; if you run a modified version as a public service, you must publish your source code under the same license. Telegram is a trademark of Telegram FZ-LLC; TGbox is an independent project and is not affiliated with Telegram.
-
-If TGbox is useful to you, a ⭐ helps other people find it.
+Proprietary. Copyright © 2026 TGbox, all rights reserved; see [LICENSE](LICENSE). Versions published before 2026-11-19 were released under AGPL-3.0, and that licence still applies to those copies; later versions are not. Telegram is a trademark of Telegram FZ-LLC; TGbox is an independent project and is not affiliated with Telegram.

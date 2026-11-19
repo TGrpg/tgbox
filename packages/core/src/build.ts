@@ -3,10 +3,12 @@ import { audit } from "./audit.ts";
 import { type Actor, background, type CoreContext } from "./context.ts";
 
 /**
- * A change by a person should be on the site within minutes, so a dispatch is only skipped when
- * another one just went out.
+ * The repository is private, so every build spends GitHub Actions minutes: 2,000 a month on the
+ * free plan, about 2.5 a build. A person's change is dispatched at once unless a build went out
+ * less than this long ago; then it is held, and the 5-minute cron dispatches it once the spacing
+ * is over (`dispatchHeldBuild`), so it is still on the site within about 20 minutes.
  */
-const DEFAULT_MIN_INTERVAL_MS = 3 * 60_000;
+const PERSON_SPACING_MS = 15 * 60_000;
 
 /**
  * Contexts that already sent a dispatch. A context lives for one request or cron invocation, and
@@ -15,8 +17,12 @@ const DEFAULT_MIN_INTERVAL_MS = 3 * 60_000;
  */
 const dispatched = new WeakSet<CoreContext>();
 
-/** Nothing may stay unpublished longer than an hour, so the hourly net acts on half that. */
-const STALE_DISPATCH_MS = 30 * 60_000;
+/**
+ * Changes the crons find (member counts, translations) only mark the site dirty; the hourly net
+ * publishes them once no build went out for this long. The scheduled workflow builds every six
+ * hours too.
+ */
+const CRON_SPACING_MS = 3 * 60 * 60_000;
 
 /** Dispatches the build workflow. Records `build_dispatched_at` only when GitHub accepted it. */
 async function dispatchBuild(ctx: CoreContext) {
@@ -55,31 +61,23 @@ async function dispatchMessage(res: Response) {
 }
 
 /**
- * Marks the site dirty and dispatches a build unless one went out recently.
- *
- * The flag alone can't decide: `dirty_since` stays set until the workflow clears it, so "already
- * dirty" may mean a cron-detected change nobody dispatched hours ago — while "not dirty yet" is
- * the normal state right after any build, which makes every change look like a fresh transition.
- * The throttle therefore runs on `build_dispatched_at`, and `onTransition` decides whether a
- * change that flips the flag may skip it.
+ * Marks the site dirty after a person's change and dispatches a build, unless one went out less
+ * than `PERSON_SPACING_MS` ago: then the change is recorded as held (one write per held spell)
+ * for `dispatchHeldBuild`.
  */
-export async function markDirtyAndDispatch(
-  ctx: CoreContext,
-  options: {
-    minIntervalMs?: number;
-    /** Dispatch immediately when this change flips the flag. Off for cron-detected changes. */
-    onTransition?: boolean;
-  } = {},
-) {
-  const { minIntervalMs = DEFAULT_MIN_INTERVAL_MS, onTransition = true } = options;
+export async function markDirtyAndDispatch(ctx: CoreContext) {
   const now = ctx.now();
-  const transitioned = await markDirty(ctx.db, now);
+  await markDirty(ctx.db, now);
   // The build that dispatch starts exports D1 later, so it carries this change too.
   if (dispatched.has(ctx)) return;
-  if (!(transitioned && onTransition)) {
-    const last = Number(await getSiteState(ctx.db, "build_dispatched_at"));
-    // Still dirty, so the change isn't lost: the next eligible dispatch or the hourly net takes it.
-    if (Number.isFinite(last) && now - last < minIntervalMs) return;
+  const state = await getSiteStates(ctx.db, ["build_dispatched_at", "build_held_at"]);
+  const last = Number(state.build_dispatched_at);
+  if (Number.isFinite(last) && now - last < PERSON_SPACING_MS) {
+    const held = Number(state.build_held_at);
+    if (!(Number.isFinite(held) && held > last)) {
+      await setSiteState(ctx.db, "build_held_at", String(now));
+    }
+    return;
   }
   dispatched.add(ctx);
   await background(ctx, async () => {
@@ -89,10 +87,27 @@ export async function markDirtyAndDispatch(
 }
 
 /**
- * Hourly safety net: dispatches when the site has been dirty with no dispatch for `staleMs`,
- * so a failed or skipped dispatch can't leave a change unpublished until the next scheduled build.
+ * 5-minute cron: dispatches a person's change that `markDirtyAndDispatch` held back, once the
+ * spacing is over. One D1 read when nothing is held.
  */
-export async function dispatchStaleBuild(ctx: CoreContext, staleMs = STALE_DISPATCH_MS) {
+export async function dispatchHeldBuild(ctx: CoreContext) {
+  const state = await getSiteStates(ctx.db, [
+    "dirty_since",
+    "build_dispatched_at",
+    "build_held_at",
+  ]);
+  const held = Number(state.build_held_at);
+  if (state.dirty_since === undefined || !Number.isFinite(held)) return false;
+  const last = Number(state.build_dispatched_at);
+  if (Number.isFinite(last) && (held <= last || ctx.now() - last < PERSON_SPACING_MS)) return false;
+  return await dispatchBuild(ctx);
+}
+
+/**
+ * Hourly safety net: dispatches when the site has been dirty with no dispatch for `staleMs`, which
+ * is how the crons' own changes are published, and why a failed dispatch can't strand a change.
+ */
+export async function dispatchStaleBuild(ctx: CoreContext, staleMs = CRON_SPACING_MS) {
   const state = await getSiteStates(ctx.db, ["dirty_since", "build_dispatched_at"]);
   if (state.dirty_since === undefined) return false;
   const last = Number(state.build_dispatched_at);

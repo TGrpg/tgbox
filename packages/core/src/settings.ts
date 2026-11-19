@@ -16,6 +16,7 @@ import {
 } from "@tgbox/shared";
 import { audit } from "./audit.ts";
 import { markDirtyAndDispatch } from "./build.ts";
+import { botAdminsChannel } from "./channel.ts";
 import type { Actor, CoreContext } from "./context.ts";
 
 /* ---------------------------------------------------------------- settings */
@@ -70,7 +71,9 @@ export type SettingsUpdate =
 export async function updateSettings(
   ctx: CoreContext,
   input: SettingsUpdate & { actor: Actor },
-): Promise<{ ok: true; changed: boolean } | { ok: false; error: "invalid" }> {
+): Promise<
+  { ok: true; changed: boolean } | { ok: false; error: "invalid" | "bot_not_channel_admin" }
+> {
   const { friendLinks, featured } =
     input.key === "site" ? (await getSettings(ctx)).site : settingsDefaults.site;
   const parsed =
@@ -84,6 +87,13 @@ export async function updateSettings(
           })
         : PaymentSettings.safeParse(input.value);
   if (!parsed.success) return { ok: false, error: "invalid" };
+  // A gate the bot can't check would let everyone through, which looks like it works but doesn't.
+  if (input.key === "site" && "followToSubmit" in parsed.data && parsed.data.followToSubmit) {
+    const channel = parsed.data.officialChannel;
+    if (!channel) return { ok: false, error: "invalid" };
+    if (!(await botAdminsChannel(ctx, channel)))
+      return { ok: false, error: "bot_not_channel_admin" };
+  }
 
   const { rowsWritten } = await upsertSetting(
     ctx.db,

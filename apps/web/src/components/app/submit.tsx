@@ -15,7 +15,7 @@ import { appUi } from "@/i18n/ui-app.ts";
 import type { AppTaxonomy } from "@/lib/app-data.ts";
 import { fill, formatNumber } from "@/lib/format.ts";
 import { apiCall } from "./api.ts";
-import { ErrorScreen, LoadingScreen, PrimaryAction, screenPaths } from "./shell.tsx";
+import { ErrorScreen, LoadingScreen, PrimaryAction, screenPaths, useWebApp } from "./shell.tsx";
 import { CategoryGrid, TagPicker } from "./taxonomy.tsx";
 import { useMe } from "./use-me.ts";
 import { useStaticJson } from "./use-static.ts";
@@ -41,6 +41,9 @@ export function SubmitScreen({ locale }: { locale: Locale }) {
   const [tagIds, setTagIds] = useState<number[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Set when submitting needs the official channel: shown as a join button under the error. */
+  const [joinChannel, setJoinChannel] = useState<string | null>(null);
+  const webApp = useWebApp();
 
   if (me.status === "loading" || taxonomy.status === "loading") {
     return <LoadingScreen label={strings.common.loading} />;
@@ -90,6 +93,7 @@ export function SubmitScreen({ locale }: { locale: Locale }) {
     }
     setBusy(true);
     setError(null);
+    setJoinChannel(null);
     const result = await apiCall("/submit", SubmitResult, {
       json: { username: preview.username, categoryId, tagIds },
     });
@@ -101,6 +105,8 @@ export function SubmitScreen({ locale }: { locale: Locale }) {
     if (!result.data.ok) {
       const key: SubmitError = result.data.error;
       setError(strings.submit.errors[key]);
+      // The form stays filled in: once they've joined, the same button submits it.
+      if (key === "not_following") setJoinChannel(result.data.channel ?? null);
       return;
     }
     reload();
@@ -239,6 +245,18 @@ export function SubmitScreen({ locale }: { locale: Locale }) {
       )}
 
       {error && <p className="text-error text-sm">{error}</p>}
+      {joinChannel && (
+        <Button
+          variant="outline"
+          onClick={() => {
+            const url = `https://t.me/${joinChannel}`;
+            if (webApp) webApp.openTelegramLink(url);
+            else window.open(url, "_blank", "noopener");
+          }}
+        >
+          {fill(strings.submit.joinChannel, { channel: joinChannel })}
+        </Button>
+      )}
 
       <div className="pt-2">
         {step.name === "link" ? (

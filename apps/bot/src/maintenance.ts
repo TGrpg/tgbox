@@ -1,6 +1,7 @@
-import { dispatchStaleBuild, markDirtyAndDispatch, runPromotionMaintenance } from "@tgbox/core";
+import { dispatchStaleBuild, runPromotionMaintenance } from "@tgbox/core";
 import {
   listEntriesNeedingTranslation,
+  markDirty,
   markOrdersReminded,
   setEntryTranslation,
   stampTranslationFailed,
@@ -33,8 +34,6 @@ const TRANSLATION_MODEL = "@cf/meta/m2m100-1.2b";
 /** Too short to carry meaning (an emoji, a URL); too long to be worth a model call. */
 const MIN_DESCRIPTION = 8;
 const MAX_DESCRIPTION = 800;
-// Like the refresh cron: content nobody is waiting for gets at most one build every 30 minutes.
-const TRANSLATION_DISPATCH_INTERVAL_MS = 30 * 60_000;
 
 const bilingual = (text: (m: ReturnType<typeof messages>) => string) =>
   `${text(messages("zh"))}\n\n${text(messages("en"))}`;
@@ -171,14 +170,12 @@ export async function runHourlyMaintenance(
     Math.min(MAX_TRANSLATIONS, Math.floor((left - TRANSLATION_RESERVE) / TRANSLATION_COST)),
   );
   if (translations.translated > 0) {
-    await markDirtyAndDispatch(app.core, {
-      minIntervalMs: TRANSLATION_DISPATCH_INTERVAL_MS,
-      onTransition: false,
-    });
+    // Like the refresh cron: nobody is waiting, so the net below (or a later one) publishes it.
+    await markDirty(app.core.db, scheduledTime);
   }
 
-  // Last line of defence: a change whose dispatch failed or was throttled away is published
-  // within the hour instead of waiting for the next scheduled build.
+  // Publishes what the crons changed, and anything whose dispatch failed, once no build went out
+  // for a few hours.
   const rebuilt = await dispatchStaleBuild(app.core);
   return {
     expired: result.expired.length,

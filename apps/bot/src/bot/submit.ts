@@ -14,6 +14,7 @@ import {
   MAX_TAGS,
   parseTelegramRef,
   type SiteLocale,
+  type SubmitError,
   suggestTaxonomy,
   tagsForCategory,
 } from "@tgbox/shared";
@@ -245,13 +246,25 @@ export function submit(app: App) {
 
   /**
    * The submission rules, shared with the Mini App (`checkSubmission`), as bot copy: null means
-   * go ahead, an empty string means say nothing at all (blacklisted username, like the guard).
+   * go ahead, an empty text means say nothing at all (blacklisted username, like the guard).
+   * `channel` is set when the user has to join the official channel first.
    */
-  async function precheck(locale: SiteLocale, userId: number, username: string) {
-    const m = messages(locale);
+  async function precheck(
+    locale: SiteLocale,
+    userId: number,
+    username: string,
+  ): Promise<{ text: string; channel?: string } | null> {
     const result = await checkSubmission(app.core, { tgUserId: userId, username });
     if (result.ok) return null;
-    switch (result.error) {
+    if (result.error === "not_following" && result.channel) {
+      return { text: messages(locale).mustFollow(result.channel), channel: result.channel };
+    }
+    return { text: await problemText(locale, result.error, username) };
+  }
+
+  async function problemText(locale: SiteLocale, error: SubmitError, username: string) {
+    const m = messages(locale);
+    switch (error) {
       case "closed":
         return m.submissionsClosed;
       case "invalid":
@@ -264,7 +277,18 @@ export function submit(app: App) {
         return m.alreadyPending(username);
       case "daily_limit":
         return m.dailyLimit((await app.settings()).bot.submitDailyLimit);
+      case "unavailable":
+        return m.unavailable;
+      case "not_following":
+        return "";
     }
+  }
+
+  /** Join button, and when given the callback that retries the step once the user has joined. */
+  function joinKeyboard(locale: SiteLocale, channel: string, retry?: string) {
+    const m = messages(locale);
+    const keyboard = new InlineKeyboard().url(m.joinChannel, `https://t.me/${channel}`);
+    return retry ? keyboard.row().text(m.joinedRetry, retry) : keyboard;
   }
 
   composer.on("message:text", async (ctx, next) => {
@@ -286,7 +310,9 @@ export function submit(app: App) {
     }
     const problem = await precheck(locale, ctx.from.id, username);
     if (problem !== null) {
-      if (problem) await ctx.reply(problem);
+      if (problem.channel) {
+        await ctx.reply(problem.text, { reply_markup: joinKeyboard(locale, problem.channel) });
+      } else if (problem.text) await ctx.reply(problem.text);
       return;
     }
 
@@ -434,10 +460,18 @@ export function submit(app: App) {
 
     if (action === "so" && step === "confirming" && draft.categoryId !== null) {
       const problem = await precheck(locale, userId, draft.username);
+      if (problem?.channel) {
+        // Keep the draft: once they've joined, the same button submits it.
+        await ctx.answerCallbackQuery();
+        await ctx.editMessageText(problem.text, {
+          reply_markup: joinKeyboard(locale, problem.channel, ctx.callbackQuery.data),
+        });
+        return;
+      }
       if (problem !== null) {
         await deleteBotDraft(app.db, userId);
         await ctx.answerCallbackQuery();
-        if (problem) await ctx.editMessageText(problem);
+        if (problem.text) await ctx.editMessageText(problem.text);
         return;
       }
       const selectedTags = (await allTags()).filter((tag) => draft.tagIds.includes(tag.id));

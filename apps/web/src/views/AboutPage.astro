@@ -7,7 +7,7 @@ import { seoUi } from "@/i18n/ui-seo.ts";
 import PageLayout from "@/layouts/PageLayout.astro";
 import { faqJsonLd } from "@/lib/json-ld.ts";
 import { aboutSeo } from "@/lib/seo.ts";
-import { awesomeUrl, botUrl, botUsername, licence, repoUrl } from "@/lib/site.ts";
+import { awesomeUrl, botUrl, botUsername } from "@/lib/site.ts";
 
 interface Props {
   locale: SiteLocale;
@@ -53,9 +53,17 @@ const jsonLd = [faqJsonLd(faq)];
         <h2>快速、轻量</h2>
         <p>整个网站是预先生成的静态页面，不需要登录、不跟踪个人身份，在弱网和手机上也能快速打开。你还可以把网站添加到手机主屏幕，像 App 一样使用。</p>
 
-        <h2>关于本项目</h2>
-        <p>TGbox 是一个开源项目：站点、收录机器人和后台的全部代码都在 GitHub 上公开，以 <a href={licence.url} rel="noopener" target="_blank">{licence.name}</a> 许可证发布。欢迎在 <a href={repoUrl} rel="noopener" target="_blank">{repoUrl}</a> 提 issue、发 PR，或者按许可证自建一份属于你自己的导航站。</p>
-        <p>整个目录还以 Awesome 列表的形式同步到 GitHub：<a href={awesomeUrl} rel="noopener" target="_blank">awesome-telegram</a>，每天自动更新，也提供 JSON 数据，方便收藏和引用。</p>
+        <p>各分类里最大的条目还以 Awesome 列表的形式同步到 GitHub：<a href={awesomeUrl} rel="noopener" target="_blank">awesome-telegram</a>，每天自动更新，方便收藏和分享。</p>
+
+        <h2 id="terms">版权与使用条款</h2>
+        <p>TGbox 的网站、收录机器人和后台均为闭源软件，版权所有。本站整理的目录数据（收录名单、分类与标签、简介翻译、统计、排行和增长数据）以及页面内容受著作权法保护。</p>
+        <p>未经 TGbox 书面许可，禁止：</p>
+        <ul>
+          <li>将本站的数据或内容用于任何商业用途，包括放进带广告或付费的网站、应用和机器人；</li>
+          <li>批量抓取、复制或镜像本站的数据和页面，或用它们搭建、上线同类导航网站；</li>
+          <li>转载时删除或隐藏来源。</li>
+        </ul>
+        <p>个人、非商业的少量引用欢迎，请注明来源并链接到本站。各条目的名称、头像和简介归其所有者。违反以上条款的，我们会向相应的托管商、搜索引擎和广告平台投诉。</p>
 
         <h2>联系我们</h2>
         <p>发现失效条目、错误分类、违规内容，或者希望删除自己的条目，请私聊 <a href={botUrl} rel="noopener" target="_blank">{bot}</a> 并发送 <code>/help</code> 获取联系方式。</p>
@@ -86,9 +94,17 @@ const jsonLd = [faqJsonLd(faq)];
         <h2>Fast and light</h2>
         <p>The whole site is pre-built static pages: no sign-in, no personal tracking, and quick to load on slow networks and phones. You can also add it to your home screen and use it like an app.</p>
 
-        <h2>About this project</h2>
-        <p>TGbox is open source: the site, the submission bot and the admin all live in one public repository, released under the <a href={licence.url} rel="noopener" target="_blank">{licence.name}</a> licence. File an issue or a pull request at <a href={repoUrl} rel="noopener" target="_blank">{repoUrl}</a>, or run your own directory from the same code under the terms of that licence.</p>
-        <p>The whole directory is also mirrored to GitHub as an awesome list, <a href={awesomeUrl} rel="noopener" target="_blank">awesome-telegram</a>, regenerated daily with a JSON copy of the data for anyone who wants to star, fork or cite it.</p>
+        <p>The largest entries of each category are also mirrored to GitHub as an awesome list, <a href={awesomeUrl} rel="noopener" target="_blank">awesome-telegram</a>, regenerated daily for anyone who wants to star or share it.</p>
+
+        <h2 id="terms">Copyright and terms of use</h2>
+        <p>The TGbox site, submission bot and admin are proprietary software; all rights reserved. The directory data compiled here (the list of entries, categories and tags, translated descriptions, statistics, rankings and growth figures) and the page content are protected by copyright.</p>
+        <p>Without TGbox's written permission you may not:</p>
+        <ul>
+          <li>use the data or content for any commercial purpose, including in sites, apps or bots that carry ads or charge money;</li>
+          <li>scrape, copy or mirror the data or pages in bulk, or use them to build or run a similar directory;</li>
+          <li>republish any of it without credit.</li>
+        </ul>
+        <p>Small personal, non-commercial quotes are welcome with credit and a link back. Each entry's name, avatar and description belong to its owner. We report violations to the hosting provider, search engines and ad networks involved.</p>
 
         <h2>Contact</h2>
         <p>To report a dead entry, a wrong category or abusive content, or to have your own entry removed, message <a href={botUrl} rel="noopener" target="_blank">{bot}</a> and send <code>/help</code> for contact details.</p>

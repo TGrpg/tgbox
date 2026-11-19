@@ -17,6 +17,7 @@ import { entryKinds, MAX_TAGS, parseTelegramRef, type SubmitError } from "@tgbox
 import { fetchEntrySnapshot } from "@tgbox/telegram";
 import { audit } from "./audit.ts";
 import { markDirtyAndDispatch } from "./build.ts";
+import { channelMembership } from "./channel.ts";
 import { type Actor, background, type CoreContext } from "./context.ts";
 import { publishEntryToChannel } from "./publish.ts";
 import { notifyNewSubmission } from "./review-notify.ts";
@@ -31,16 +32,19 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  * Mini App both go through here so the two entry points cannot drift apart; the bot turns the
  * error into its own copy, the Mini App returns it verbatim (`SubmitError` in the API contract).
  *
- * Read-only: nothing is written and no t.me request is made.
+ * Last, when submitting needs the official channel, whether the user is in it (`channel` names it
+ * for the join button).
+ *
+ * Read-only: nothing is written and no t.me request is made; the channel check is one Bot API call.
  */
 export async function checkSubmission(
   ctx: CoreContext,
   input: { tgUserId: number; username: string },
-): Promise<{ ok: true; username: string } | { ok: false; error: SubmitError }> {
+): Promise<{ ok: true; username: string } | { ok: false; error: SubmitError; channel?: string }> {
   const username = parseTelegramRef(input.username);
   if (!username) return { ok: false, error: "invalid" };
 
-  const { bot } = await getSettings(ctx);
+  const { bot, site } = await getSettings(ctx);
   if (!bot.submissionsOpen) return { ok: false, error: "closed" };
   // A blacklisted username is refused for everyone, however it is spelled.
   if (await getBlacklistEntry(ctx.db, "username", username)) return { ok: false, error: "banned" };
@@ -49,6 +53,10 @@ export async function checkSubmission(
   const since = ctx.now() - DAY_MS;
   if ((await countSubmissionsSince(ctx.db, input.tgUserId, since)) >= bot.submitDailyLimit) {
     return { ok: false, error: "daily_limit" };
+  }
+  const channel = site.followToSubmit ? site.officialChannel : null;
+  if (channel && (await channelMembership(ctx, channel, input.tgUserId)) === "not_member") {
+    return { ok: false, error: "not_following", channel };
   }
   return { ok: true, username };
 }
@@ -61,7 +69,9 @@ export async function checkSubmission(
 export async function submitEntry(
   ctx: CoreContext,
   input: { tgUserId: number; username: string; categoryId: number; tagIds: number[] },
-): Promise<{ ok: true; submissionId: number } | { ok: false; error: SubmitError }> {
+): Promise<
+  { ok: true; submissionId: number } | { ok: false; error: SubmitError; channel?: string }
+> {
   const allowed = await checkSubmission(ctx, input);
   if (!allowed.ok) return allowed;
   const { username } = allowed;

@@ -1,4 +1,4 @@
-import { runDueBroadcasts, runRefresh } from "@tgbox/core";
+import { dispatchHeldBuild, runDueBroadcasts, runRefresh } from "@tgbox/core";
 import { webhookCallback } from "grammy";
 import { createApp, createBot } from "./bot/index.ts";
 import { handleCryptoPayWebhook } from "./cryptopay.ts";
@@ -66,12 +66,16 @@ export default {
       );
       return;
     }
-    // The 5-minute tick carries three jobs sharing one 50-subrequest budget. USDT first: it is a
-    // single D1 read when no order is awaiting a transfer. Then a batch of any broadcast the admin
+    // The 5-minute tick carries four jobs sharing one 50-subrequest budget. First a person's change
+    // whose build was held back (one D1 read when none is). USDT next: a single D1 read when no
+    // order is awaiting a transfer. Then a batch of any broadcast the admin
     // left running (its page drives it faster while open). Whatever both spend is handed to the
     // refresh batch, which processes fewer entries instead of overrunning.
     ctx.waitUntil(
       (async () => {
+        await dispatchHeldBuild(app.core).catch((error: unknown) => {
+          console.error("held build dispatch failed", error);
+        });
         await runUsdtWatch(app).catch((error: unknown) => {
           console.error("usdt watch failed", error);
         });

@@ -80,8 +80,10 @@ const zh = {
       daily_limit: "今天的提交次数已经用完，明天再来。",
       banned: "你的账号已被限制使用本服务。",
       unavailable: "Telegram 暂时没有响应，请稍后再试一次。",
+      not_following: "提交前请先关注我们的官方频道，关注后再点一次提交。",
       needCategory: "请选择一个分类。",
     },
+    joinChannel: "📢 关注 @{channel}",
   },
   me: {
     title: "我的",
@@ -295,8 +297,10 @@ const en: typeof zh = {
       daily_limit: "You have used today's submissions. Try again tomorrow.",
       banned: "Your account is not allowed to use this service.",
       unavailable: "Telegram didn't respond. Please try again in a moment.",
+      not_following: "Please join our official channel first, then tap submit again.",
       needCategory: "Pick a category first.",
     },
+    joinChannel: "📢 Join @{channel}",
   },
   me: {
     title: "Mine",
