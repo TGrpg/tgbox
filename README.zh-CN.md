@@ -10,7 +10,7 @@
 
 [**在线演示 → tgbox.cc**](https://tgbox.cc) · [收录机器人 @tgboxccbot](https://t.me/tgboxccbot) · [资源合集 awesome-telegram](https://github.com/TGrpg/awesome-telegram) · [English](README.md) · 简体中文
 
-[![License: 保留所有权利 · 禁止部署 · 禁止商用](https://img.shields.io/badge/license-%E4%BF%9D%E7%95%99%E6%89%80%E6%9C%89%E6%9D%83%E5%88%A9%20%C2%B7%20%E7%A6%81%E6%AD%A2%E9%83%A8%E7%BD%B2%20%C2%B7%20%E7%A6%81%E6%AD%A2%E5%95%86%E7%94%A8-red.svg)](LICENSE)
+[![License: 源码公开 · 禁止商用 · 禁止公开上线](https://img.shields.io/badge/license-%E6%BA%90%E7%A0%81%E5%85%AC%E5%BC%80%20%C2%B7%20%E7%A6%81%E6%AD%A2%E5%95%86%E7%94%A8%20%C2%B7%20%E7%A6%81%E6%AD%A2%E5%85%AC%E5%BC%80%E4%B8%8A%E7%BA%BF-red.svg)](LICENSE)
 [![CI](https://github.com/TGrpg/tgbox/actions/workflows/ci.yml/badge.svg)](https://github.com/TGrpg/tgbox/actions/workflows/ci.yml)
 [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers%20免费版-F38020?logo=cloudflare&logoColor=white)](https://workers.cloudflare.com)
 [![Astro](https://img.shields.io/badge/Astro-7-BC52EE?logo=astro&logoColor=white)](https://astro.build)
@@ -172,6 +172,6 @@ pnpm --filter @tgbox/admin dev         # 后台 → http://localhost:8789（本�
 
 ## 许可证
 
-**保留所有权利，不是开源软件。** 版权所有 © 2026 TGbox，许可证为 [TGbox Source Available License 1.0](LICENSE)。代码公开只供阅读：你可以学习它、在自己电脑上运行它，但未经 TGbox 书面许可，**不得部署或上线**它或它的改版（网站、应用、机器人或任何服务都不行），**不得用于任何商业用途**，也不得复制、修改或再分发。TGbox 的名称、标志以及 tgbox.cc 上的数据同样不授权，见[网站使用条款](https://tgbox.cc/about/#terms)。2026-11-19 之前公开的版本以 AGPL-3.0 发布，该许可证只适用于那些旧副本。Telegram 是 Telegram FZ-LLC 的商标，TGbox 是独立项目，与 Telegram 官方无关。
+**源码公开，但不是开源软件。** 版权所有 © 2026 TGbox，许可证为 [TGbox Source Available License 1.0](LICENSE)。你可以阅读、fork 和修改代码用于学习和本地开发，部署给自己用，或在自己组织内部非商业使用。未经 TGbox 书面许可，**不得商用**，**不得把它或它的改版作为公开网站、应用、机器人或 API 上线**（免费的也不行），也不得运营同类导航服务、给部署版本加任何变现，或把 fork 冒充为 TGbox。TGbox 的名称、标志以及 tgbox.cc 上的数据不在授权范围内，见[网站使用条款](https://tgbox.cc/about/#terms)。2026-11-19 之前公开的版本以 AGPL-3.0 发布，该许可证只适用于那些旧副本。Telegram 是 Telegram FZ-LLC 的商标，TGbox 是独立项目，与 Telegram 官方无关。
 
 觉得有用的话，点个 ⭐ 能让更多人找到它。

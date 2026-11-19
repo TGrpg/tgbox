@@ -7,7 +7,7 @@ import { seoUi } from "@/i18n/ui-seo.ts";
 import PageLayout from "@/layouts/PageLayout.astro";
 import { faqJsonLd } from "@/lib/json-ld.ts";
 import { aboutSeo } from "@/lib/seo.ts";
-import { awesomeUrl, botUrl, botUsername, repoUrl } from "@/lib/site.ts";
+import { awesomeUrl, botUrl, botUsername } from "@/lib/site.ts";
 
 interface Props {
   locale: SiteLocale;
@@ -56,8 +56,7 @@ const jsonLd = [faqJsonLd(faq)];
         <p>各分类里最大的条目还以 Awesome 列表的形式同步到 GitHub：<a href={awesomeUrl} rel="noopener" target="_blank">awesome-telegram</a>，每天自动更新，方便收藏和分享。</p>
 
         <h2 id="terms">版权与使用条款</h2>
-        <p>TGbox 的网站、收录机器人和后台的<a href={repoUrl} rel="noopener license" target="_blank">源代码公开</a>，但只供阅读，保留所有权利，不是开源软件。未经 TGbox 书面许可，不得部署或上线它或它的改版（网站、应用、机器人或任何服务都不行），不得用于任何商业用途，也不得复制、修改或再分发。TGbox 的名称和标志同样不授权。</p>
-        <p>本站整理的目录数据（收录名单、分类与标签、简介翻译、统计、排行和增长数据）以及页面内容受著作权法保护。</p>
+        <p>本站整理的目录数据（收录名单、分类与标签、简介翻译、统计、排行和增长数据）以及页面内容受著作权法保护，TGbox 的名称和标志也不授权他人使用。</p>
         <p>未经 TGbox 书面许可，禁止：</p>
         <ul>
           <li>将本站的数据或内容用于任何商业用途，包括放进带广告或付费的网站、应用和机器人；</li>
@@ -98,8 +97,7 @@ const jsonLd = [faqJsonLd(faq)];
         <p>The largest entries of each category are also mirrored to GitHub as an awesome list, <a href={awesomeUrl} rel="noopener" target="_blank">awesome-telegram</a>, regenerated daily for anyone who wants to star or share it.</p>
 
         <h2 id="terms">Copyright and terms of use</h2>
-        <p>The <a href={repoUrl} rel="noopener license" target="_blank">source code</a> of the TGbox site, submission bot and admin is public to read only; all rights reserved, and it is not open source. Without TGbox's written permission you may not deploy or host it or anything based on it (as a site, app, bot or any other service), use it for any commercial purpose, or copy, modify or redistribute it. The TGbox name and logo are not licensed either.</p>
-        <p>The directory data compiled here (the list of entries, categories and tags, translated descriptions, statistics, rankings and growth figures) and the page content are protected by copyright.</p>
+        <p>The directory data compiled here (the list of entries, categories and tags, translated descriptions, statistics, rankings and growth figures) and the page content are protected by copyright, and the TGbox name and logo are not licensed for others to use.</p>
         <p>Without TGbox's written permission you may not:</p>
         <ul>
           <li>use the data or content for any commercial purpose, including in sites, apps or bots that carry ads or charge money;</li>

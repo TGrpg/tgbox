@@ -11,9 +11,6 @@ export const botSubmitUrl = `${botUrl}?start=submit`;
 /** Deep link into the bot's link-exchange application. */
 export const botLinksUrl = `${botUrl}?start=links`;
 
-/** Public to read only: all rights reserved, no deployment and no commercial use. */
-export const repoUrl = "https://github.com/TGrpg/tgbox";
-
 /** The largest entries mirrored as a GitHub awesome list, regenerated daily from /data/awesome.json. */
 export const awesomeUrl = "https://github.com/TGrpg/awesome-telegram";
 
