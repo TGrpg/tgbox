@@ -346,7 +346,7 @@ describe("site build from snapshot data", () => {
       expect(organization).toMatchObject({
         "@id": `${siteUrl}/#organization`,
         url: `${siteUrl}/`,
-        sameAs: ["https://t.me/tgboxccbot"],
+        sameAs: ["https://github.com/TGrpg/awesome-telegram", "https://t.me/tgboxccbot"],
       });
       expect(website).toMatchObject({
         url: `${siteUrl}/${prefix}`,
@@ -431,7 +431,7 @@ describe("site build from snapshot data", () => {
     expect(sitemap).toContain(`<loc>${siteUrl}/en/tags/</loc>`);
   });
 
-  test("the footer links the copyright terms on every page, and no source repository", () => {
+  test("the footer links the copyright terms and the noncommercial source on every page", () => {
     for (const [route, terms, label] of [
       ["", "/about/#terms", "禁止商用"],
       ["en/", "/en/about/#terms", "no commercial use"],
@@ -439,11 +439,16 @@ describe("site build from snapshot data", () => {
     ] as const) {
       const footer = html(route).split("<footer")[1]?.split("</footer>")[0] ?? "";
       expect(footer, route).toMatch(new RegExp(`<a[^>]*href="${terms}"[^>]*>[^<]*${label}`));
-      expect(footer, route).not.toContain("github.com/TGrpg/tgbox");
+      expect(footer, route).toMatch(
+        /<a[^>]*href="https:\/\/github\.com\/TGrpg\/tgbox"[^>]*>[^<]*PolyForm Strict/,
+      );
+      // The GitHub mark stays, pointing at the awesome list.
+      expect(footer, route).toMatch(
+        /<a[^>]*href="https:\/\/github\.com\/TGrpg\/awesome-telegram"[^>]*>\s*<svg/,
+      );
       expect(footer, route).not.toContain("AGPL");
       expect(footer, route).toContain(`© ${new Date().getUTCFullYear()} TGbox`);
     }
-    expect(html("")).not.toContain("github.com/TGrpg/tgbox");
   });
 
   test("every page but the 404 offers its other-locale copies and remembers the reader's choice", () => {

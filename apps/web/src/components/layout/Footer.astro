@@ -1,11 +1,11 @@
 ---
 import ArrowRight from "@tabler/icons/outline/arrow-right.svg";
+import BrandGithub from "@tabler/icons/outline/brand-github.svg";
 import Plus from "@tabler/icons/outline/plus.svg";
 import { type SiteLocale, t } from "@tgbox/shared";
 import { localizePath } from "@/i18n/locale.ts";
 import { ui } from "@/i18n/ui.ts";
-import { fill } from "@/lib/format.ts";
-import { awesomeUrl, botLinksUrl, botUrl, botUsername } from "@/lib/site.ts";
+import { awesomeUrl, botLinksUrl, botUrl, botUsername, repoUrl } from "@/lib/site.ts";
 import { getSiteData } from "@/lib/site-data.ts";
 import LangSwitch from "./LangSwitch.astro";
 import Logo from "./Logo.astro";
@@ -160,8 +160,17 @@ const chip =
           href={awesomeUrl}
           rel="noopener"
           target="_blank"
+          class="inline-flex items-center gap-1 transition-colors hover:text-primary"
+        >
+          <BrandGithub class="size-3.5" aria-hidden="true" />
+          {strings.footer.awesome}
+        </a>
+        <a
+          href={repoUrl}
+          rel="noopener license"
+          target="_blank"
           class="transition-colors hover:text-primary"
-          >{strings.footer.awesome}</a
+          >{strings.footer.source}</a
         >
         <a
           href={`${localizePath("/about/", locale)}#terms`}

@@ -283,10 +283,6 @@ describe("build dispatch", () => {
   const prefixed = (prefix: string) =>
     channelPosts.replace(/(tgme_widget_message_text[^>]*>)/, `$1${prefix}: `);
 
-  /** What the build workflow does when it finishes: the flag is cleared, the timestamp stays. */
-  const buildFinished = () =>
-    env.DB.prepare("DELETE FROM site_state WHERE key = ?").bind("dirty_since").run();
-
   test("a change found by the cron only marks the site dirty; the hourly net builds it", async () => {
     await addEntry("telegram");
     const pages: { posts?: string } = {};
