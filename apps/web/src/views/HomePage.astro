@@ -17,7 +17,7 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
 import { latestEntries } from "@/lib/home.ts";
 import { organizationJsonLd, websiteJsonLd } from "@/lib/json-ld.ts";
 import { homeSeo } from "@/lib/seo.ts";
-import { absoluteUrl, botUrl, repoUrl, siteUrl } from "@/lib/site.ts";
+import { absoluteUrl, botUrl, siteUrl } from "@/lib/site.ts";
 import { getSiteData } from "@/lib/site-data.ts";
 
 interface Props {
@@ -38,7 +38,7 @@ const jsonLd = [
     name: siteName,
     description: seo.description,
     logo: absoluteUrl("/icons/icon-180.png"),
-    sameAs: [repoUrl, botUrl],
+    sameAs: [botUrl],
   }),
   websiteJsonLd({
     siteUrl,

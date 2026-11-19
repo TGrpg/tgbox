@@ -76,8 +76,7 @@ const zh = {
     disclaimer:
       "本站仅收录公开的 Telegram 频道、群组和机器人，资料来自 Telegram 公开页面并定期自动更新。条目内容由其所有者负责，与本站无关；标有“推广”的条目为付费或合作展示。如发现违规内容或需要删除条目，请通过收录机器人联系我们。",
     rights: "保留所有权利。",
-    openSource: "开源于 GitHub",
-    licensed: "以 {licence} 许可证发布",
+    terms: "版权与使用条款：禁止商用、转载或搭建同类网站",
     awesome: "GitHub 资源合集",
     friends: "友情链接",
     allFriends: "全部友链",
@@ -260,8 +259,7 @@ const en: typeof zh = {
     disclaimer:
       "We only list public Telegram channels, groups and bots. Data comes from public Telegram pages and is refreshed automatically. Listed owners are responsible for their content; entries marked “Promoted” are paid or partner placements. To report abuse or request removal, contact us through the submission bot.",
     rights: "All rights reserved.",
-    openSource: "Open source on GitHub",
-    licensed: "Released under {licence}",
+    terms: "Copyright and terms: no commercial use, copying or look-alike sites",
     awesome: "Awesome list on GitHub",
     friends: "Friend sites",
     allFriends: "All friend sites",

@@ -6,11 +6,11 @@
 
 # TGbox
 
-**开源的 Telegram 频道 / 群组 / 机器人导航站：自带收录机器人和管理后台，完全跑在 Cloudflare 免费版上。**
+**Telegram 频道 / 群组 / 机器人导航站：自带收录机器人和管理后台，完全跑在 Cloudflare 免费版上。**
 
 [**在线演示 → tgbox.cc**](https://tgbox.cc) · [收录机器人 @tgboxccbot](https://t.me/tgboxccbot) · [资源合集 awesome-telegram](https://github.com/TGrpg/awesome-telegram) · [English](README.md) · 简体中文
 
-[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
+[![License: proprietary](https://img.shields.io/badge/license-proprietary-red.svg)](LICENSE)
 [![CI](https://github.com/TGrpg/tgbox/actions/workflows/ci.yml/badge.svg)](https://github.com/TGrpg/tgbox/actions/workflows/ci.yml)
 [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers%20免费版-F38020?logo=cloudflare&logoColor=white)](https://workers.cloudflare.com)
 [![Astro](https://img.shields.io/badge/Astro-7-BC52EE?logo=astro&logoColor=white)](https://astro.build)
@@ -38,7 +38,7 @@
 - Pagefind 站内搜索（支持中文），`Ctrl K` 快捷搜索
 - 随机漂流瓶、`/go` 跳转页（自动选择最快的 t.me 镜像）、分享和二维码
 - 简体中文、繁体中文、英文三语（繁体版在构建时由简体自动转换），带 `hreflang`、分类型站点地图、Open Graph，对 SEO 友好；浏览器偏好另一种语言的访客会看到一键切换提示，选择会被记住
-- 开放数据：整个目录输出为 `/data/entries.json`，每天同步到 [awesome-telegram](https://github.com/TGrpg/awesome-telegram) 资源合集
+- 各分类最大的条目每天从 `/data/awesome.json` 同步到 [awesome-telegram](https://github.com/TGrpg/awesome-telegram) 资源合集
 - 页脚和 `/links/` 页的友情链接，通过机器人申请、管理员审核
 - 亮色 / 暗色主题、手机底部 Tab 栏、PWA、Motion 动效（遵守 `prefers-reduced-motion`）
 
@@ -172,6 +172,6 @@ pnpm --filter @tgbox/admin dev         # 后台 → http://localhost:8789（本�
 
 ## 许可证
 
-[AGPL-3.0](LICENSE)。可以自由使用、修改和自建；如果把修改后的版本作为公开网站或服务运行，需要以同样的许可证公开源代码。Telegram 是 Telegram FZ-LLC 的商标，TGbox 是独立项目，与 Telegram 官方无关。
+专有软件，版权所有 © 2026 TGbox，保留所有权利，见 [LICENSE](LICENSE)。2026-11-19 之前公开的版本以 AGPL-3.0 发布，这些副本仍适用该许可证；之后的版本不再适用。Telegram 是 Telegram FZ-LLC 的商标，TGbox 是独立项目，与 Telegram 官方无关。
 
 觉得有用的话，点个 ⭐ 能让更多人找到它。

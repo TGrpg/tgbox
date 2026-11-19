@@ -11,13 +11,8 @@ export const botSubmitUrl = `${botUrl}?start=submit`;
 /** Deep link into the bot's link-exchange application. */
 export const botLinksUrl = `${botUrl}?start=links`;
 
-/** Public source repository; shown in the footer and claimed in the Organization JSON-LD. */
-export const repoUrl = "https://github.com/TGrpg/tgbox";
-
-/** The directory mirrored as a GitHub awesome list, regenerated daily from /data/entries.json. */
+/** The largest entries mirrored as a GitHub awesome list, regenerated daily from /data/awesome.json. */
 export const awesomeUrl = "https://github.com/TGrpg/awesome-telegram";
-
-export const licence = { name: "AGPL-3.0", url: `${repoUrl}/blob/main/LICENSE` };
 
 export function absoluteUrl(path: string) {
   return new URL(path, `${siteUrl}/`).toString();

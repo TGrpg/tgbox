@@ -1,12 +1,11 @@
 ---
 import ArrowRight from "@tabler/icons/outline/arrow-right.svg";
-import BrandGithub from "@tabler/icons/outline/brand-github.svg";
 import Plus from "@tabler/icons/outline/plus.svg";
 import { type SiteLocale, t } from "@tgbox/shared";
 import { localizePath } from "@/i18n/locale.ts";
 import { ui } from "@/i18n/ui.ts";
 import { fill } from "@/lib/format.ts";
-import { awesomeUrl, botLinksUrl, botUrl, botUsername, licence, repoUrl } from "@/lib/site.ts";
+import { awesomeUrl, botLinksUrl, botUrl, botUsername } from "@/lib/site.ts";
 import { getSiteData } from "@/lib/site-data.ts";
 import LangSwitch from "./LangSwitch.astro";
 import Logo from "./Logo.astro";
@@ -158,15 +157,6 @@ const chip =
       <p class="flex flex-wrap items-center gap-x-3 gap-y-1">
         <span>© {year} {t(locale, "site.title")}. {strings.footer.rights}</span>
         <a
-          href={repoUrl}
-          rel="noopener"
-          target="_blank"
-          class="inline-flex items-center gap-1 transition-colors hover:text-primary"
-        >
-          <BrandGithub class="size-3.5" aria-hidden="true" />
-          {strings.footer.openSource}
-        </a>
-        <a
           href={awesomeUrl}
           rel="noopener"
           target="_blank"
@@ -174,11 +164,9 @@ const chip =
           >{strings.footer.awesome}</a
         >
         <a
-          href={licence.url}
-          rel="noopener"
-          target="_blank"
+          href={`${localizePath("/about/", locale)}#terms`}
           class="transition-colors hover:text-primary"
-          >{fill(strings.footer.licensed, { licence: licence.name })}</a
+          >{strings.footer.terms}</a
         >
       </p>
     </div>

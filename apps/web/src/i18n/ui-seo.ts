@@ -58,9 +58,9 @@ const zh = {
       "TGbox 指南：怎么找到优质的 Telegram 频道、频道群组机器人到底有什么区别、怎么让自己的电报频道被更多人发现，依据 Telegram 官方限制和本站收录数据写成。",
   },
   about: {
-    title: "关于 TGbox · 开源的 Telegram 导航站",
+    title: "关于 TGbox · 简繁英三语 Telegram 导航站",
     description:
-      "TGbox 是开源（AGPL-3.0）的简繁英三语 Telegram 频道、群组和机器人导航站，并解答怎么找电报频道、怎么提交收录、数据多久更新一次。",
+      "TGbox 是简繁英三语的 Telegram 频道、群组和机器人导航站，并解答怎么找电报频道、怎么提交收录、数据多久更新一次。",
   },
   detail: {
     title: "{title}（@{username}）· Telegram {kind}",
@@ -169,9 +169,9 @@ const en: typeof zh = {
       "TGbox guides: how to find good Telegram channels, what actually separates channels, groups and bots, and how to get your own channel discovered — based on Telegram's documented limits and this directory's data.",
   },
   about: {
-    title: "About TGbox — Open-source Telegram Directory",
+    title: "About TGbox — Trilingual Telegram Directory",
     description:
-      "An open-source (AGPL-3.0) trilingual directory of Telegram channels, groups and bots: how TGbox picks entries, how to get listed, and how often the data is refreshed.",
+      "A trilingual directory of Telegram channels, groups and bots: how TGbox picks entries, how to get listed, and how often the data is refreshed.",
   },
   detail: {
     title: "{title} (@{username}) — Telegram {kind}",

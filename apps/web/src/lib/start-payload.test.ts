@@ -5,8 +5,8 @@ import ts from "typescript";
 import { expect, test } from "vitest";
 import { openInTelegram } from "../components/app/entry-card.tsx";
 import { appBrowse } from "./app-data.ts";
+import { awesomeData } from "./awesome-data.ts";
 import { devSiteData } from "./dev-site-data.ts";
-import { openData } from "./open-data.ts";
 
 const sample = devSiteData.entries[0];
 if (!sample) throw new Error("missing dev fixture");
@@ -19,7 +19,7 @@ const bot = {
 
 test("actual public export and Mini App browse retain the reviewed payload", () => {
   const data = { ...devSiteData, entries: [bot] };
-  expect(openData(data).entries[0]?.startPayload).toBe("botlist");
+  expect(awesomeData(data).entries[0]?.startPayload).toBe("botlist");
   const entry = appBrowse(data).entries[0];
   if (!entry) throw new Error("missing browse entry");
   let opened = "";

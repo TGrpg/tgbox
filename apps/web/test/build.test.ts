@@ -58,7 +58,6 @@ const paidPromo = {
   imageUrl: promoImage,
   sponsored: true as const,
 };
-const repoUrl = "https://github.com/TGrpg/tgbox";
 // techdaily's own content was last edited well after it was listed, so its sitemap lastmod
 // has to differ from both its listing date and the snapshot's build time.
 const techdailyUpdatedAt = "2026-08-28T00:00:00.000Z";
@@ -347,7 +346,7 @@ describe("site build from snapshot data", () => {
       expect(organization).toMatchObject({
         "@id": `${siteUrl}/#organization`,
         url: `${siteUrl}/`,
-        sameAs: [repoUrl, "https://t.me/tgboxccbot"],
+        sameAs: ["https://t.me/tgboxccbot"],
       });
       expect(website).toMatchObject({
         url: `${siteUrl}/${prefix}`,
@@ -432,19 +431,19 @@ describe("site build from snapshot data", () => {
     expect(sitemap).toContain(`<loc>${siteUrl}/en/tags/</loc>`);
   });
 
-  test("the footer credits the open-source repo and the licence on every page", () => {
-    for (const [route, label, licence] of [
-      ["", "开源于 GitHub", "以 AGPL-3.0 许可证发布"],
-      ["en/", "Open source on GitHub", "Released under AGPL-3.0"],
-      ["detail/techdaily", "开源于 GitHub", "以 AGPL-3.0 许可证发布"],
+  test("the footer links the copyright terms on every page, and no source repository", () => {
+    for (const [route, terms, label] of [
+      ["", "/about/#terms", "禁止商用"],
+      ["en/", "/en/about/#terms", "no commercial use"],
+      ["detail/techdaily", "/about/#terms", "禁止商用"],
     ] as const) {
       const footer = html(route).split("<footer")[1]?.split("</footer>")[0] ?? "";
-      expect(footer, route).toMatch(
-        new RegExp(`<a[^>]*href="${repoUrl}"[^>]*rel="noopener"[^>]*>[\\s\\S]*?${label}`),
-      );
-      expect(footer, route).toContain(licence);
+      expect(footer, route).toMatch(new RegExp(`<a[^>]*href="${terms}"[^>]*>[^<]*${label}`));
+      expect(footer, route).not.toContain("github.com/TGrpg/tgbox");
+      expect(footer, route).not.toContain("AGPL");
       expect(footer, route).toContain(`© ${new Date().getUTCFullYear()} TGbox`);
     }
+    expect(html("")).not.toContain("github.com/TGrpg/tgbox");
   });
 
   test("every page but the 404 offers its other-locale copies and remembers the reader's choice", () => {
@@ -503,7 +502,7 @@ describe("site build from snapshot data", () => {
     expect(page).not.toMatch(/href="\/channel\//);
     expect(page).toContain("/pagefind/zh-hant");
     // External links keep their exact bytes.
-    expect(page).toContain(`href="${repoUrl}"`);
+    expect(page).toContain('href="https://github.com/TGrpg/awesome-telegram"');
     // Every zh page has a Traditional copy; guides read the zh articles.
     for (const route of ["zh-hant", "zh-hant/channel", "zh-hant/tags", "zh-hant/links"]) {
       expect(existsSync(path.join(client, route, "index.html")), route).toBe(true);
@@ -523,8 +522,8 @@ describe("site build from snapshot data", () => {
     expect(hot).toContain("環球早報");
     expect(readFileSync(path.join(client, "data/hot-channel.json"), "utf8")).toContain("环球早报");
     expect(existsSync(path.join(client, "zh-hant/data/random-all.json"))).toBe(true);
-    // The open data too, for the awesome-telegram list's Traditional README.
-    const open = JSON.parse(readFileSync(path.join(client, "zh-hant/data/entries.json"), "utf8"));
+    // The awesome list's data too, for its Traditional README.
+    const open = JSON.parse(readFileSync(path.join(client, "zh-hant/data/awesome.json"), "utf8"));
     expect(open.entries.find((e: { username: string }) => e.username === "worldnews")?.title).toBe(
       "環球早報",
     );
@@ -567,8 +566,8 @@ describe("site build from snapshot data", () => {
       const page = html(route);
       expect(page, route).toContain(heading);
       expect(page, route).toMatch(new RegExp(`<h3[^>]*>${question.replace(/\?/g, "\\?")}`));
-      expect(page, route).toContain("AGPL-3.0");
-      expect(page, route).toContain(repoUrl);
+      expect(page, route).toContain('id="terms"');
+      expect(page, route).not.toContain("AGPL");
       const faq = jsonLd(page).find(
         (item): item is Record<string, unknown> =>
           typeof item === "object" &&
@@ -869,14 +868,17 @@ describe("site build from snapshot data", () => {
     expect(sitemap).toContain(`<loc>${siteUrl}/en/rank/</loc>`);
   });
 
-  test("the open data file lists every listed entry with public fields only, largest first", () => {
-    const data = JSON.parse(readFileSync(path.join(client, "data/entries.json"), "utf8"));
+  test("the awesome data holds each category's largest entries and the newest, nothing more", () => {
+    expect(existsSync(path.join(client, "data/entries.json"))).toBe(false);
+    const data = JSON.parse(readFileSync(path.join(client, "data/awesome.json"), "utf8"));
     expect(data.version).toBe(1);
     expect(data.site).toBe(siteUrl);
-    const usernames = data.entries.map((entry: { username: string }) => entry.username);
-    expect(new Set(usernames)).toEqual(
-      new Set([...approved, ...gameChannels].map((entry) => entry.username)),
-    );
+    const usernames: string[] = data.entries.map((entry: { username: string }) => entry.username);
+    // 61 game channels: the 15 largest, plus whichever are among the 10 newest listings.
+    const games = usernames.filter((username) => username.startsWith("gamechan"));
+    expect(games.length).toBeGreaterThanOrEqual(15);
+    expect(games.length).toBeLessThanOrEqual(25);
+    expect(usernames.length).toBeLessThan(approved.length + gameChannels.length);
     const members = data.entries.map((entry: { members: number | null }) => entry.members ?? -1);
     expect(members).toEqual([...members].sort((a, b) => b - a));
     const first = data.entries[0];
@@ -1308,7 +1310,7 @@ test("built detail and exports retain opt-in bot start payload on actual launch 
     expect(page).toContain("u=gptbot&amp;kind=bot&amp;start=botlist");
     expect(page).toContain('data-pagefind-meta="startPayload:botlist"');
   }
-  for (const file of ["entries.json", "app-browse.json"]) {
+  for (const file of ["awesome.json", "app-browse.json"]) {
     const data = JSON.parse(readFileSync(path.join(client, "data", file), "utf8"));
     expect(
       data.entries.find((entry: { username: string }) => entry.username === "gptbot").startPayload,
