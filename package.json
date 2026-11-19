@@ -1,7 +1,7 @@
 {
   "name": "tgbox",
   "private": true,
-  "license": "PolyForm-Strict-1.0.0",
+  "license": "UNLICENSED",
   "type": "module",
   "scripts": {
     "dev": "turbo run dev --parallel",

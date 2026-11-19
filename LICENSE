@@ -1,77 +1,29 @@
-Required Notice: Copyright (c) 2026 TGbox (https://tgbox.cc)
+Copyright (c) 2026 TGbox (https://tgbox.cc). All rights reserved.
 
-The source code in this repository is source-available under the PolyForm Strict License 1.0.0,
-reproduced below: you may read and run it for noncommercial purposes only, and you may not
-distribute it, change it or build new works from it. Any commercial use, including running it or
-anything based on it to operate a website, app or bot that carries ads, sells placements or
-charges money, requires a separate written licence from TGbox.
+This repository is public so that its source code can be read. It is NOT open source, and no
+licence is granted except the following: you may view the code, and keep a private copy to study
+and run on your own computer for personal learning and testing.
 
-Not covered by this licence, and reserved in full:
-- the TGbox name, logo and domains;
-- the directory data and content of https://tgbox.cc (entries, categories, tags, translated
-  descriptions, statistics, rankings), whose terms are at https://tgbox.cc/about/#terms.
+Without the prior written permission of TGbox, you may NOT:
 
-Versions of this repository published before 2026-11-19 were released under the GNU Affero
-General Public License v3.0, which continues to apply to those earlier copies only.
+1. Deploy, host or run this software, or anything based on it, as a website, app, bot, API or any
+   other service that people other than yourself can reach (no going live, publicly or not).
+2. Use it, in whole or in part, for any commercial purpose, including in any site, app or bot that
+   carries ads, sells placements or memberships, or charges money.
+3. Copy, modify, merge, publish, distribute, sublicense or sell it, in whole or in part, or build
+   another work from it.
 
----
+Forking this repository on GitHub, as GitHub's Terms of Service allow, grants none of the rights
+above; a fork may only be viewed.
 
-# PolyForm Strict License 1.0.0
+Not licensed in any way: the TGbox name, logo and domains, and the directory data and content of
+https://tgbox.cc (entries, categories, tags, translated descriptions, statistics, rankings and
+growth figures), whose terms are at https://tgbox.cc/about/#terms.
 
-<https://polyformproject.org/licenses/strict/1.0.0>
+Versions of this repository published before 2026-11-19 were released under the GNU Affero General
+Public License v3.0. That licence continues to apply to those earlier copies only; it does not
+apply to this or any later version.
 
-## Acceptance
-
-In order to get any license under these terms, you must agree to them as both strict obligations and conditions to all your licenses.
-
-## Copyright License
-
-The licensor grants you a copyright license for the software to do everything you might do with the software that would otherwise infringe the licensor's copyright in it for any permitted purpose, other than distributing the software or making changes or new works based on the software.
-
-## Patent License
-
-The licensor grants you a patent license for the software that covers patent claims the licensor can license, or becomes able to license, that you would infringe by using the software.
-
-## Noncommercial Purposes
-
-Any noncommercial purpose is a permitted purpose.
-
-## Personal Uses
-
-Personal use for research, experiment, and testing for the benefit of public knowledge, personal study, private entertainment, hobby projects, amateur pursuits, or religious observance, without any anticipated commercial application, is use for a permitted purpose.
-
-## Noncommercial Organizations
-
-Use by any charitable organization, educational institution, public research organization, public safety or health organization, environmental protection organization, or government institution is use for a permitted purpose regardless of the source of funding or obligations resulting from the funding.
-
-## Fair Use
-
-You may have "fair use" rights for the software under the law. These terms do not limit them.
-
-## No Other Rights
-
-These terms do not allow you to sublicense or transfer any of your licenses to anyone else, or prevent the licensor from granting licenses to anyone else.  These terms do not imply any other licenses.
-
-## Patent Defense
-
-If you make any written claim that the software infringes or contributes to infringement of any patent, your patent license for the software granted under these terms ends immediately. If your company makes such a claim, your patent license ends immediately for work on behalf of your company.
-
-## Violations
-
-The first time you are notified in writing that you have violated any of these terms, or done anything with the software not covered by your licenses, your licenses can nonetheless continue if you come into full compliance with these terms, and take practical steps to correct past violations, within 32 days of receiving notice.  Otherwise, all your licenses end immediately.
-
-## No Liability
-
-***As far as the law allows, the software comes as is, without any warranty or condition, and the licensor will not be liable to you for any damages arising out of these terms or the use or nature of the software, under any kind of legal claim.***
-
-## Definitions
-
-The **licensor** is the individual or entity offering these terms, and the **software** is the software the licensor makes available under these terms.
-
-**You** refers to the individual or entity agreeing to these terms.
-
-**Your company** is any legal entity, sole proprietorship, or other kind of organization that you work for, plus all organizations that have control over, are under the control of, or are under common control with that organization.  **Control** means ownership of substantially all the assets of an entity, or the power to direct its management and policies by vote, contract, or otherwise.  Control can be direct or indirect.
-
-**Your licenses** are all the licenses granted to you for the software under these terms.
-
-**Use** means anything you do with the software requiring one of your licenses.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED. IN NO EVENT
+SHALL TGBOX BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY ARISING FROM THE SOFTWARE OR ITS
+USE.

@@ -11,7 +11,7 @@ export const botSubmitUrl = `${botUrl}?start=submit`;
 /** Deep link into the bot's link-exchange application. */
 export const botLinksUrl = `${botUrl}?start=links`;
 
-/** Source-available under PolyForm Strict 1.0.0: readable and runnable, never commercially. */
+/** Public to read only: all rights reserved, no deployment and no commercial use. */
 export const repoUrl = "https://github.com/TGrpg/tgbox";
 
 /** The largest entries mirrored as a GitHub awesome list, regenerated daily from /data/awesome.json. */
