@@ -3,8 +3,8 @@ TGbox Source Available License 1.0
 Copyright (c) 2026 TGbox. All rights reserved.
 
 This license is a source-available license. It is not an open source license as defined by
-the Open Source Initiative, because it restricts deployment, commercial use and competing
-public services.
+the Open Source Initiative, because it restricts commercial use, public hosting and
+competing services.
 
 1. Definitions
 
@@ -33,8 +33,10 @@ submission bots, navigation or search sites, and related data aggregation servic
 Subject to this license, you may:
 
 - Read and study the source code.
-- Copy and modify the source code for personal learning, research, evaluation and testing on
-  your own computer.
+- Copy, fork and modify the source code for personal learning, research, evaluation and local
+  development.
+- Deploy TGbox for your own personal use, where no one else can reach it.
+- Deploy TGbox inside your own organization for internal, non-commercial use.
 - Publish non-commercial patches or pull requests back to the official repository.
 - Quote small excerpts of code or documentation for commentary, review or education, with
   attribution and a link to the official repository.
@@ -43,23 +45,18 @@ Subject to this license, you may:
 
 Without prior written permission from the Licensor, you may not:
 
-- Deploy, host or run TGbox, a modified version of TGbox, or a derivative work of TGbox as a
-  Public Hosted Service, whether publicly accessible or open to any third party.
-- Use TGbox for Commercial Use, including in a deployment that carries advertising, affiliate
-  links, sponsored placements, paid listings, paid traffic routing, paid data access, paid
-  membership or other monetization.
-- Operate a Competitive Service based on TGbox or derived from it.
+- Use TGbox, a modified version of TGbox, or a derivative work of TGbox for Commercial Use.
+- Operate TGbox, a modified version of TGbox, or a derivative work of TGbox as a Public Hosted
+  Service.
+- Operate a Competitive Service based on TGbox.
+- Add advertising, affiliate links, sponsored placements, paid listings, paid traffic routing,
+  paid data access, paid membership or other monetization to a deployment based on TGbox.
 - Resell, rent, sublicense or offer TGbox as part of a commercial product or service.
-- Distribute copies of TGbox, in whole or in part, other than by pull request to the official
-  repository.
 - Use TGbox as a substitute data feed, bulk mirror, crawler target or dataset backend for
   another product.
 - Remove or hide copyright, license, attribution or official project notices.
 - Present any fork, mirror, hosted copy, derivative work or modified version as the Official
   Service.
-
-Forking this repository on GitHub, as GitHub's Terms of Service allow, grants none of the rights
-above; a fork may only be viewed.
 
 4. Brand, Data and Content
 
@@ -122,13 +119,15 @@ otherwise.
 
 声明
 
-本仓库的源码公开仅供阅读，版权所有 © 2026 TGbox，保留所有权利。它不是 OSI 定义的开源软件，
-也不适用 AGPL、MIT 或其他开源许可证。TGbox 没有授予上文未明确列出的任何权利。
+本仓库源码公开，但不是 OSI 定义的开源软件，版权所有 © 2026 TGbox。
 
-- 未经 TGbox 书面许可，不得部署、上线或商用，也不得运营与 TGbox 同类的服务。Fork 只能用于阅读。
+- 可以：阅读和学习代码；fork、复制、修改用于个人学习和本地开发；部署给自己用，或在自己组织内部非商业使用；提交 PR。
+- 未经 TGbox 书面许可不可以：商用；把它或它的改版作为公开网站、应用、机器人或 API 上线运营，免费的也不行；
+  运营同类的 Telegram 导航、收录或搜索服务；在部署版本里加广告、推广位、付费收录等任何变现；
+  把它当作数据源、镜像或爬虫目标；删除版权和许可证声明；把 fork 或改版冒充为官方 TGbox。
 - TGbox 的名称、标志、域名，以及 tgbox.cc 上的数据和内容，不在本许可证的授权范围内，适用
   https://tgbox.cc/about/#terms 的条款。
 - 2026-11-19 之前公开的版本仍适用当时的 AGPL-3.0，该许可证只适用于那些旧副本。
-- 商业合作或授权请通过 https://t.me/tgboxccbot 私聊并发送 /help 获取联系方式。
+- 商业部署、合作或授权请通过 https://t.me/tgboxccbot 私聊并发送 /help 获取联系方式。
 
 本声明为中文摘要。如与上文英文条款有出入，以英文条款为准。
